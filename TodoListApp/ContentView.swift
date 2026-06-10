@@ -22,11 +22,101 @@ private enum WeightTrendGranularity: String, CaseIterable, Identifiable {
 private struct WeightTrendPoint: Identifiable {
     let date: Date
     let weight: Double
-    let label: String
+    let topLabel: String
+    let bottomLabel: String
 
     var id: String {
-        "\(date.timeIntervalSince1970)-\(label)"
+        "\(date.timeIntervalSince1970)-\(topLabel)-\(bottomLabel)"
     }
+}
+
+private struct FinanceTrendPoint: Identifiable {
+    let date: Date
+    let amount: Double
+    let topLabel: String
+    let bottomLabel: String
+
+    var id: String {
+        "\(date.timeIntervalSince1970)-\(amount)"
+    }
+}
+
+private enum HealthSection: String, CaseIterable, Identifiable {
+    case fasting
+    case weight
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .fasting:
+            return "16 + 8"
+        case .weight:
+            return "体重"
+        }
+    }
+}
+
+private enum FinanceSection: String, CaseIterable, Identifiable {
+    case assetRecord
+    case stockResearch
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .assetRecord:
+            return "资产记录"
+        case .stockResearch:
+            return "股票研究"
+        }
+    }
+}
+
+private enum MainAppTab: String, CaseIterable, Identifiable, Codable, Hashable {
+    case health
+    case todo
+    case finance
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .health:
+            return "健康"
+        case .todo:
+            return "TODO"
+        case .finance:
+            return "理财"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .health:
+            return "heart"
+        case .todo:
+            return "checklist"
+        case .finance:
+            return "yensign.circle"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .health:
+            return "16 + 8、体重和健康目标"
+        case .todo:
+            return "待办事项和愿望清单"
+        case .finance:
+            return "资产记录和股票研究"
+        }
+    }
+}
+
+private struct MainTabPreferences: Codable {
+    var order: [MainAppTab]
+    var visibleTabs: [MainAppTab]
 }
 
 struct ContentView: View {
@@ -39,6 +129,11 @@ struct ContentView: View {
     private let fastingGoalHoursCloudKey = "fastingGoalHours"
     private let eatingGoalHoursCloudKey = "eatingGoalHours"
     private let dailyGoalCloudKey = "dailyGoal"
+    private let todoTasksCloudKey = "todoTasks"
+    private let wishlistItemsCloudKey = "wishlistItems"
+    private let financeAssetsCloudKey = "financeAssets"
+    private let financeSnapshotsCloudKey = "financeSnapshots"
+    private let stockResearchItemsCloudKey = "stockResearchItems"
     private let planOptions = [(fasting: 16, eating: 8), (fasting: 18, eating: 6), (fasting: 20, eating: 4)]
     private let isoCalendar = Calendar(identifier: .iso8601)
 
@@ -49,7 +144,13 @@ struct ContentView: View {
     @AppStorage("latestWeight") private var latestWeight = ""
     @AppStorage("weightLogs") private var weightLogsData = Data()
     @AppStorage("fastingSessions") private var fastingSessionsData = Data()
-    @AppStorage("dailyGoal") private var dailyGoal = "Drink water, eat protein, walk 20 minutes"
+    @AppStorage("todoTasks") private var todoTasksData = Data()
+    @AppStorage("wishlistItems") private var wishlistItemsData = Data()
+    @AppStorage("financeAssets") private var financeAssetsData = Data()
+    @AppStorage("financeSnapshots") private var financeSnapshotsData = Data()
+    @AppStorage("stockResearchItems") private var stockResearchItemsData = Data()
+    @AppStorage("mainTabPreferences") private var mainTabPreferencesData = Data()
+    @AppStorage("dailyGoal") private var dailyGoal = "多喝水，优先吃蛋白质，散步 20 分钟"
     @AppStorage("heightCm") private var heightCm = ""
     @AppStorage("targetWeight") private var targetWeight = ""
 
@@ -58,6 +159,23 @@ struct ContentView: View {
     @State private var noteInput = ""
     @State private var weightLogs: [FastingLog] = []
     @State private var fastingSessions: [FastingSession] = []
+    @State private var todoTasks: [TodoTask] = []
+    @State private var wishlistItems: [WishlistItem] = []
+    @State private var todoInput = ""
+    @State private var wishlistInput = ""
+    @State private var wishlistCategory: WishlistCategory = .travel
+    @State private var financeAssets: [FinanceAsset] = []
+    @State private var financeSnapshots: [FinanceSnapshot] = []
+    @State private var financeAssetNameInput = ""
+    @State private var financeAssetAmountInput = ""
+    @State private var financeAssetKind: FinanceAssetKind = .bankCard
+    @State private var healthSection: HealthSection = .fasting
+    @State private var financeSection: FinanceSection = .assetRecord
+    @State private var stockResearchItems: [StockResearchItem] = []
+    @State private var stockNameInput = ""
+    @State private var stockSearchText = ""
+    @State private var mainTabOrder = MainAppTab.allCases
+    @State private var visibleMainTabSet = Set(MainAppTab.allCases)
     @State private var syncStatus = "iCloud 同步准备中"
     @State private var isShowingWeightSheet = false
     @State private var isShowingBodySettings = false
@@ -68,14 +186,16 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
-            fastingPage
-                .tabItem {
-                    Label("16 + 8", systemImage: "timer")
-                }
+            ForEach(visibleMainTabs) { tab in
+                mainTabContent(for: tab)
+                    .tabItem {
+                        Label(tab.title, systemImage: tab.icon)
+                    }
+            }
 
-            weightPage
+            profilePage
                 .tabItem {
-                    Label("体重", systemImage: "scalemass")
+                    Label("我的", systemImage: "person.crop.circle")
                 }
         }
         .onReceive(timer) { currentTime in
@@ -102,38 +222,192 @@ struct ContentView: View {
         }
     }
 
-    private var fastingPage: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    statusCard
-                    actionCard
-                    fastingHistoryCard
-                    planCard
-                    syncCard
-                }
-                .padding()
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("\(fastingGoalHours)+\(eatingGoalHours) 计划")
+    @ViewBuilder
+    private func mainTabContent(for tab: MainAppTab) -> some View {
+        switch tab {
+        case .health:
+            healthPage
+        case .todo:
+            todoPage
+        case .finance:
+            financePage
         }
     }
 
-    private var weightPage: some View {
+    private var healthPage: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    weightCard
-                    bmiCard
-                    trendCard
-                    historyCard
+                    healthSectionPicker
+
+                    switch healthSection {
+                    case .fasting:
+                        fastingSection
+                    case .weight:
+                        weightSection
+                    }
                 }
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("体重")
-            .onDisappear {
-                visibleWeightHistoryDays = 10
+            .navigationTitle("健康")
+            .onChange(of: healthSection) { _, newSection in
+                if newSection != .weight {
+                    visibleWeightHistoryDays = 10
+                }
+            }
+        }
+    }
+
+    private var healthSectionPicker: some View {
+        Picker("健康模块", selection: $healthSection) {
+            ForEach(HealthSection.allCases) { section in
+                Text(section.title)
+                    .tag(section)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    private var fastingSection: some View {
+        VStack(spacing: 20) {
+            statusCard
+            actionCard
+            fastingHistoryCard
+            planCard
+            syncCard
+        }
+    }
+
+    private var weightSection: some View {
+        VStack(spacing: 20) {
+            weightCard
+            bmiCard
+            trendCard
+            historyCard
+        }
+    }
+
+    private var todoPage: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    todoOverviewCard
+                    todoTasksCard
+                    wishlistCard
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("TODO")
+        }
+    }
+
+    private var financePage: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    financeSectionPicker
+
+                    switch financeSection {
+                    case .assetRecord:
+                        financeAssetRecordSection
+                    case .stockResearch:
+                        stockResearchSection
+                    }
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("理财")
+        }
+    }
+
+    private var financeSectionPicker: some View {
+        Picker("理财模块", selection: $financeSection) {
+            ForEach(FinanceSection.allCases) { section in
+                Text(section.title)
+                    .tag(section)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    private var financeAssetRecordSection: some View {
+        VStack(spacing: 20) {
+            financeSummaryCard
+            financeAddAssetCard
+            financeTrendCard
+            financeAssetsCard
+        }
+    }
+
+    private var stockResearchSection: some View {
+        VStack(spacing: 20) {
+            stockResearchAddCard
+            stockResearchListCard
+        }
+    }
+
+    private var profilePage: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(mainTabOrder) { tab in
+                        HStack(spacing: 12) {
+                            Image(systemName: tab.icon)
+                                .foregroundStyle(.blue)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(tab.title)
+                                    .font(.headline)
+                                Text(tab.description)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer()
+
+                            Toggle("", isOn: mainTabVisibilityBinding(for: tab))
+                                .labelsHidden()
+                                .disabled(isOnlyVisibleMainTab(tab))
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .onMove(perform: moveMainTabs)
+                } header: {
+                    Text("底部 Tab 管理")
+                } footer: {
+                    Text("拖动可调整健康、TODO、理财的顺序；关闭开关可隐藏不常用 Tab。“我的”固定在最右侧，不参与排序和隐藏。")
+                }
+
+                Section {
+                    HStack {
+                        Image(systemName: "person.crop.circle")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("我的")
+                                .font(.headline)
+                            Text("固定在最右侧")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Text("固定")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .navigationTitle("我的")
+            .toolbar {
+                EditButton()
             }
         }
     }
@@ -182,6 +456,91 @@ struct ContentView: View {
         fastingSessions.sorted { $0.endDate > $1.endDate }
     }
 
+    private var activeTodoTasks: [TodoTask] {
+        todoTasks
+            .filter { !$0.isCompleted }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private var completedTodoTasks: [TodoTask] {
+        todoTasks
+            .filter(\.isCompleted)
+            .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
+    }
+
+    private var openWishlistItems: [WishlistItem] {
+        wishlistItems
+            .filter { !$0.isCompleted }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private var completedWishlistItems: [WishlistItem] {
+        wishlistItems
+            .filter(\.isCompleted)
+            .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
+    }
+
+    private var visibleMainTabs: [MainAppTab] {
+        let orderedVisibleTabs = mainTabOrder.filter { visibleMainTabSet.contains($0) }
+        return orderedVisibleTabs.isEmpty ? [.health] : orderedVisibleTabs
+    }
+
+    private var totalFinanceAmount: Double {
+        financeAssets.map(\.amount).reduce(0, +)
+    }
+
+    private var sortedFinanceAssets: [FinanceAsset] {
+        financeAssets.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private var sortedFinanceSnapshots: [FinanceSnapshot] {
+        financeSnapshots.sorted { $0.date > $1.date }
+    }
+
+    private var monthlyFinanceTrendPoints: [FinanceTrendPoint] {
+        let snapshotsByMonth = Dictionary(grouping: financeSnapshots) { snapshot in
+            Calendar.current.dateInterval(of: .month, for: snapshot.date)?.start ?? Calendar.current.startOfDay(for: snapshot.date)
+        }
+
+        let latestSnapshotsPerMonth = snapshotsByMonth.values.compactMap { snapshots in
+            snapshots.max { $0.date < $1.date }
+        }
+
+        return Array(latestSnapshotsPerMonth.sorted { $0.date < $1.date }.suffix(12)).map { snapshot in
+            FinanceTrendPoint(
+                date: snapshot.date,
+                amount: snapshot.totalAmount,
+                topLabel: chineseYear(snapshot.date),
+                bottomLabel: chineseMonth(snapshot.date)
+            )
+        }
+    }
+
+    private var financeMonthChangeText: String? {
+        guard let firstPoint = monthlyFinanceTrendPoints.first,
+              let lastPoint = monthlyFinanceTrendPoints.last,
+              firstPoint.id != lastPoint.id else {
+            return nil
+        }
+
+        let change = lastPoint.amount - firstPoint.amount
+        let sign = change > 0 ? "+" : ""
+        return "\(sign)\(currencyText(change))"
+    }
+
+    private var sortedStockResearchItems: [StockResearchItem] {
+        stockResearchItems.sorted { $0.updatedAt > $1.updatedAt }
+    }
+
+    private var filteredStockResearchItems: [StockResearchItem] {
+        let trimmedSearchText = stockSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedSearchText.isEmpty else { return sortedStockResearchItems }
+
+        return sortedStockResearchItems.filter {
+            $0.name.localizedCaseInsensitiveContains(trimmedSearchText)
+        }
+    }
+
     private var dailyTrendLogs: [FastingLog] {
         let logsByDay = Dictionary(grouping: weightLogs) { log in
             Calendar.current.startOfDay(for: log.date)
@@ -201,20 +560,21 @@ struct ContentView: View {
                 WeightTrendPoint(
                     date: log.date,
                     weight: log.weight,
-                    label: log.date.formatted(.dateTime.month(.defaultDigits).day(.defaultDigits))
+                    topLabel: chineseMonth(log.date),
+                    bottomLabel: chineseDay(log.date)
                 )
             }
         case .week:
             return averagedTrendPoints(groupedBy: { log in
                 isoCalendar.dateInterval(of: .weekOfYear, for: log.date)?.start ?? Calendar.current.startOfDay(for: log.date)
             }, labelFor: { date in
-                "周\(date.formatted(.dateTime.month(.defaultDigits).day(.defaultDigits)))"
+                (chineseMonth(date), "\(chineseDay(date))起")
             })
         case .month:
             return averagedTrendPoints(groupedBy: { log in
                 Calendar.current.dateInterval(of: .month, for: log.date)?.start ?? Calendar.current.startOfDay(for: log.date)
             }, labelFor: { date in
-                date.formatted(.dateTime.year(.twoDigits).month(.defaultDigits))
+                (chineseYear(date), chineseMonth(date))
             })
         }
     }
@@ -255,6 +615,24 @@ struct ContentView: View {
         default:
             return "肥胖"
         }
+    }
+
+    private var targetProgressText: String {
+        guard let currentWeight = latestWeightLog?.weight, let targetWeightValue else {
+            return "设置目标体重后，会显示距离目标还差多少。"
+        }
+
+        let difference = currentWeight - targetWeightValue
+
+        if abs(difference) < 0.05 {
+            return "已达到目标体重，继续保持。"
+        }
+
+        if difference > 0 {
+            return "距离目标还差 \(weightText(difference)) kg"
+        }
+
+        return "已经低于目标 \(weightText(abs(difference))) kg，注意保持健康。"
     }
 
     private var statusCard: some View {
@@ -412,7 +790,7 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Text("最近：\(latestWeightLog.date.formatted(date: .abbreviated, time: .shortened))")
+                    Text("最近：\(chineseDateTime(latestWeightLog.date))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -505,16 +883,8 @@ struct ContentView: View {
 
     private var trendCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("体重趋势")
-                    .font(.title3.bold())
-                Spacer()
-                if let changeText {
-                    Text(changeText)
-                        .font(.subheadline.bold())
-                        .foregroundStyle(changeText.hasPrefix("-") ? .green : .orange)
-                }
-            }
+            Text("体重趋势")
+                .font(.title3.bold())
 
             Picker("趋势粒度", selection: $trendGranularity) {
                 ForEach(WeightTrendGranularity.allCases) { granularity in
@@ -560,22 +930,17 @@ struct ContentView: View {
                     isShowingBodySettings = true
                 } label: {
                     Image(systemName: "gearshape")
+                        .font(.title3)
+                        .foregroundStyle(.blue)
+                        .padding(6)
                 }
-                .buttonStyle(.bordered)
-
-                if let bmiValue {
-                    Text("BMI \(String(format: "%.1f", bmiValue))")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(bmiColor(for: bmiValue))
-                }
+                .buttonStyle(.plain)
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("目标体重")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-
-                Spacer()
 
                 if let targetWeightValue {
                     Text("\(weightText(targetWeightValue)) kg")
@@ -585,13 +950,32 @@ struct ContentView: View {
                         .font(.headline)
                         .foregroundStyle(.secondary)
                 }
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Image(systemName: "flag.checkered")
+                    Text(targetProgressText)
+                }
+                .font(.subheadline.bold())
+                .foregroundStyle(.blue)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(bmiStatusText)
-                        .font(.headline)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(bmiStatusText)
+                            .font(.headline)
+
+                        if let bmiValue {
+                            Text("BMI \(String(format: "%.1f", bmiValue))")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(bmiColor(for: bmiValue))
+                        }
+                    }
+                    
                     Spacer()
+
                     if let latestWeightLog {
                         Text("当前 \(weightText(latestWeightLog.weight)) kg")
                             .font(.caption)
@@ -613,6 +997,7 @@ struct ContentView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             }
+            .padding(.top, 4)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -683,7 +1068,7 @@ struct ContentView: View {
             } else {
                 VStack(spacing: 10) {
                     ForEach(displayedWeightLogs) { log in
-                        WeightLogRow(log: log, weightText: weightText(log.weight)) {
+                        WeightLogRow(log: log, weightText: weightText(log.weight), dateText: chineseDateTime(log.date)) {
                             deleteWeightLog(log)
                         }
 
@@ -710,6 +1095,436 @@ struct ContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
+    private var todoOverviewCard: some View {
+        HStack(spacing: 14) {
+            SummaryPill(title: "待办", value: "\(activeTodoTasks.count)", color: .blue)
+            SummaryPill(title: "已完成", value: "\(completedTodoTasks.count)", color: .green)
+            SummaryPill(title: "愿望", value: "\(openWishlistItems.count)", color: .purple)
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var todoTasksCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("未来要做")
+                        .font(.title3.bold())
+                    Text("想到什么先记下来，做完就打勾。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Text("\(activeTodoTasks.count) 件待做")
+                    .font(.caption.bold())
+                    .foregroundStyle(.blue)
+            }
+
+            HStack(spacing: 10) {
+                TextField("例如：周末整理房间", text: $todoInput, axis: .vertical)
+                    .lineLimit(1...3)
+                    .textFieldStyle(.roundedBorder)
+
+                Button {
+                    addTodoTask()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.headline)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(todoInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            if activeTodoTasks.isEmpty && completedTodoTasks.isEmpty {
+                ContentUnavailableView(
+                    "还没有待办",
+                    systemImage: "checklist",
+                    description: Text("把未来要做的事情写在这里，避免之后忘记。")
+                )
+                .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                if !activeTodoTasks.isEmpty {
+                    VStack(spacing: 10) {
+                        ForEach(activeTodoTasks) { task in
+                            TodoTaskRow(task: task) {
+                                toggleTodoTask(task)
+                            } onDelete: {
+                                deleteTodoTask(task)
+                            }
+
+                            if task.id != activeTodoTasks.last?.id {
+                                Divider()
+                            }
+                        }
+                    }
+                }
+
+                if !completedTodoTasks.isEmpty {
+                    Divider()
+
+                    DisclosureGroup("已完成 \(completedTodoTasks.count) 件") {
+                        VStack(spacing: 10) {
+                            ForEach(completedTodoTasks.prefix(8)) { task in
+                                TodoTaskRow(task: task) {
+                                    toggleTodoTask(task)
+                                } onDelete: {
+                                    deleteTodoTask(task)
+                                }
+
+                                if task.id != completedTodoTasks.prefix(8).last?.id {
+                                    Divider()
+                                }
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
+                    .font(.subheadline.bold())
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var wishlistCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("愿望清单")
+                    .font(.title3.bold())
+                Text("想去哪玩、吃什么、喝什么，先收集起来，后面一个个去实现。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Picker("类型", selection: $wishlistCategory) {
+                ForEach(WishlistCategory.allCases) { category in
+                    Label(category.title, systemImage: category.icon)
+                        .tag(category)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            HStack(spacing: 10) {
+                TextField("例如：去海边看日落", text: $wishlistInput, axis: .vertical)
+                    .lineLimit(1...3)
+                    .textFieldStyle(.roundedBorder)
+
+                Button {
+                    addWishlistItem()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.headline)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.purple)
+                .disabled(wishlistInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            if openWishlistItems.isEmpty && completedWishlistItems.isEmpty {
+                ContentUnavailableView(
+                    "还没有愿望",
+                    systemImage: "sparkles",
+                    description: Text("把想玩的、想吃的、想喝的都放进来。")
+                )
+                .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                if !openWishlistItems.isEmpty {
+                    VStack(spacing: 10) {
+                        ForEach(openWishlistItems) { item in
+                            WishlistRow(item: item) {
+                                toggleWishlistItem(item)
+                            } onDelete: {
+                                deleteWishlistItem(item)
+                            }
+
+                            if item.id != openWishlistItems.last?.id {
+                                Divider()
+                            }
+                        }
+                    }
+                }
+
+                if !completedWishlistItems.isEmpty {
+                    Divider()
+
+                    DisclosureGroup("已经实现 \(completedWishlistItems.count) 个") {
+                        VStack(spacing: 10) {
+                            ForEach(completedWishlistItems.prefix(8)) { item in
+                                WishlistRow(item: item) {
+                                    toggleWishlistItem(item)
+                                } onDelete: {
+                                    deleteWishlistItem(item)
+                                }
+
+                                if item.id != completedWishlistItems.prefix(8).last?.id {
+                                    Divider()
+                                }
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
+                    .font(.subheadline.bold())
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var financeSummaryCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("总资产")
+                        .font(.title3.bold())
+                    Text("当前记录的所有资产合计")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Text(currencyText(totalFinanceAmount))
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .foregroundStyle(.green)
+            }
+
+            HStack(spacing: 14) {
+                SummaryPill(title: "资产项", value: "\(financeAssets.count)", color: .green)
+                SummaryPill(title: "历史记录", value: "\(financeSnapshots.count)", color: .blue)
+                SummaryPill(title: "月变化", value: financeMonthChangeText ?? "--", color: .orange)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var financeAddAssetCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("添加资产")
+                    .font(.title3.bold())
+                Text("银行卡可以添加多张；股票、期权、支付宝、微信和其他资产也可以分别记录。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Picker("资产类型", selection: $financeAssetKind) {
+                ForEach(FinanceAssetKind.allCases) { kind in
+                    Label(kind.title, systemImage: kind.icon)
+                        .tag(kind)
+                }
+            }
+            .pickerStyle(.menu)
+
+            TextField(financeAssetKind == .custom ? "自定义类目名称" : "名称，例如：招商银行卡", text: $financeAssetNameInput)
+                .textFieldStyle(.roundedBorder)
+
+            HStack(spacing: 10) {
+                TextField("金额，例如：12000", text: $financeAssetAmountInput)
+                    .keyboardType(.decimalPad)
+                    .textFieldStyle(.roundedBorder)
+
+                Button {
+                    addFinanceAsset()
+                } label: {
+                    Label("添加", systemImage: "plus")
+                        .font(.headline)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .disabled(financeAssetAmountInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var financeTrendCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("资产趋势")
+                        .font(.title3.bold())
+                    Text("按每个月最后一次记录作为当月数据")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if let financeMonthChangeText {
+                    Text(financeMonthChangeText)
+                        .font(.caption.bold())
+                        .foregroundStyle(financeMonthChangeText.hasPrefix("-") ? .red : .green)
+                }
+            }
+
+            if monthlyFinanceTrendPoints.count >= 2 {
+                FinanceTrendView(points: monthlyFinanceTrendPoints, amountText: currencyText)
+                    .frame(height: 150)
+            } else {
+                ContentUnavailableView(
+                    "还没有趋势",
+                    systemImage: "chart.line.uptrend.xyaxis",
+                    description: Text("至少跨 2 个月保存资产记录后，会显示月度变化。")
+                )
+                .frame(maxWidth: .infinity, minHeight: 130)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var financeAssetsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("资产明细")
+                    .font(.title3.bold())
+                Spacer()
+                Text("\(financeAssets.count) 项")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if financeAssets.isEmpty {
+                ContentUnavailableView(
+                    "还没有资产",
+                    systemImage: "yensign.circle",
+                    description: Text("先添加银行卡、股票、期权、支付宝、微信或自定义资产。")
+                )
+                .frame(maxWidth: .infinity, minHeight: 130)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(sortedFinanceAssets) { asset in
+                        FinanceAssetRow(
+                            asset: asset,
+                            amountText: currencyText(asset.amount),
+                            updatedText: chineseDateTime(asset.updatedAt)
+                        ) { newAmount in
+                            updateFinanceAsset(asset, amount: newAmount)
+                        } onDelete: {
+                            deleteFinanceAsset(asset)
+                        }
+
+                        if asset.id != sortedFinanceAssets.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var stockResearchAddCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("新增股票")
+                    .font(.title3.bold())
+                Text("先用股票名称建档，后面可以持续补充你的理解。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 10) {
+                TextField("例如：腾讯控股、贵州茅台", text: $stockNameInput)
+                    .textFieldStyle(.roundedBorder)
+
+                Button {
+                    addStockResearchItem()
+                } label: {
+                    Label("添加", systemImage: "plus")
+                        .font(.headline)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+                .disabled(stockNameInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var stockResearchListCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("股票研究")
+                        .font(.title3.bold())
+                    Text("搜索股票名称，点开后编辑长文本研究笔记。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Text("\(stockResearchItems.count) 只")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            TextField("搜索股票名称", text: $stockSearchText)
+                .textFieldStyle(.roundedBorder)
+
+            if stockResearchItems.isEmpty {
+                ContentUnavailableView(
+                    "还没有股票研究",
+                    systemImage: "doc.text.magnifyingglass",
+                    description: Text("先添加一只股票，再记录你的理解。")
+                )
+                .frame(maxWidth: .infinity, minHeight: 150)
+            } else if filteredStockResearchItems.isEmpty {
+                ContentUnavailableView(
+                    "没有匹配结果",
+                    systemImage: "magnifyingglass",
+                    description: Text("换个股票名称试试看。")
+                )
+                .frame(maxWidth: .infinity, minHeight: 150)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(filteredStockResearchItems) { item in
+                        StockResearchRow(
+                            item: item,
+                            thesis: stockResearchThesisBinding(for: item),
+                            updatedText: chineseDateTime(item.updatedAt)
+                        ) {
+                            deleteStockResearchItem(item)
+                        }
+
+                        if item.id != filteredStockResearchItems.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
     private var planCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("今日减脂目标")
@@ -720,12 +1535,6 @@ struct ContentView: View {
                 .padding(8)
                 .background(Color(.secondarySystemGroupedBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            VStack(alignment: .leading, spacing: 8) {
-                TipRow(icon: "drop.fill", text: "不吃东西这段时间，可以喝水、无糖茶或黑咖啡。")
-                TipRow(icon: "fork.knife", text: "吃饭这 \(eatingGoalHours) 小时，优先吃蛋白质、蔬菜和原型食物。")
-                TipRow(icon: "figure.walk", text: "每天保持轻量活动，避免暴食补偿。")
-            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -791,14 +1600,20 @@ struct ContentView: View {
 
     private func averagedTrendPoints(
         groupedBy keyForLog: (FastingLog) -> Date,
-        labelFor: (Date) -> String
+        labelFor: (Date) -> (String, String)
     ) -> [WeightTrendPoint] {
         let groupedLogs = Dictionary(grouping: weightLogs, by: keyForLog)
 
         let points = groupedLogs.map { date, logs in
             let averageWeight = logs.map(\.weight).reduce(0, +) / Double(logs.count)
+            let labels = labelFor(date)
 
-            return WeightTrendPoint(date: date, weight: averageWeight, label: labelFor(date))
+            return WeightTrendPoint(
+                date: date,
+                weight: averageWeight,
+                topLabel: labels.0,
+                bottomLabel: labels.1
+            )
         }
 
         return Array(points.sorted { $0.date < $1.date }.suffix(30))
@@ -815,6 +1630,50 @@ struct ContentView: View {
         default:
             return .red
         }
+    }
+
+    private func chineseDateTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+            ? "M月d日 HH:mm"
+            : "yyyy年M月d日 HH:mm"
+        return formatter.string(from: date)
+    }
+
+    private func chineseMonthDay(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M月d日"
+        return formatter.string(from: date)
+    }
+
+    private func chineseMonth(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M月"
+        return formatter.string(from: date)
+    }
+
+    private func chineseDay(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "d日"
+        return formatter.string(from: date)
+    }
+
+    private func chineseYear(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年"
+        return formatter.string(from: date)
+    }
+
+    private func chineseYearMonth(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年M月"
+        return formatter.string(from: date)
     }
 
     private func switchPhase() {
@@ -874,9 +1733,68 @@ struct ContentView: View {
         persistWeightLogs()
     }
 
+    private func loadMainTabPreferences() {
+        guard !mainTabPreferencesData.isEmpty,
+              let preferences = try? JSONDecoder().decode(MainTabPreferences.self, from: mainTabPreferencesData) else {
+            persistMainTabPreferences()
+            return
+        }
+
+        let validOrder = preferences.order.filter { MainAppTab.allCases.contains($0) }
+        let missingTabs = MainAppTab.allCases.filter { !validOrder.contains($0) }
+        mainTabOrder = validOrder + missingTabs
+
+        let validVisibleTabs = Set(preferences.visibleTabs.filter { MainAppTab.allCases.contains($0) })
+        visibleMainTabSet = validVisibleTabs.isEmpty ? Set(MainAppTab.allCases) : validVisibleTabs
+    }
+
+    private func persistMainTabPreferences() {
+        let preferences = MainTabPreferences(order: mainTabOrder, visibleTabs: Array(visibleMainTabSet))
+
+        if let encodedPreferences = try? JSONEncoder().encode(preferences) {
+            mainTabPreferencesData = encodedPreferences
+        }
+    }
+
+    private func mainTabVisibilityBinding(for tab: MainAppTab) -> Binding<Bool> {
+        Binding(
+            get: {
+                visibleMainTabSet.contains(tab)
+            },
+            set: { isVisible in
+                setMainTab(tab, isVisible: isVisible)
+            }
+        )
+    }
+
+    private func setMainTab(_ tab: MainAppTab, isVisible: Bool) {
+        if isVisible {
+            visibleMainTabSet.insert(tab)
+        } else if !isOnlyVisibleMainTab(tab) {
+            visibleMainTabSet.remove(tab)
+        }
+
+        persistMainTabPreferences()
+    }
+
+    private func isOnlyVisibleMainTab(_ tab: MainAppTab) -> Bool {
+        visibleMainTabSet.contains(tab) && visibleMainTabSet.count == 1
+    }
+
+    private func moveMainTabs(from source: IndexSet, to destination: Int) {
+        mainTabOrder.move(fromOffsets: source, toOffset: destination)
+        persistMainTabPreferences()
+    }
+
     private func loadAppData() {
+        loadMainTabPreferences()
         loadWeightLogs()
         loadFastingSessions()
+        loadTodoTasks()
+        loadWishlistItems()
+        loadFinanceAssets()
+        loadFinanceSnapshots()
+        loadStockResearchItems()
         pullFromICloud()
         pushAllToICloud()
     }
@@ -914,6 +1832,215 @@ struct ContentView: View {
         weightLogs.removeAll { $0.id == log.id }
         latestWeight = latestWeightLog.map { weightText($0.weight) } ?? ""
         persistWeightLogs()
+    }
+
+    private func loadTodoTasks() {
+        guard !todoTasksData.isEmpty else { return }
+
+        if let decodedTasks = try? JSONDecoder().decode([TodoTask].self, from: todoTasksData) {
+            todoTasks = decodedTasks
+        }
+    }
+
+    private func addTodoTask() {
+        let trimmedTitle = todoInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+
+        todoTasks.insert(TodoTask(title: trimmedTitle, createdAt: Date()), at: 0)
+        todoInput = ""
+        persistTodoTasks()
+    }
+
+    private func toggleTodoTask(_ task: TodoTask) {
+        guard let index = todoTasks.firstIndex(where: { $0.id == task.id }) else { return }
+
+        todoTasks[index].completedAt = todoTasks[index].isCompleted ? nil : Date()
+        persistTodoTasks()
+    }
+
+    private func deleteTodoTask(_ task: TodoTask) {
+        todoTasks.removeAll { $0.id == task.id }
+        persistTodoTasks()
+    }
+
+    private func persistTodoTasks() {
+        if let encodedTasks = try? JSONEncoder().encode(todoTasks) {
+            todoTasksData = encodedTasks
+            cloudStore.set(encodedTasks, forKey: todoTasksCloudKey)
+            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+        }
+    }
+
+    private func loadWishlistItems() {
+        guard !wishlistItemsData.isEmpty else { return }
+
+        if let decodedItems = try? JSONDecoder().decode([WishlistItem].self, from: wishlistItemsData) {
+            wishlistItems = decodedItems
+        }
+    }
+
+    private func addWishlistItem() {
+        let trimmedTitle = wishlistInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+
+        wishlistItems.insert(
+            WishlistItem(title: trimmedTitle, category: wishlistCategory, createdAt: Date()),
+            at: 0
+        )
+        wishlistInput = ""
+        persistWishlistItems()
+    }
+
+    private func toggleWishlistItem(_ item: WishlistItem) {
+        guard let index = wishlistItems.firstIndex(where: { $0.id == item.id }) else { return }
+
+        wishlistItems[index].completedAt = wishlistItems[index].isCompleted ? nil : Date()
+        persistWishlistItems()
+    }
+
+    private func deleteWishlistItem(_ item: WishlistItem) {
+        wishlistItems.removeAll { $0.id == item.id }
+        persistWishlistItems()
+    }
+
+    private func persistWishlistItems() {
+        if let encodedItems = try? JSONEncoder().encode(wishlistItems) {
+            wishlistItemsData = encodedItems
+            cloudStore.set(encodedItems, forKey: wishlistItemsCloudKey)
+            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+        }
+    }
+
+    private func loadFinanceAssets() {
+        guard !financeAssetsData.isEmpty else { return }
+
+        if let decodedAssets = try? JSONDecoder().decode([FinanceAsset].self, from: financeAssetsData) {
+            financeAssets = decodedAssets
+        }
+    }
+
+    private func loadFinanceSnapshots() {
+        guard !financeSnapshotsData.isEmpty else { return }
+
+        if let decodedSnapshots = try? JSONDecoder().decode([FinanceSnapshot].self, from: financeSnapshotsData) {
+            financeSnapshots = decodedSnapshots
+        }
+    }
+
+    private func addFinanceAsset() {
+        let trimmedAmount = financeAssetAmountInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedAmount = trimmedAmount.replacingOccurrences(of: ",", with: ".")
+        guard let amount = Double(normalizedAmount) else { return }
+
+        let trimmedName = financeAssetNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let assetName = trimmedName.isEmpty ? financeAssetKind.title : trimmedName
+
+        financeAssets.insert(
+            FinanceAsset(name: assetName, kind: financeAssetKind, amount: amount, updatedAt: Date()),
+            at: 0
+        )
+        financeAssetNameInput = ""
+        financeAssetAmountInput = ""
+        persistFinanceAssets(recordSnapshot: true)
+    }
+
+    private func updateFinanceAsset(_ asset: FinanceAsset, amount: Double) {
+        guard let index = financeAssets.firstIndex(where: { $0.id == asset.id }) else { return }
+
+        financeAssets[index].amount = amount
+        financeAssets[index].updatedAt = Date()
+        persistFinanceAssets(recordSnapshot: true)
+    }
+
+    private func deleteFinanceAsset(_ asset: FinanceAsset) {
+        financeAssets.removeAll { $0.id == asset.id }
+        persistFinanceAssets(recordSnapshot: true)
+    }
+
+    private func persistFinanceAssets(recordSnapshot: Bool) {
+        if recordSnapshot {
+            recordFinanceSnapshot()
+        }
+
+        if let encodedAssets = try? JSONEncoder().encode(financeAssets) {
+            financeAssetsData = encodedAssets
+            cloudStore.set(encodedAssets, forKey: financeAssetsCloudKey)
+        }
+
+        persistFinanceSnapshots()
+    }
+
+    private func recordFinanceSnapshot() {
+        let snapshot = FinanceSnapshot(date: Date(), totalAmount: totalFinanceAmount, assets: financeAssets)
+        financeSnapshots.insert(snapshot, at: 0)
+        financeSnapshots = Array(financeSnapshots.sorted { $0.date > $1.date }.prefix(240))
+    }
+
+    private func persistFinanceSnapshots() {
+        if let encodedSnapshots = try? JSONEncoder().encode(financeSnapshots) {
+            financeSnapshotsData = encodedSnapshots
+            cloudStore.set(encodedSnapshots, forKey: financeSnapshotsCloudKey)
+            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+        }
+    }
+
+    private func loadStockResearchItems() {
+        guard !stockResearchItemsData.isEmpty else { return }
+
+        if let decodedItems = try? JSONDecoder().decode([StockResearchItem].self, from: stockResearchItemsData) {
+            stockResearchItems = decodedItems
+        }
+    }
+
+    private func addStockResearchItem() {
+        let trimmedName = stockNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+
+        if stockResearchItems.contains(where: { $0.name.localizedCaseInsensitiveCompare(trimmedName) == .orderedSame }) {
+            stockSearchText = trimmedName
+            stockNameInput = ""
+            return
+        }
+
+        stockResearchItems.insert(
+            StockResearchItem(name: trimmedName, thesis: "", createdAt: Date(), updatedAt: Date()),
+            at: 0
+        )
+        stockNameInput = ""
+        stockSearchText = ""
+        persistStockResearchItems()
+    }
+
+    private func stockResearchThesisBinding(for item: StockResearchItem) -> Binding<String> {
+        Binding(
+            get: {
+                stockResearchItems.first(where: { $0.id == item.id })?.thesis ?? item.thesis
+            },
+            set: { newThesis in
+                updateStockResearchItem(item, thesis: newThesis)
+            }
+        )
+    }
+
+    private func updateStockResearchItem(_ item: StockResearchItem, thesis: String) {
+        guard let index = stockResearchItems.firstIndex(where: { $0.id == item.id }) else { return }
+
+        stockResearchItems[index].thesis = thesis
+        stockResearchItems[index].updatedAt = Date()
+        persistStockResearchItems()
+    }
+
+    private func deleteStockResearchItem(_ item: StockResearchItem) {
+        stockResearchItems.removeAll { $0.id == item.id }
+        persistStockResearchItems()
+    }
+
+    private func persistStockResearchItems() {
+        if let encodedItems = try? JSONEncoder().encode(stockResearchItems) {
+            stockResearchItemsData = encodedItems
+            cloudStore.set(encodedItems, forKey: stockResearchItemsCloudKey)
+            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+        }
     }
 
     private func loadFastingSessions() {
@@ -959,6 +2086,31 @@ struct ContentView: View {
             mergeFastingSessions(cloudSessions)
         }
 
+        if let cloudTodoTasksData = cloudStore.data(forKey: todoTasksCloudKey),
+           let cloudTodoTasks = try? JSONDecoder().decode([TodoTask].self, from: cloudTodoTasksData) {
+            mergeTodoTasks(cloudTodoTasks)
+        }
+
+        if let cloudWishlistItemsData = cloudStore.data(forKey: wishlistItemsCloudKey),
+           let cloudWishlistItems = try? JSONDecoder().decode([WishlistItem].self, from: cloudWishlistItemsData) {
+            mergeWishlistItems(cloudWishlistItems)
+        }
+
+        if let cloudFinanceAssetsData = cloudStore.data(forKey: financeAssetsCloudKey),
+           let cloudFinanceAssets = try? JSONDecoder().decode([FinanceAsset].self, from: cloudFinanceAssetsData) {
+            mergeFinanceAssets(cloudFinanceAssets)
+        }
+
+        if let cloudFinanceSnapshotsData = cloudStore.data(forKey: financeSnapshotsCloudKey),
+           let cloudFinanceSnapshots = try? JSONDecoder().decode([FinanceSnapshot].self, from: cloudFinanceSnapshotsData) {
+            mergeFinanceSnapshots(cloudFinanceSnapshots)
+        }
+
+        if let cloudStockResearchItemsData = cloudStore.data(forKey: stockResearchItemsCloudKey),
+           let cloudStockResearchItems = try? JSONDecoder().decode([StockResearchItem].self, from: cloudStockResearchItemsData) {
+            mergeStockResearchItems(cloudStockResearchItems)
+        }
+
         if cloudStore.object(forKey: fastingStartTimeCloudKey) != nil {
             fastingStartTime = cloudStore.double(forKey: fastingStartTimeCloudKey)
         }
@@ -995,6 +2147,26 @@ struct ContentView: View {
 
         if let encodedSessions = try? JSONEncoder().encode(fastingSessions) {
             cloudStore.set(encodedSessions, forKey: fastingSessionsCloudKey)
+        }
+
+        if let encodedTodoTasks = try? JSONEncoder().encode(todoTasks) {
+            cloudStore.set(encodedTodoTasks, forKey: todoTasksCloudKey)
+        }
+
+        if let encodedWishlistItems = try? JSONEncoder().encode(wishlistItems) {
+            cloudStore.set(encodedWishlistItems, forKey: wishlistItemsCloudKey)
+        }
+
+        if let encodedFinanceAssets = try? JSONEncoder().encode(financeAssets) {
+            cloudStore.set(encodedFinanceAssets, forKey: financeAssetsCloudKey)
+        }
+
+        if let encodedFinanceSnapshots = try? JSONEncoder().encode(financeSnapshots) {
+            cloudStore.set(encodedFinanceSnapshots, forKey: financeSnapshotsCloudKey)
+        }
+
+        if let encodedStockResearchItems = try? JSONEncoder().encode(stockResearchItems) {
+            cloudStore.set(encodedStockResearchItems, forKey: stockResearchItemsCloudKey)
         }
 
         syncStatus = cloudStore.synchronize() ? "已请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
@@ -1039,6 +2211,84 @@ struct ContentView: View {
         }
     }
 
+    private func mergeTodoTasks(_ cloudTasks: [TodoTask]) {
+        var mergedTasksByID = Dictionary(uniqueKeysWithValues: todoTasks.map { ($0.id, $0) })
+
+        for task in cloudTasks {
+            mergedTasksByID[task.id] = task
+        }
+
+        todoTasks = mergedTasksByID.values.sorted { $0.createdAt > $1.createdAt }
+
+        if let encodedTasks = try? JSONEncoder().encode(todoTasks) {
+            todoTasksData = encodedTasks
+        }
+    }
+
+    private func mergeWishlistItems(_ cloudItems: [WishlistItem]) {
+        var mergedItemsByID = Dictionary(uniqueKeysWithValues: wishlistItems.map { ($0.id, $0) })
+
+        for item in cloudItems {
+            mergedItemsByID[item.id] = item
+        }
+
+        wishlistItems = mergedItemsByID.values.sorted { $0.createdAt > $1.createdAt }
+
+        if let encodedItems = try? JSONEncoder().encode(wishlistItems) {
+            wishlistItemsData = encodedItems
+        }
+    }
+
+    private func mergeFinanceAssets(_ cloudAssets: [FinanceAsset]) {
+        var mergedAssetsByID = Dictionary(uniqueKeysWithValues: financeAssets.map { ($0.id, $0) })
+
+        for asset in cloudAssets {
+            if let localAsset = mergedAssetsByID[asset.id] {
+                mergedAssetsByID[asset.id] = asset.updatedAt >= localAsset.updatedAt ? asset : localAsset
+            } else {
+                mergedAssetsByID[asset.id] = asset
+            }
+        }
+
+        financeAssets = mergedAssetsByID.values.sorted { $0.updatedAt > $1.updatedAt }
+
+        if let encodedAssets = try? JSONEncoder().encode(financeAssets) {
+            financeAssetsData = encodedAssets
+        }
+    }
+
+    private func mergeFinanceSnapshots(_ cloudSnapshots: [FinanceSnapshot]) {
+        var mergedSnapshotsByID = Dictionary(uniqueKeysWithValues: financeSnapshots.map { ($0.id, $0) })
+
+        for snapshot in cloudSnapshots {
+            mergedSnapshotsByID[snapshot.id] = snapshot
+        }
+
+        financeSnapshots = Array(mergedSnapshotsByID.values.sorted { $0.date > $1.date }.prefix(240))
+
+        if let encodedSnapshots = try? JSONEncoder().encode(financeSnapshots) {
+            financeSnapshotsData = encodedSnapshots
+        }
+    }
+
+    private func mergeStockResearchItems(_ cloudItems: [StockResearchItem]) {
+        var mergedItemsByID = Dictionary(uniqueKeysWithValues: stockResearchItems.map { ($0.id, $0) })
+
+        for item in cloudItems {
+            if let localItem = mergedItemsByID[item.id] {
+                mergedItemsByID[item.id] = item.updatedAt >= localItem.updatedAt ? item : localItem
+            } else {
+                mergedItemsByID[item.id] = item
+            }
+        }
+
+        stockResearchItems = mergedItemsByID.values.sorted { $0.updatedAt > $1.updatedAt }
+
+        if let encodedItems = try? JSONEncoder().encode(stockResearchItems) {
+            stockResearchItemsData = encodedItems
+        }
+    }
+
     private func relativeTimeText(for date: Date) -> String {
         let calendar = Calendar.current
         let dayText: String
@@ -1080,6 +2330,15 @@ struct ContentView: View {
     private func weightText(_ weight: Double) -> String {
         String(format: "%.1f", weight)
     }
+
+    private func currencyText(_ amount: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "CNY"
+        formatter.currencySymbol = "¥"
+        formatter.maximumFractionDigits = amount.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2
+        return formatter.string(from: NSNumber(value: amount)) ?? String(format: "¥%.2f", amount)
+    }
 }
 
 private struct TipRow: View {
@@ -1097,38 +2356,397 @@ private struct TipRow: View {
     }
 }
 
-private struct WeightLogRow: View {
-    let log: FastingLog
-    let weightText: String
+private struct SummaryPill: View {
+    let title: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.title2.bold())
+                .foregroundStyle(color)
+
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(color.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+private struct SwipeToDeleteRow<Content: View>: View {
+    let onDelete: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    @State private var offset: CGFloat = 0
+    private let actionWidth: CGFloat = 78
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            Button(role: .destructive) {
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
+                    offset = 0
+                    onDelete()
+                }
+            } label: {
+                VStack(spacing: 4) {
+                    Image(systemName: "trash")
+                        .font(.headline)
+                    Text("删除")
+                        .font(.caption.bold())
+                }
+                .foregroundStyle(.white)
+                .frame(width: actionWidth)
+                .frame(maxHeight: .infinity)
+                .background(Color.red)
+            }
+            .buttonStyle(.plain)
+
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.background)
+                .offset(x: offset)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 18)
+                        .onChanged { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+
+                            if value.translation.width < 0 {
+                                offset = max(-actionWidth, value.translation.width)
+                            } else if offset < 0 {
+                                offset = min(0, -actionWidth + value.translation.width)
+                            }
+                        }
+                        .onEnded { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
+                                offset = value.translation.width < -actionWidth / 2 ? -actionWidth : 0
+                            }
+                        }
+                )
+        }
+        .clipShape(Rectangle())
+    }
+}
+
+private struct TodoTaskRow: View {
+    let task: TodoTask
+    let onToggle: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "scalemass")
-                .foregroundStyle(.blue)
-                .frame(width: 24)
+        SwipeToDeleteRow(onDelete: onDelete) {
+            HStack(alignment: .top, spacing: 12) {
+                Button(action: onToggle) {
+                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundStyle(task.isCompleted ? .green : .secondary)
+                }
+                .buttonStyle(.borderless)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(weightText) kg")
-                    .font(.headline)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(task.title)
+                        .font(.headline)
+                        .strikethrough(task.isCompleted)
+                        .foregroundStyle(task.isCompleted ? .secondary : .primary)
 
-                Text(log.date.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                if !log.note.isEmpty {
-                    Text(log.note)
-                        .font(.subheadline)
+                    Text(task.isCompleted ? "完成于 \(dateText(task.completedAt ?? task.createdAt))" : "创建于 \(dateText(task.createdAt))")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                Spacer()
+            }
+        }
+    }
+
+    private func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+            ? "M月d日 HH:mm"
+            : "yyyy年M月d日 HH:mm"
+        return formatter.string(from: date)
+    }
+}
+
+private struct WishlistRow: View {
+    let item: WishlistItem
+    let onToggle: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        SwipeToDeleteRow(onDelete: onDelete) {
+            HStack(alignment: .top, spacing: 12) {
+                Button(action: onToggle) {
+                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : item.category.icon)
+                        .font(.title3)
+                        .foregroundStyle(item.isCompleted ? .green : .purple)
+                        .frame(width: 24)
+                }
+                .buttonStyle(.borderless)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text(item.title)
+                            .font(.headline)
+                            .strikethrough(item.isCompleted)
+                            .foregroundStyle(item.isCompleted ? .secondary : .primary)
+
+                        Text(item.category.title)
+                            .font(.caption.bold())
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.purple.opacity(0.14))
+                            .foregroundStyle(.purple)
+                            .clipShape(Capsule())
+                    }
+
+                    Text(item.isCompleted ? "实现于 \(dateText(item.completedAt ?? item.createdAt))" : "记录于 \(dateText(item.createdAt))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+        }
+    }
+
+    private func dateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+            ? "M月d日 HH:mm"
+            : "yyyy年M月d日 HH:mm"
+        return formatter.string(from: date)
+    }
+}
+
+private struct StockResearchRow: View {
+    let item: StockResearchItem
+    @Binding var thesis: String
+    let updatedText: String
+    let onDelete: () -> Void
+
+    var body: some View {
+        SwipeToDeleteRow(onDelete: onDelete) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "chart.line.text.clipboard")
+                        .font(.title3)
+                        .foregroundStyle(.blue)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.name)
+                            .font(.headline)
+
+                        Text("更新于 \(updatedText)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+
+                TextEditor(text: $thesis)
+                    .frame(minHeight: 140)
+                    .padding(8)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(alignment: .topLeading) {
+                        if thesis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("写下你对这只股票的理解：商业模式、护城河、估值、风险、跟踪点……")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 16)
+                                .allowsHitTesting(false)
+                        }
+                    }
+            }
+        }
+    }
+}
+
+private struct FinanceAssetRow: View {
+    let asset: FinanceAsset
+    let amountText: String
+    let updatedText: String
+    let onSave: (Double) -> Void
+    let onDelete: () -> Void
+
+    @State private var amountInput = ""
+
+    var body: some View {
+        SwipeToDeleteRow(onDelete: onDelete) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: asset.kind.icon)
+                    .foregroundStyle(.green)
+                    .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Text(asset.name)
+                            .font(.headline)
+
+                        Text(asset.kind.title)
+                            .font(.caption.bold())
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.green.opacity(0.14))
+                            .foregroundStyle(.green)
+                            .clipShape(Capsule())
+                    }
+
+                    Text("\(amountText) · 更新于 \(updatedText)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 8) {
+                        TextField("更新金额", text: $amountInput)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(.roundedBorder)
+
+                        Button("保存") {
+                            saveAmount()
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(amountInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+
+                Spacer()
+            }
+        }
+        .onAppear {
+            amountInput = String(format: "%.2f", asset.amount)
+        }
+        .onChange(of: asset.amount) {
+            amountInput = String(format: "%.2f", asset.amount)
+        }
+    }
+
+    private func saveAmount() {
+        let normalizedAmount = amountInput
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+
+        guard let amount = Double(normalizedAmount) else { return }
+        onSave(amount)
+    }
+}
+
+private struct FinanceTrendView: View {
+    let points: [FinanceTrendPoint]
+    let amountText: (Double) -> String
+
+    private let chartHeight: CGFloat = 92
+    private let pointWidth: CGFloat = 52
+    private let pointSpacing: CGFloat = 10
+
+    private var amounts: [Double] {
+        points.map(\.amount)
+    }
+
+    private var minAmount: Double {
+        amounts.min() ?? 0
+    }
+
+    private var maxAmount: Double {
+        amounts.max() ?? 1
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let lastPoint = points.last {
+                Text("\(lastPoint.topLabel)\(lastPoint.bottomLabel) \(amountText(lastPoint.amount))")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
             }
 
-            Spacer()
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .bottom, spacing: pointSpacing) {
+                    ForEach(points) { point in
+                        VStack(spacing: 6) {
+                            ZStack(alignment: .bottom) {
+                                Color.clear
+                                    .frame(height: chartHeight)
 
-            Button(role: .destructive, action: onDelete) {
-                Image(systemName: "trash")
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.green.gradient)
+                                    .frame(height: barHeight(for: point.amount))
+
+                                Text(compactAmountText(point.amount))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.bottom, barHeight(for: point.amount) + 6)
+                            }
+
+                            Text(point.bottomLabel)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(width: pointWidth)
+                    }
+                }
+                .padding(.top, 16)
             }
-            .buttonStyle(.borderless)
+        }
+    }
+
+    private func barHeight(for amount: Double) -> CGFloat {
+        guard maxAmount > minAmount else { return chartHeight * 0.7 }
+
+        let ratio = (amount - minAmount) / (maxAmount - minAmount)
+        return CGFloat(26 + ratio * Double(chartHeight - 26))
+    }
+
+    private func compactAmountText(_ amount: Double) -> String {
+        if abs(amount) >= 10_000 {
+            return String(format: "%.1f万", amount / 10_000)
+        }
+
+        return String(format: "%.0f", amount)
+    }
+}
+
+private struct WeightLogRow: View {
+    let log: FastingLog
+    let weightText: String
+    let dateText: String
+    let onDelete: () -> Void
+
+    var body: some View {
+        SwipeToDeleteRow(onDelete: onDelete) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "scalemass")
+                    .foregroundStyle(.blue)
+                    .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(weightText) kg")
+                        .font(.headline)
+
+                    Text(dateText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if !log.note.isEmpty {
+                        Text(log.note)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+            }
         }
     }
 }
@@ -1265,13 +2883,30 @@ private struct BMIRangeBar: View {
     }
 }
 
+private struct VisibleTrendPointInfo: Equatable {
+    let id: String
+    let minX: CGFloat
+    let maxX: CGFloat
+    let topLabel: String
+}
+
+private struct VisibleTrendPointPreferenceKey: PreferenceKey {
+    static var defaultValue: [VisibleTrendPointInfo] = []
+
+    static func reduce(value: inout [VisibleTrendPointInfo], nextValue: () -> [VisibleTrendPointInfo]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
 private struct WeightTrendView: View {
     let points: [WeightTrendPoint]
     let targetWeight: Double?
 
     private let chartHeight: CGFloat = 78
+    private let valueLabelHeight: CGFloat = 20
     private let pointWidth: CGFloat = 42
     private let pointSpacing: CGFloat = 8
+    @State private var visibleLeadingLabel: String?
 
     private var weights: [Double] {
         if let targetWeight {
@@ -1289,38 +2924,76 @@ private struct WeightTrendView: View {
         weights.max() ?? 1
     }
 
+    private var leadingTopLabel: String? {
+        visibleLeadingLabel ?? points.first?.topLabel
+    }
+
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            ZStack(alignment: .topLeading) {
-                HStack(alignment: .bottom, spacing: pointSpacing) {
-                    ForEach(points) { point in
-                        VStack(spacing: 6) {
-                            Text(String(format: "%.1f", point.weight))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 14) {
+            if let leadingTopLabel {
+                Text(leadingTopLabel)
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 4)
+                    .padding(.top, 18)
+            }
 
-                            ZStack(alignment: .bottom) {
-                                Color.clear
-                                    .frame(height: chartHeight)
+            ScrollView(.horizontal, showsIndicators: false) {
+                ZStack(alignment: .topLeading) {
+                    HStack(alignment: .bottom, spacing: pointSpacing) {
+                        ForEach(points) { point in
+                            VStack(spacing: 6) {
+                                ZStack(alignment: .bottom) {
+                                    Color.clear
+                                        .frame(height: chartHeight + valueLabelHeight)
 
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.blue.gradient)
-                                    .frame(height: barHeight(for: point.weight))
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.blue.gradient)
+                                        .frame(height: barHeight(for: point.weight))
+
+                                    Text(String(format: "%.1f", point.weight))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.bottom, barHeight(for: point.weight) + 6)
+                                }
+
+                                Text(point.bottomLabel)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                             }
-
-                            Text(point.label)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                            .frame(width: pointWidth)
+                            .background {
+                                GeometryReader { proxy in
+                                    Color.clear.preference(
+                                        key: VisibleTrendPointPreferenceKey.self,
+                                        value: [
+                                            VisibleTrendPointInfo(
+                                                id: point.id,
+                                                minX: proxy.frame(in: .named("weightTrendScroll")).minX,
+                                                maxX: proxy.frame(in: .named("weightTrendScroll")).maxX,
+                                                topLabel: point.topLabel
+                                            )
+                                        ]
+                                    )
+                                }
+                            }
                         }
-                        .frame(width: pointWidth)
+                    }
+                    .padding(.top, 8)
+
+                    if let targetWeight {
+                        targetLine(for: targetWeight)
+                            .offset(y: targetLineOffset(for: targetWeight))
                     }
                 }
-                .padding(.top, 8)
+            }
+            .coordinateSpace(name: "weightTrendScroll")
+            .onPreferenceChange(VisibleTrendPointPreferenceKey.self) { infos in
+                let visibleInfos = infos
+                    .filter { $0.maxX > 0 }
+                    .sorted { $0.minX < $1.minX }
 
-                if let targetWeight {
-                    targetLine(for: targetWeight)
-                        .offset(y: targetLineOffset(for: targetWeight))
-                }
+                visibleLeadingLabel = visibleInfos.first?.topLabel ?? points.first?.topLabel
             }
         }
     }
@@ -1333,7 +3006,7 @@ private struct WeightTrendView: View {
     }
 
     private func targetLineOffset(for targetWeight: Double) -> CGFloat {
-        8 + 14 + chartHeight - barHeight(for: targetWeight)
+        8 + valueLabelHeight + chartHeight - barHeight(for: targetWeight)
     }
 
     private func targetLine(for targetWeight: Double) -> some View {
