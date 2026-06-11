@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum WeightSheetField: Hashable {
+    case weight
+    case note
+}
+
 struct ContentView: View {
     @Environment(\.editMode) var editMode
 
@@ -79,6 +84,8 @@ struct ContentView: View {
     @State var isShowingAnniversarySheet = false
     @State var trendGranularity: WeightTrendGranularity = .day
     @State var visibleWeightHistoryDays = 10
+    @State var didShowWeightSaveFeedback = false
+    @FocusState var focusedWeightSheetField: WeightSheetField?
 
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 

@@ -76,6 +76,8 @@ extension ContentView {
                     Button("取消") {
                         isShowingFinanceAssetSheet = false
                     }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
                 }
             }
         }
@@ -106,10 +108,10 @@ extension ContentView {
                 FinanceTrendView(points: monthlyFinanceTrendPoints, amountText: currencyText)
                     .frame(height: 150)
             } else {
-                ContentUnavailableView(
-                    "还没有趋势",
+                AppEmptyState(
+                    title: "还没有趋势",
                     systemImage: "chart.line.uptrend.xyaxis",
-                    description: Text("至少跨 2 个月保存资产记录后，会显示月度变化。")
+                    description: "至少跨 2 个月保存资产记录后，会显示月度变化。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 130)
             }
@@ -131,10 +133,10 @@ extension ContentView {
             }
 
             if financeDistributionPoints.isEmpty {
-                ContentUnavailableView(
-                    "还没有分布",
+                AppEmptyState(
+                    title: "还没有分布",
                     systemImage: "chart.pie",
-                    description: Text("添加资产后，会显示各类资产占比。")
+                    description: "添加资产后，会显示各类资产占比。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 130)
             } else {
@@ -166,21 +168,16 @@ extension ContentView {
                 Button {
                     isShowingFinanceAssetSheet = true
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.blue)
-                        .frame(width: 30, height: 30)
-                        .background(Color.blue.opacity(0.12))
-                        .clipShape(Circle())
+                    AppIconCircleButton(icon: "plus", tint: .blue, size: 32, iconFont: .subheadline.weight(.bold))
                 }
                 .buttonStyle(.plain)
             }
 
             if financeAssets.isEmpty {
-                ContentUnavailableView(
-                    "还没有资产",
+                AppEmptyState(
+                    title: "还没有资产",
                     systemImage: "yensign.circle",
-                    description: Text("先添加银行卡、股票、期权、支付宝、微信或自定义资产。")
+                    description: "先添加银行卡、股票、期权、支付宝、微信或自定义资产。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 130)
             } else {
@@ -255,17 +252,17 @@ extension ContentView {
             SearchInputBar(placeholder: "搜索股票名称", text: $stockSearchText)
 
             if stockResearchItems.isEmpty {
-                ContentUnavailableView(
-                    "还没有股票研究",
+                AppEmptyState(
+                    title: "还没有股票研究",
                     systemImage: "doc.text.magnifyingglass",
-                    description: Text("先添加一只股票，再记录你的理解。")
+                    description: "先添加一只股票，再记录你的理解。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 150)
             } else if filteredStockResearchItems.isEmpty {
-                ContentUnavailableView(
-                    "没有匹配结果",
+                AppEmptyState(
+                    title: "没有匹配结果",
                     systemImage: "magnifyingglass",
-                    description: Text("换个股票名称试试看。")
+                    description: "换个股票名称试试看。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 150)
             } else {

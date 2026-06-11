@@ -217,8 +217,8 @@ extension ContentView {
     }
 
     var bmiValue: Double? {
-        guard let height = Double(heightCm.replacingOccurrences(of: ",", with: ".")),
-              let weight = latestWeightLog?.weight,
+        guard let height = heightValue,
+              let weight = currentWeightValue,
               height > 0 else {
             return nil
         }
@@ -227,12 +227,32 @@ extension ContentView {
         return weight / (heightInMeters * heightInMeters)
     }
 
+    var heightValue: Double? {
+        Double(heightCm.replacingOccurrences(of: ",", with: "."))
+    }
+
+    var currentWeightValue: Double? {
+        if let latestWeightLog {
+            return latestWeightLog.weight
+        }
+
+        let normalizedWeight = latestWeight.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+        return Double(normalizedWeight)
+    }
+
     var targetWeightValue: Double? {
         Double(targetWeight.replacingOccurrences(of: ",", with: "."))
     }
 
     var bmiStatusText: String {
-        guard let bmiValue else { return "录入身高和体重后显示 BMI" }
+        guard let bmiValue else {
+            if heightValue == nil {
+                return "请先填写身高"
+            }
+
+            return "请先记录当前体重"
+        }
 
         switch bmiValue {
         case ..<18.5:
@@ -247,25 +267,51 @@ extension ContentView {
     }
 
     var targetProgressText: String {
-        guard let currentWeight = latestWeightLog?.weight, let targetWeightValue else {
-            return "设置目标体重后，会显示距离目标还差多少。"
+        guard let targetWeightValue else {
+            return "设置目标体重后，这里会显示和目标的距离。"
+        }
+
+        guard let currentWeight = currentWeightValue else {
+            return "先记录一次当前体重，才能计算离目标还差多少。"
         }
 
         let difference = currentWeight - targetWeightValue
 
         if abs(difference) < 0.05 {
-            return "已达标，继续保持"
+            return "保持当前节奏，继续关注体脂和状态。"
         }
 
         if difference > 0 {
-            return "还差 \(weightText(difference)) kg，抓紧"
+            return difference >= 3 ? "先稳住饮食和作息，再继续减重。" : "继续保持，离目标已经不远了。"
         }
 
-        return "低于目标 \(weightText(abs(difference))) kg，注意健康"
+        return "已经低于目标，建议优先关注健康状态。"
+    }
+
+    var targetProgressHeadline: String {
+        guard let targetWeightValue else {
+            return "去设置目标"
+        }
+
+        guard let currentWeight = currentWeightValue else {
+            return "先记体重"
+        }
+
+        let difference = currentWeight - targetWeightValue
+
+        if abs(difference) < 0.05 {
+            return "已达标"
+        }
+
+        if difference > 0 {
+            return "还差 \(weightText(difference)) kg"
+        }
+
+        return "低于目标 \(weightText(abs(difference))) kg"
     }
 
     var targetProgressColor: Color {
-        guard let currentWeight = latestWeightLog?.weight, let targetWeightValue else {
+        guard let currentWeight = currentWeightValue, let targetWeightValue else {
             return .secondary
         }
 
@@ -287,7 +333,7 @@ extension ContentView {
     }
 
     var targetProgressIcon: String {
-        guard let currentWeight = latestWeightLog?.weight, let targetWeightValue else {
+        guard let currentWeight = currentWeightValue, let targetWeightValue else {
             return "flag.checkered"
         }
 

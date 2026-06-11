@@ -37,6 +37,112 @@ struct SummaryPill: View {
     }
 }
 
+struct AppEmptyState: View {
+    let title: String
+    let systemImage: String
+    let description: String
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 42, weight: .regular))
+                .foregroundStyle(.tertiary)
+
+            Text(title)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Text(description)
+                .font(.subheadline)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+    }
+}
+
+struct AppSecondaryButtonStyle: ButtonStyle {
+    var tint: Color = .blue
+    var isFullWidth: Bool = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(tint.opacity(configuration.isPressed ? 0.8 : 1))
+            .frame(maxWidth: isFullWidth ? .infinity : nil)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background(tint.opacity(configuration.isPressed ? 0.16 : 0.10))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(tint.opacity(0.08), lineWidth: 1)
+            }
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.spring(response: 0.22, dampingFraction: 0.86), value: configuration.isPressed)
+    }
+}
+
+struct AppPrimaryButtonStyle: ButtonStyle {
+    var tint: Color = .blue
+    var isFullWidth: Bool = true
+
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(isEnabled ? .white : Color(.tertiaryLabel))
+            .frame(maxWidth: isFullWidth ? .infinity : nil)
+            .frame(height: 50)
+            .background(isEnabled ? tint : Color(.tertiarySystemFill))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: isEnabled ? tint.opacity(configuration.isPressed ? 0.14 : 0.22) : .clear, radius: 10, y: 5)
+            .scaleEffect(configuration.isPressed && isEnabled ? 0.985 : 1)
+            .animation(.spring(response: 0.22, dampingFraction: 0.86), value: configuration.isPressed)
+    }
+}
+
+struct AppIconCircleButton: View {
+    let icon: String
+    let tint: Color
+    var size: CGFloat = 36
+    var iconFont: Font = .headline
+
+    var body: some View {
+        Image(systemName: icon)
+            .font(iconFont)
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(tint)
+            .clipShape(Circle())
+            .shadow(color: tint.opacity(0.22), radius: 8, x: 0, y: 4)
+    }
+}
+
+struct AppDestructiveButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background(configuration.isPressed ? Color.red.opacity(0.82) : Color.red)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .shadow(color: Color.red.opacity(configuration.isPressed ? 0.10 : 0.18), radius: 8, y: 4)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.spring(response: 0.22, dampingFraction: 0.86), value: configuration.isPressed)
+    }
+}
+
+struct DeleteConfirmationContent {
+    let title: String
+    let message: String
+    let confirmTitle: String
+}
+
 struct AppSegmentedControl<Option: Identifiable & Hashable>: View {
     let options: [Option]
     @Binding var selection: Option
@@ -198,19 +304,28 @@ struct SearchInputBar: View {
 
 struct SwipeToDeleteRow<Content: View>: View {
     let onDelete: () -> Void
+    var confirmation: DeleteConfirmationContent?
     @ViewBuilder let content: () -> Content
 
     @State private var offset: CGFloat = 0
+    @State private var isShowingDeleteConfirmation = false
     let actionWidth: CGFloat = 78
+
+    init(
+        onDelete: @escaping () -> Void,
+        confirmation: DeleteConfirmationContent? = nil,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.onDelete = onDelete
+        self.confirmation = confirmation
+        self.content = content
+    }
 
     var body: some View {
         ZStack(alignment: .trailing) {
             if offset < 0 {
                 Button {
-                    withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
-                        offset = 0
-                        onDelete()
-                    }
+                    triggerDelete()
                 } label: {
                     VStack(spacing: 4) {
                         Image(systemName: "trash")
@@ -218,12 +333,10 @@ struct SwipeToDeleteRow<Content: View>: View {
                         Text("删除")
                             .font(.caption.bold())
                     }
-                    .foregroundStyle(.white)
                     .frame(width: actionWidth)
                     .frame(maxHeight: .infinity)
-                    .background(Color.red)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AppDestructiveButtonStyle())
                 .transition(.opacity)
             }
 
@@ -253,5 +366,27 @@ struct SwipeToDeleteRow<Content: View>: View {
                 )
         }
         .clipShape(Rectangle())
+        .alert(confirmation?.title ?? "确认删除", isPresented: $isShowingDeleteConfirmation) {
+            Button("取消", role: .cancel) {}
+            Button(confirmation?.confirmTitle ?? "删除", role: .destructive) {
+                onDelete()
+            }
+        } message: {
+            if let confirmation {
+                Text(confirmation.message)
+            }
+        }
+    }
+
+    func triggerDelete() {
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
+            offset = 0
+        }
+
+        if confirmation != nil {
+            isShowingDeleteConfirmation = true
+        } else {
+            onDelete()
+        }
     }
 }

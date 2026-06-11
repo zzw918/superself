@@ -17,8 +17,8 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A1B2C3D71A2B3C4D00000001"
                BuildableName = "SuperSelf.app"
-               BlueprintName = "TodoListApp"
-               ReferencedContainer = "container:TodoListApp.xcodeproj">
+               BlueprintName = "SuperSelf"
+               ReferencedContainer = "container:SuperSelf.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -47,8 +47,8 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A1B2C3D71A2B3C4D00000001"
             BuildableName = "SuperSelf.app"
-            BlueprintName = "TodoListApp"
-            ReferencedContainer = "container:TodoListApp.xcodeproj">
+            BlueprintName = "SuperSelf"
+            ReferencedContainer = "container:SuperSelf.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -64,8 +64,8 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A1B2C3D71A2B3C4D00000001"
             BuildableName = "SuperSelf.app"
-            BlueprintName = "TodoListApp"
-            ReferencedContainer = "container:TodoListApp.xcodeproj">
+            BlueprintName = "SuperSelf"
+            ReferencedContainer = "container:SuperSelf.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -1,4 +1,4 @@
-# TodoListApp
+# SuperSelf
 
 A simple SwiftUI iOS app for 16+8, 18+6, and 20+4 meal-timing plans with weight tracking.
 
@@ -28,11 +28,11 @@ The app uses `NSUbiquitousKeyValueStore` for lightweight iCloud sync. It keeps l
 
 To enable real iCloud sync on a device:
 
-1. Open `TodoListApp.xcodeproj` in Xcode.
-2. Select the `TodoListApp` target.
+1. Open `SuperSelf.xcodeproj` in Xcode.
+2. Select the `SuperSelf` target.
 3. Open `Signing & Capabilities`.
 4. Choose your Apple Developer team.
-5. Change the bundle identifier from `com.example.TodoListApp` to your own unique identifier.
+5. Change the bundle identifier from `com.wayne.superself` to your own unique identifier if needed.
 6. Add the `iCloud` capability.
 7. Enable `Key-value storage`.
 8. Run the app on devices signed with the same iCloud account.
@@ -44,7 +44,7 @@ Without the iCloud capability, the app still builds and saves data locally, but 
 Open the project in Xcode:
 
 ```bash
-open TodoListApp.xcodeproj
+open SuperSelf.xcodeproj
 ```
 
 If `xcodebuild` reports that the active developer directory is Command Line Tools, switch it to Xcode first:
@@ -56,5 +56,5 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Then you can build from the command line:
 
 ```bash
-xcodebuild -scheme TodoListApp -project TodoListApp.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build
+xcodebuild -scheme SuperSelf -project SuperSelf.xcodeproj -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build
 ```

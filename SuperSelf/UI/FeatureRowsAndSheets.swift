@@ -100,7 +100,14 @@ struct AnniversaryRow: View {
     let onDelete: () -> Void
 
     var body: some View {
-        SwipeToDeleteRow(onDelete: onDelete) {
+        SwipeToDeleteRow(
+            onDelete: onDelete,
+            confirmation: DeleteConfirmationContent(
+                title: "删除纪念日？",
+                message: "删除后将无法恢复这条纪念日提醒。",
+                confirmTitle: "删除纪念日"
+            )
+        ) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: item.kind.icon)
                     .font(.title3)
@@ -144,7 +151,14 @@ struct StockResearchRow: View {
     let onDelete: () -> Void
 
     var body: some View {
-        SwipeToDeleteRow(onDelete: onDelete) {
+        SwipeToDeleteRow(
+            onDelete: onDelete,
+            confirmation: DeleteConfirmationContent(
+                title: "删除股票研究？",
+                message: "“\(item.name)” 的研究笔记会一起删除，后续无法恢复。",
+                confirmTitle: "删除研究"
+            )
+        ) {
             Button(action: onOpen) {
                 HStack(alignment: .center, spacing: 10) {
                     Image(systemName: "chart.line.text.clipboard")
@@ -227,6 +241,8 @@ struct StockResearchEditorSheet: View {
                     Button("完成") {
                         dismiss()
                     }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
                 }
             }
         }
@@ -282,14 +298,8 @@ struct FinanceAssetEditorSheet: View {
                     saveAmount()
                 } label: {
                     Text("保存金额")
-                        .font(.headline)
-                        .foregroundStyle(canSaveAmount ? .white : Color(.tertiaryLabel))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(canSaveAmount ? Color.blue : Color(.tertiarySystemFill))
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
                 .disabled(!canSaveAmount)
             }
             .padding()
@@ -301,6 +311,8 @@ struct FinanceAssetEditorSheet: View {
                     Button("取消") {
                         dismiss()
                     }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
                 }
             }
         }
@@ -326,7 +338,14 @@ struct FinanceAssetRow: View {
     let onDelete: () -> Void
 
     var body: some View {
-        SwipeToDeleteRow(onDelete: onDelete) {
+        SwipeToDeleteRow(
+            onDelete: onDelete,
+            confirmation: DeleteConfirmationContent(
+                title: "删除资产记录？",
+                message: "“\(asset.name)” 的金额记录会被移除，删除后无法恢复。",
+                confirmTitle: "删除资产"
+            )
+        ) {
             Button(action: onEdit) {
                 HStack(alignment: .center, spacing: 12) {
                     Image(systemName: asset.kind.icon)
@@ -381,7 +400,14 @@ struct WeightLogRow: View {
     let onDelete: () -> Void
 
     var body: some View {
-        SwipeToDeleteRow(onDelete: onDelete) {
+        SwipeToDeleteRow(
+            onDelete: onDelete,
+            confirmation: DeleteConfirmationContent(
+                title: "删除体重记录？",
+                message: "\(dateText) 的 \(weightText) kg 记录会被移除。",
+                confirmTitle: "删除记录"
+            )
+        ) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "scalemass")
                     .foregroundStyle(.blue)
@@ -483,22 +509,38 @@ struct MeasurementField: View {
     let unit: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.caption)
+                .font(.caption.bold())
                 .foregroundStyle(.secondary)
 
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                TextField(placeholder, text: $value)
-                    .keyboardType(.decimalPad)
-                    .font(.headline)
+            HStack(alignment: .lastTextBaseline, spacing: 8) {
+                ZStack(alignment: .leading) {
+                    if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text(placeholder)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+
+                    TextField("", text: $value)
+                        .keyboardType(.decimalPad)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(.primary)
+                }
+
                 Text(unit)
-                    .font(.caption.bold())
+                    .font(.subheadline.bold())
                     .foregroundStyle(.secondary)
+                    .padding(.bottom, 4)
             }
-            .padding(10)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
             .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color(.separator).opacity(0.14), lineWidth: 1)
+            }
         }
     }
 }

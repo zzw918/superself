@@ -17,22 +17,16 @@ extension ContentView {
                 Button {
                     isShowingAnniversarySheet = true
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(Color.orange)
-                        .clipShape(Circle())
-                        .shadow(color: Color.orange.opacity(0.22), radius: 8, x: 0, y: 4)
+                    AppIconCircleButton(icon: "plus", tint: .orange)
                 }
                 .buttonStyle(.plain)
             }
 
             if anniversaryItems.isEmpty {
-                ContentUnavailableView(
-                    "还没有纪念日",
+                AppEmptyState(
+                    title: "还没有纪念日",
                     systemImage: "calendar.badge.plus",
-                    description: Text("把生日、结婚纪念日或其他重要日子记下来。")
+                    description: "把生日、结婚纪念日或其他重要日子记下来。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else {
@@ -97,14 +91,8 @@ extension ContentView {
                     addAnniversaryItem()
                 } label: {
                     Label("添加纪念日", systemImage: "plus")
-                        .font(.headline)
-                        .foregroundStyle(canAddAnniversary ? .white : Color(.tertiaryLabel))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(canAddAnniversary ? Color.orange : Color(.tertiarySystemFill))
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(AppPrimaryButtonStyle(tint: .orange))
                 .disabled(!canAddAnniversary)
             }
             .padding()
@@ -116,6 +104,8 @@ extension ContentView {
                     Button("取消") {
                         isShowingAnniversarySheet = false
                     }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
                 }
             }
         }
@@ -149,10 +139,10 @@ extension ContentView {
             )
 
             if activeTodoTasks.isEmpty && completedTodoTasks.isEmpty {
-                ContentUnavailableView(
-                    "还没有待办",
+                AppEmptyState(
+                    title: "还没有待办",
                     systemImage: "checklist",
-                    description: Text("把要做的事情写在这里，避免之后忘记。")
+                    description: "把要做的事情写在这里，避免之后忘记。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else {
@@ -239,10 +229,10 @@ extension ContentView {
             )
 
             if openWishlistItems.isEmpty && completedWishlistItems.isEmpty {
-                ContentUnavailableView(
-                    "还没有愿望",
+                AppEmptyState(
+                    title: "还没有愿望",
                     systemImage: "sparkles",
-                    description: Text("把想玩的、想吃的、想喝的都放进来。")
+                    description: "把想玩的、想吃的、想喝的都放进来。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else {

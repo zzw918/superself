@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1B2C3D41A2B3C4D00000001 /* TodoListAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000001 /* TodoListAppApp.swift */; };
+		A1B2C3D41A2B3C4D00000001 /* SuperSelfApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000001 /* SuperSelfApp.swift */; };
 		A1B2C3D41A2B3C4D00000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000002 /* ContentView.swift */; };
 		A1B2C3D41A2B3C4D00000003 /* TodoItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000003 /* TodoItem.swift */; };
 		A1B2C3D41A2B3C4D00000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000004 /* Assets.xcassets */; };
@@ -25,12 +25,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A1B2C3D31A2B3C4D00000001 /* TodoListAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoListAppApp.swift; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000001 /* SuperSelfApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuperSelfApp.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000003 /* TodoItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoItem.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000005 /* SuperSelf.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SuperSelf.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A1B2C3D31A2B3C4D00000006 /* TodoListApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TodoListApp.entitlements; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000006 /* SuperSelf.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SuperSelf.entitlements; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000010 /* AppTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTypes.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000011 /* ContentView+Pages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Pages.swift"; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000012 /* ContentView+Computed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Computed.swift"; sourceTree = "<group>"; };
@@ -58,25 +58,25 @@
 		A1B2C3D61A2B3C4D00000001 = {
 			isa = PBXGroup;
 			children = (
-				A1B2C3D61A2B3C4D00000002 /* TodoListApp */,
+				A1B2C3D61A2B3C4D00000002 /* SuperSelf */,
 				A1B2C3D61A2B3C4D00000003 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		A1B2C3D61A2B3C4D00000002 /* TodoListApp */ = {
+		A1B2C3D61A2B3C4D00000002 /* SuperSelf */ = {
 			isa = PBXGroup;
 			children = (
-				A1B2C3D31A2B3C4D00000001 /* TodoListAppApp.swift */,
+				A1B2C3D31A2B3C4D00000001 /* SuperSelfApp.swift */,
 				A1B2C3D31A2B3C4D00000002 /* ContentView.swift */,
 				A1B2C3D31A2B3C4D00000003 /* TodoItem.swift */,
-				A1B2C3D31A2B3C4D00000006 /* TodoListApp.entitlements */,
+				A1B2C3D31A2B3C4D00000006 /* SuperSelf.entitlements */,
 				A1B2C3D61A2B3C4D00000004 /* Core */,
 				A1B2C3D61A2B3C4D00000005 /* Features */,
 				A1B2C3D61A2B3C4D00000010 /* Services */,
 				A1B2C3D61A2B3C4D00000011 /* UI */,
 				A1B2C3D31A2B3C4D00000004 /* Assets.xcassets */,
 			);
-			path = TodoListApp;
+			path = SuperSelf;
 			sourceTree = "<group>";
 		};
 		A1B2C3D61A2B3C4D00000003 /* Products */ = {
@@ -161,9 +161,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A1B2C3D71A2B3C4D00000001 /* TodoListApp */ = {
+		A1B2C3D71A2B3C4D00000001 /* SuperSelf */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A1B2C3DC1A2B3C4D00000001 /* Build configuration list for PBXNativeTarget "TodoListApp" */;
+			buildConfigurationList = A1B2C3DC1A2B3C4D00000001 /* Build configuration list for PBXNativeTarget "SuperSelf" */;
 			buildPhases = (
 				A1B2C3D81A2B3C4D00000001 /* Sources */,
 				A1B2C3D51A2B3C4D00000001 /* Frameworks */,
@@ -173,8 +173,8 @@
 			);
 			dependencies = (
 			);
-			name = TodoListApp;
-			productName = TodoListApp;
+			name = SuperSelf;
+			productName = SuperSelf;
 			productReference = A1B2C3D31A2B3C4D00000005 /* SuperSelf.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -198,7 +198,7 @@
 					};
 				};
 			};
-			buildConfigurationList = A1B2C3DC1A2B3C4D00000002 /* Build configuration list for PBXProject "TodoListApp" */;
+			buildConfigurationList = A1B2C3DC1A2B3C4D00000002 /* Build configuration list for PBXProject "SuperSelf" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -211,7 +211,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A1B2C3D71A2B3C4D00000001 /* TodoListApp */,
+				A1B2C3D71A2B3C4D00000001 /* SuperSelf */,
 			);
 		};
 /* End PBXProject section */
@@ -232,7 +232,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1B2C3D41A2B3C4D00000001 /* TodoListAppApp.swift in Sources */,
+				A1B2C3D41A2B3C4D00000001 /* SuperSelfApp.swift in Sources */,
 				A1B2C3D41A2B3C4D00000002 /* ContentView.swift in Sources */,
 				A1B2C3D41A2B3C4D00000003 /* TodoItem.swift in Sources */,
 				A1B2C3D41A2B3C4D00000010 /* AppTypes.swift in Sources */,
@@ -371,7 +371,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = TodoListApp/TodoListApp.entitlements;
+				CODE_SIGN_ENTITLEMENTS = SuperSelf/SuperSelf.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -404,7 +404,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = TodoListApp/TodoListApp.entitlements;
+				CODE_SIGN_ENTITLEMENTS = SuperSelf/SuperSelf.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -435,7 +435,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A1B2C3DC1A2B3C4D00000001 /* Build configuration list for PBXNativeTarget "TodoListApp" */ = {
+		A1B2C3DC1A2B3C4D00000001 /* Build configuration list for PBXNativeTarget "SuperSelf" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A1B2C3DB1A2B3C4D00000003 /* Debug */,
@@ -444,7 +444,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A1B2C3DC1A2B3C4D00000002 /* Build configuration list for PBXProject "TodoListApp" */ = {
+		A1B2C3DC1A2B3C4D00000002 /* Build configuration list for PBXProject "SuperSelf" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A1B2C3DB1A2B3C4D00000001 /* Debug */,
