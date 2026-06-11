@@ -11,6 +11,17 @@
 		A1B2C3D41A2B3C4D00000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000002 /* ContentView.swift */; };
 		A1B2C3D41A2B3C4D00000003 /* TodoItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000003 /* TodoItem.swift */; };
 		A1B2C3D41A2B3C4D00000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000004 /* Assets.xcassets */; };
+		A1B2C3D41A2B3C4D00000010 /* AppTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000010 /* AppTypes.swift */; };
+		A1B2C3D41A2B3C4D00000011 /* ContentView+Pages.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000011 /* ContentView+Pages.swift */; };
+		A1B2C3D41A2B3C4D00000012 /* ContentView+Computed.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000012 /* ContentView+Computed.swift */; };
+		A1B2C3D41A2B3C4D00000013 /* ContentView+Health.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000013 /* ContentView+Health.swift */; };
+		A1B2C3D41A2B3C4D00000014 /* ContentView+Memo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000014 /* ContentView+Memo.swift */; };
+		A1B2C3D41A2B3C4D00000015 /* ContentView+Finance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000015 /* ContentView+Finance.swift */; };
+		A1B2C3D41A2B3C4D00000016 /* ContentView+Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000016 /* ContentView+Persistence.swift */; };
+		A1B2C3D41A2B3C4D00000017 /* ContentView+Formatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000017 /* ContentView+Formatting.swift */; };
+		A1B2C3D41A2B3C4D00000018 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000018 /* SharedComponents.swift */; };
+		A1B2C3D41A2B3C4D00000019 /* FeatureRowsAndSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000019 /* FeatureRowsAndSheets.swift */; };
+		A1B2C3D41A2B3C4D00000020 /* Charts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000020 /* Charts.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,6 +30,17 @@
 		A1B2C3D31A2B3C4D00000003 /* TodoItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoItem.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000005 /* TodoListApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TodoListApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D31A2B3C4D00000010 /* AppTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTypes.swift; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000011 /* ContentView+Pages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Pages.swift"; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000012 /* ContentView+Computed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Computed.swift"; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000013 /* ContentView+Health.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Health.swift"; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000014 /* ContentView+Memo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Memo.swift"; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000015 /* ContentView+Finance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Finance.swift"; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000016 /* ContentView+Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Persistence.swift"; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000017 /* ContentView+Formatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Formatting.swift"; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000018 /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000019 /* FeatureRowsAndSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureRowsAndSheets.swift; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000020 /* Charts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Charts.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,9 +68,84 @@
 				A1B2C3D31A2B3C4D00000001 /* TodoListAppApp.swift */,
 				A1B2C3D31A2B3C4D00000002 /* ContentView.swift */,
 				A1B2C3D31A2B3C4D00000003 /* TodoItem.swift */,
+				A1B2C3D61A2B3C4D00000004 /* Core */,
+				A1B2C3D61A2B3C4D00000005 /* Features */,
+				A1B2C3D61A2B3C4D00000010 /* Services */,
+				A1B2C3D61A2B3C4D00000011 /* UI */,
 				A1B2C3D31A2B3C4D00000004 /* Assets.xcassets */,
 			);
 			path = TodoListApp;
+			sourceTree = "<group>";
+		};
+		A1B2C3D61A2B3C4D00000004 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D31A2B3C4D00000010 /* AppTypes.swift */,
+				A1B2C3D31A2B3C4D00000012 /* ContentView+Computed.swift */,
+				A1B2C3D31A2B3C4D00000017 /* ContentView+Formatting.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		A1B2C3D61A2B3C4D00000005 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D61A2B3C4D00000006 /* Health */,
+				A1B2C3D61A2B3C4D00000007 /* Memo */,
+				A1B2C3D61A2B3C4D00000008 /* Finance */,
+				A1B2C3D61A2B3C4D00000009 /* Profile */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		A1B2C3D61A2B3C4D00000006 /* Health */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D31A2B3C4D00000013 /* ContentView+Health.swift */,
+			);
+			path = Health;
+			sourceTree = "<group>";
+		};
+		A1B2C3D61A2B3C4D00000007 /* Memo */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D31A2B3C4D00000014 /* ContentView+Memo.swift */,
+			);
+			path = Memo;
+			sourceTree = "<group>";
+		};
+		A1B2C3D61A2B3C4D00000008 /* Finance */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D31A2B3C4D00000015 /* ContentView+Finance.swift */,
+			);
+			path = Finance;
+			sourceTree = "<group>";
+		};
+		A1B2C3D61A2B3C4D00000009 /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D31A2B3C4D00000011 /* ContentView+Pages.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		A1B2C3D61A2B3C4D00000010 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D31A2B3C4D00000016 /* ContentView+Persistence.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A1B2C3D61A2B3C4D00000011 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D31A2B3C4D00000018 /* SharedComponents.swift */,
+				A1B2C3D31A2B3C4D00000019 /* FeatureRowsAndSheets.swift */,
+				A1B2C3D31A2B3C4D00000020 /* Charts.swift */,
+			);
+			path = UI;
 			sourceTree = "<group>";
 		};
 		A1B2C3D61A2B3C4D00000003 /* Products */ = {
@@ -131,6 +228,17 @@
 				A1B2C3D41A2B3C4D00000001 /* TodoListAppApp.swift in Sources */,
 				A1B2C3D41A2B3C4D00000002 /* ContentView.swift in Sources */,
 				A1B2C3D41A2B3C4D00000003 /* TodoItem.swift in Sources */,
+				A1B2C3D41A2B3C4D00000010 /* AppTypes.swift in Sources */,
+				A1B2C3D41A2B3C4D00000011 /* ContentView+Pages.swift in Sources */,
+				A1B2C3D41A2B3C4D00000012 /* ContentView+Computed.swift in Sources */,
+				A1B2C3D41A2B3C4D00000013 /* ContentView+Health.swift in Sources */,
+				A1B2C3D41A2B3C4D00000014 /* ContentView+Memo.swift in Sources */,
+				A1B2C3D41A2B3C4D00000015 /* ContentView+Finance.swift in Sources */,
+				A1B2C3D41A2B3C4D00000016 /* ContentView+Persistence.swift in Sources */,
+				A1B2C3D41A2B3C4D00000017 /* ContentView+Formatting.swift in Sources */,
+				A1B2C3D41A2B3C4D00000018 /* SharedComponents.swift in Sources */,
+				A1B2C3D41A2B3C4D00000019 /* FeatureRowsAndSheets.swift in Sources */,
+				A1B2C3D41A2B3C4D00000020 /* Charts.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

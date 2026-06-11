@@ -1,0 +1,257 @@
+import SwiftUI
+
+struct TipRow: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .foregroundStyle(.blue)
+                .frame(width: 22)
+            Text(text)
+                .font(.subheadline)
+        }
+    }
+}
+
+struct SummaryPill: View {
+    let title: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.title2.bold())
+                .foregroundStyle(color)
+
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(color.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+struct AppSegmentedControl<Option: Identifiable & Hashable>: View {
+    let options: [Option]
+    @Binding var selection: Option
+    let title: (Option) -> String
+
+    @Namespace private var selectionNamespace
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(options) { option in
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                        selection = option
+                    }
+                } label: {
+                    Text(title(option))
+                        .font(selection == option ? .headline.bold() : .subheadline.bold())
+                        .foregroundStyle(selection == option ? .white : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 46)
+                        .background {
+                            if selection == option {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.blue.gradient)
+                                    .matchedGeometryEffect(id: "selection", in: selectionNamespace)
+                                    .shadow(color: Color.blue.opacity(0.26), radius: 10, x: 0, y: 4)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color(.separator).opacity(0.16), lineWidth: 1)
+        }
+    }
+}
+
+struct ModernInputField: View {
+    let placeholder: String
+    @Binding var text: String
+    let icon: String
+    let tint: Color
+    var keyboardType: UIKeyboardType = .default
+    var axis: Axis = .horizontal
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 20)
+
+            TextField(placeholder, text: $text, axis: axis)
+                .lineLimit(axis == .vertical ? 1...3 : 1...1)
+                .keyboardType(keyboardType)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+        }
+        .font(.body)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(minHeight: 48)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(.separator).opacity(0.22), lineWidth: 1)
+        }
+    }
+}
+
+struct AddEntryBar: View {
+    let placeholder: String
+    @Binding var text: String
+    let icon: String
+    let tint: Color
+    var keyboardType: UIKeyboardType = .default
+    var buttonTitle: String?
+    let action: () -> Void
+
+    var canSubmit: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ModernInputField(
+                placeholder: placeholder,
+                text: $text,
+                icon: icon,
+                tint: tint,
+                keyboardType: keyboardType,
+                axis: .vertical
+            )
+
+            Button(action: action) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.headline.weight(.bold))
+
+                    if let buttonTitle {
+                        Text(buttonTitle)
+                            .font(.headline)
+                    }
+                }
+                .foregroundStyle(canSubmit ? .white : Color(.tertiaryLabel))
+                .frame(minWidth: buttonTitle == nil ? 48 : 86)
+                .frame(height: 48)
+                .background(canSubmit ? tint : Color(.tertiarySystemFill))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: canSubmit ? tint.opacity(0.22) : .clear, radius: 8, y: 4)
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSubmit)
+        }
+    }
+}
+
+struct SearchInputBar: View {
+    let placeholder: String
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            TextField(placeholder, text: $text)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(minHeight: 48)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(.separator).opacity(0.18), lineWidth: 1)
+        }
+    }
+}
+
+struct SwipeToDeleteRow<Content: View>: View {
+    let onDelete: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    @State private var offset: CGFloat = 0
+    let actionWidth: CGFloat = 78
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            if offset < 0 {
+                Button {
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
+                        offset = 0
+                        onDelete()
+                    }
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "trash")
+                            .font(.headline)
+                        Text("删除")
+                            .font(.caption.bold())
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: actionWidth)
+                    .frame(maxHeight: .infinity)
+                    .background(Color.red)
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity)
+            }
+
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.systemBackground))
+                .offset(x: offset)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 18)
+                        .onChanged { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+
+                            if value.translation.width < 0 {
+                                offset = max(-actionWidth, value.translation.width)
+                            } else if offset < 0 {
+                                offset = min(0, -actionWidth + value.translation.width)
+                            }
+                        }
+                        .onEnded { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
+                                offset = value.translation.width < -actionWidth / 2 ? -actionWidth : 0
+                            }
+                        }
+                )
+        }
+        .clipShape(Rectangle())
+    }
+}
