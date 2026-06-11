@@ -121,7 +121,6 @@ extension ContentView {
 
     var stockResearchSection: some View {
         VStack(spacing: 20) {
-            stockResearchAddCard
             stockResearchListCard
         }
     }

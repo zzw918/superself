@@ -82,6 +82,7 @@ struct ContentView: View {
     @State var isShowingBodySettings = false
     @State var isShowingFinanceAssetSheet = false
     @State var isShowingAnniversarySheet = false
+    @State var isShowingStockAddAlert = false
     @State var trendGranularity: WeightTrendGranularity = .day
     @State var visibleWeightHistoryDays = 10
     @State var didShowWeightSaveFeedback = false
@@ -148,6 +149,17 @@ struct ContentView: View {
                 thesis: stockResearchThesisBinding(for: item),
                 updatedText: chineseDateTime(item.updatedAt)
             )
+        }
+        .alert("新增股票", isPresented: $isShowingStockAddAlert) {
+            TextField("例如：腾讯控股、贵州茅台", text: $stockNameInput)
+            Button("取消", role: .cancel) {
+                stockNameInput = ""
+            }
+            Button("添加") {
+                addStockResearchItem()
+            }
+        } message: {
+            Text("先用股票名称建档，后面可以持续补充你的理解。")
         }
     }
 

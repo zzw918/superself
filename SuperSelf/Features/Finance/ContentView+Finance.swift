@@ -2,73 +2,122 @@ import SwiftUI
 
 extension ContentView {
     var financeSummaryCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("总资产")
-                        .font(.title3.bold())
-                    Text("当前记录的所有资产合计")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.white.opacity(0.85))
+
+                    Text(currencyText(totalFinanceAmount))
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(1)
                 }
 
                 Spacer()
 
-                Text(currencyText(totalFinanceAmount))
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .foregroundStyle(.blue)
+                if let financeMonthChangeText {
+                    HStack(spacing: 4) {
+                        Image(systemName: financeMonthChangeText.hasPrefix("-") ? "arrow.down.right" : "arrow.up.right")
+                            .font(.caption.weight(.bold))
+                        Text(financeMonthChangeText)
+                            .font(.caption.weight(.bold))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.white.opacity(0.22), in: Capsule())
+                }
             }
 
-            HStack(spacing: 14) {
-                SummaryPill(title: "资产项", value: "\(financeAssets.count)", color: .blue)
-                SummaryPill(title: "历史记录", value: "\(financeSnapshots.count)", color: .blue)
-                SummaryPill(title: "月变化", value: financeMonthChangeText ?? "--", color: .orange)
+            HStack(spacing: 12) {
+                financeHeroStat(title: "资产项", value: "\(financeAssets.count)")
+                Divider().frame(height: 30).overlay(Color.white.opacity(0.25))
+                financeHeroStat(title: "历史记录", value: "\(financeSnapshots.count)")
+                Divider().frame(height: 30).overlay(Color.white.opacity(0.25))
+                financeHeroStat(title: "本月变化", value: financeMonthChangeText ?? "--")
             }
         }
-        .padding()
+        .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .background {
+            LinearGradient(
+                colors: [Color.blue, Color.indigo],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: Color.blue.opacity(0.25), radius: 16, y: 8)
+    }
+
+    func financeHeroStat(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(value)
+                .font(.headline.bold())
+                .foregroundStyle(.white)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.8))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     var financeAddAssetSheet: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("银行卡可以添加多张；股票、期权、支付宝、微信和其他资产也可以分别记录。")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        financeFieldLabel("资产类型")
 
-                Picker("资产类型", selection: $financeAssetKind) {
-                    ForEach(FinanceAssetKind.allCases) { kind in
-                        Label(kind.title, systemImage: kind.icon)
-                            .tag(kind)
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: 96), spacing: 10)],
+                            spacing: 10
+                        ) {
+                            ForEach(FinanceAssetKind.allCases) { kind in
+                                financeKindChip(kind)
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        financeFieldLabel("名称")
+                        ModernInputField(
+                            placeholder: financeAssetKind == .custom ? "自定义类目名称" : "名称，例如：招商银行卡",
+                            text: $financeAssetNameInput,
+                            icon: financeAssetKind.icon,
+                            tint: financeKindTint(financeAssetKind)
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        financeFieldLabel("金额")
+                        ModernInputField(
+                            placeholder: "金额，例如：12000",
+                            text: $financeAssetAmountInput,
+                            icon: "yensign.circle",
+                            tint: financeKindTint(financeAssetKind),
+                            keyboardType: .decimalPad
+                        )
                     }
                 }
-                .pickerStyle(.menu)
-
-                ModernInputField(
-                    placeholder: financeAssetKind == .custom ? "自定义类目名称" : "名称，例如：招商银行卡",
-                    text: $financeAssetNameInput,
-                    icon: financeAssetKind.icon,
-                    tint: .blue
-                )
-
-                AddEntryBar(
-                    placeholder: "金额，例如：12000",
-                    text: $financeAssetAmountInput,
-                    icon: "yensign.circle",
-                    tint: .blue,
-                    keyboardType: .decimalPad,
-                    buttonTitle: "添加",
-                    action: addFinanceAsset
-                )
-
-                Spacer()
+                .padding()
             }
-            .padding()
             .background(Color(.systemGroupedBackground))
+            .safeAreaInset(edge: .bottom) {
+                Button(action: addFinanceAsset) {
+                    Text("添加资产")
+                }
+                .buttonStyle(AppPrimaryButtonStyle(tint: financeKindTint(financeAssetKind)))
+                .disabled(financeAssetAmountInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+                .background(.bar)
+            }
             .navigationTitle("添加资产")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -81,7 +130,61 @@ extension ContentView {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
+    }
+
+    func financeFieldLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.bold())
+            .foregroundStyle(.secondary)
+    }
+
+    func financeKindChip(_ kind: FinanceAssetKind) -> some View {
+        let isSelected = financeAssetKind == kind
+        let tint = financeKindTint(kind)
+
+        return Button {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                financeAssetKind = kind
+            }
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: kind.icon)
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? .white : tint)
+                    .frame(width: 40, height: 40)
+                    .background(isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.12)), in: Circle())
+
+                Text(kind.title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSelected ? tint : Color(.separator).opacity(0.18), lineWidth: isSelected ? 2 : 1)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    func financeKindTint(_ kind: FinanceAssetKind) -> Color {
+        switch kind {
+        case .bankCard:
+            return .blue
+        case .stock:
+            return .green
+        case .option:
+            return .orange
+        case .alipay:
+            return .cyan
+        case .wechat:
+            return .mint
+        case .custom:
+            return .purple
+        }
     }
 
     var financeTrendCard: some View {
@@ -186,7 +289,8 @@ extension ContentView {
                         FinanceAssetRow(
                             asset: asset,
                             amountText: currencyText(asset.amount),
-                            updatedText: chineseDateTime(asset.updatedAt)
+                            updatedText: chineseDateTime(asset.updatedAt),
+                            tint: financeKindTint(asset.kind)
                         ) {
                             editingFinanceAsset = asset
                         } onDelete: {
@@ -199,31 +303,6 @@ extension ContentView {
                     }
                 }
             }
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-    }
-
-    var stockResearchAddCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("新增股票")
-                    .font(.title3.bold())
-                Text("先用股票名称建档，后面可以持续补充你的理解。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            AddEntryBar(
-                placeholder: "例如：腾讯控股、贵州茅台",
-                text: $stockNameInput,
-                icon: "chart.line.text.clipboard",
-                tint: .blue,
-                buttonTitle: "添加",
-                action: addStockResearchItem
-            )
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -244,9 +323,13 @@ extension ContentView {
 
                 Spacer()
 
-                Text("\(stockResearchItems.count) 只")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Button {
+                    stockNameInput = ""
+                    isShowingStockAddAlert = true
+                } label: {
+                    AppIconCircleButton(icon: "plus", tint: .blue, size: 40, iconFont: .subheadline.weight(.bold))
+                }
+                .buttonStyle(.plain)
             }
 
             SearchInputBar(placeholder: "搜索股票名称", text: $stockSearchText)

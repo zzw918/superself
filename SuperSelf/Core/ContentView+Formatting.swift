@@ -149,11 +149,11 @@ extension ContentView {
     func financeDistributionColor(at index: Int) -> Color {
         let colors: [Color] = [
             .blue,
-            Color(red: 0.24, green: 0.51, blue: 0.96),
-            Color(red: 0.42, green: 0.64, blue: 1.0),
-            Color(red: 0.37, green: 0.72, blue: 0.95),
-            Color(red: 0.55, green: 0.76, blue: 1.0),
-            Color(red: 0.28, green: 0.42, blue: 0.82)
+            .teal,
+            .indigo,
+            .orange,
+            .green,
+            .purple
         ]
         return colors[index % colors.count]
     }

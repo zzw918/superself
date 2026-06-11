@@ -334,6 +334,7 @@ struct FinanceAssetRow: View {
     let asset: FinanceAsset
     let amountText: String
     let updatedText: String
+    let tint: Color
     let onEdit: () -> Void
     let onDelete: () -> Void
 
@@ -350,10 +351,10 @@ struct FinanceAssetRow: View {
                 HStack(alignment: .center, spacing: 12) {
                     Image(systemName: asset.kind.icon)
                         .font(.headline)
-                        .foregroundStyle(.blue)
-                        .frame(width: 28, height: 28)
-                        .background(Color.blue.opacity(0.10))
-                        .clipShape(Circle())
+                        .foregroundStyle(tint)
+                        .frame(width: 38, height: 38)
+                        .background(tint.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 5) {
                         HStack(spacing: 8) {
@@ -365,8 +366,8 @@ struct FinanceAssetRow: View {
                                 .font(.caption.bold())
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 3)
-                                .background(Color.blue.opacity(0.12))
-                                .foregroundStyle(.blue)
+                                .background(tint.opacity(0.12))
+                                .foregroundStyle(tint)
                                 .clipShape(Capsule())
                         }
 
@@ -377,7 +378,7 @@ struct FinanceAssetRow: View {
 
                     Spacer()
 
-                    VStack(alignment: .trailing, spacing: 4) {
+                    HStack(spacing: 6) {
                         Text(amountText)
                             .font(.headline.bold())
                             .foregroundStyle(.primary)
@@ -507,40 +508,59 @@ struct MeasurementField: View {
     @Binding var value: String
     let placeholder: String
     let unit: String
+    var icon: String = "ruler"
+    var tint: Color = .blue
+
+    @FocusState private var isFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.headline)
+                .foregroundStyle(tint)
+                .frame(width: 42, height: 42)
+                .background(tint.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
 
-            HStack(alignment: .lastTextBaseline, spacing: 8) {
-                ZStack(alignment: .leading) {
-                    if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text(placeholder)
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    ZStack(alignment: .leading) {
+                        if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text(placeholder)
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+
+                        TextField("", text: $value)
+                            .keyboardType(.decimalPad)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(.primary)
+                            .focused($isFocused)
                     }
 
-                    TextField("", text: $value)
-                        .keyboardType(.decimalPad)
-                        .font(.title2.weight(.bold))
-                        .foregroundStyle(.primary)
+                    Text(unit)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.secondary)
                 }
+            }
 
-                Text(unit)
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.secondary)
-                    .padding(.bottom, 4)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 14)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color(.separator).opacity(0.14), lineWidth: 1)
-            }
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(
+                    isFocused ? tint.opacity(0.55) : Color(.separator).opacity(0.14),
+                    lineWidth: isFocused ? 1.5 : 1
+                )
+        }
+        .animation(.spring(response: 0.25, dampingFraction: 0.88), value: isFocused)
     }
 }

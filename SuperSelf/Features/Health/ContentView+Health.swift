@@ -19,10 +19,14 @@ extension ContentView {
                 Circle()
                     .trim(from: 0, to: progress)
                     .stroke(
-                        isFasting ? Color.blue : Color.green,
+                        AngularGradient(
+                            colors: isFasting ? [.blue, .cyan] : [.green, .mint],
+                            center: .center
+                        ),
                         style: StrokeStyle(lineWidth: 18, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
+                    .animation(.spring(response: 0.5, dampingFraction: 0.9), value: progress)
 
                 VStack(spacing: 4) {
                     Text(timeString(from: remaining))
@@ -49,7 +53,7 @@ extension ContentView {
     }
 
     var actionCard: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             Button {
                 switchPhase()
             } label: {
@@ -57,13 +61,39 @@ extension ContentView {
             }
             .buttonStyle(AppPrimaryButtonStyle(tint: primaryActionTint))
 
-            Picker("计划模式", selection: planSelection) {
+            HStack(spacing: 8) {
                 ForEach(planOptions, id: \.fasting) { option in
-                    Text("\(option.fasting)+\(option.eating)")
-                        .tag(option.fasting)
+                    let isSelected = fastingGoalHours == option.fasting
+
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                            planSelection.wrappedValue = option.fasting
+                        }
+                    } label: {
+                        VStack(spacing: 2) {
+                            Text("\(option.fasting)+\(option.eating)")
+                                .font(isSelected ? .headline.bold() : .subheadline.bold())
+                            Text("断食+进食")
+                                .font(.caption2)
+                                .opacity(0.85)
+                        }
+                        .foregroundStyle(isSelected ? .white : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background {
+                            if isSelected {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.blue.gradient)
+                                    .shadow(color: Color.blue.opacity(0.26), radius: 10, y: 4)
+                            } else {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color(.secondarySystemGroupedBackground))
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .pickerStyle(.segmented)
 
             Button {
                 resetCurrentPhase()
@@ -176,9 +206,9 @@ extension ContentView {
                 prepareWeightSheet()
                 isShowingWeightSheet = true
             } label: {
-                Label("添加", systemImage: "plus")
+                AppIconCircleButton(icon: "plus", tint: .blue, size: 40, iconFont: .subheadline.weight(.bold))
             }
-            .buttonStyle(AppPrimaryButtonStyle(tint: .blue, isFullWidth: false))
+            .buttonStyle(.plain)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -188,168 +218,166 @@ extension ContentView {
 
     var addWeightSheet: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 22) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("今天体重")
-                        .font(.title2.bold())
-
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
                     Text("记录当前体重，趋势和 BMI 会自动更新。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                }
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("当前体重")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("当前体重")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
 
-                    HStack(alignment: .lastTextBaseline, spacing: 10) {
-                        ZStack(alignment: .leading) {
-                            if weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Text(weightPlaceholder)
-                                    .font(.system(size: 32, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(.tertiary)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            ZStack(alignment: .leading) {
+                                if weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text("0.0")
+                                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                                        .foregroundStyle(.tertiary)
+                                }
+
+                                TextField("", text: $weightInput)
+                                    .keyboardType(.decimalPad)
+                                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                                    .foregroundStyle(.primary)
+                                    .focused($focusedWeightSheetField, equals: .weight)
+                                    .fixedSize()
                             }
 
-                            TextField("", text: $weightInput)
-                                .keyboardType(.decimalPad)
-                                .font(.system(size: 42, weight: .bold, design: .rounded))
-                                .foregroundStyle(.primary)
-                                .focused($focusedWeightSheetField, equals: .weight)
-                        }
-
-                        Text("kg")
-                            .font(.title3.bold())
-                            .foregroundStyle(.secondary)
-                            .padding(.bottom, 6)
-                    }
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 18)
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(
-                            focusedWeightSheetField == .weight ? Color.blue.opacity(0.55) : Color(.separator).opacity(0.14),
-                            lineWidth: focusedWeightSheetField == .weight ? 1.5 : 1
-                        )
-                }
-                .shadow(
-                    color: focusedWeightSheetField == .weight ? Color.blue.opacity(0.12) : .clear,
-                    radius: 14,
-                    y: 6
-                )
-
-                if let latestWeightLog {
-                    HStack(spacing: 10) {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.blue)
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("上次记录")
-                                .font(.caption)
+                            Text("kg")
+                                .font(.title3.bold())
                                 .foregroundStyle(.secondary)
-                            Text("\(weightText(latestWeightLog.weight)) kg · \(chineseDateTime(latestWeightLog.date))")
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.primary)
+
+                            Spacer()
                         }
-
-                        Spacer()
-
-                        Button("填入上次") {
-                            weightInput = weightText(latestWeightLog.weight)
-                        }
-                        .font(.caption.bold())
-                        .foregroundStyle(.blue)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Color.blue.opacity(0.10))
-                        .clipShape(Capsule())
-                        .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background(Color.blue.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "text.bubble")
-                            .font(.caption.weight(.semibold))
-                        Text("备注")
-                            .font(.caption.bold())
-                    }
-                    .foregroundStyle(.secondary)
-
-                    ZStack(alignment: .topLeading) {
-                        if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("可选，例如空腹、运动后、晚饭前")
-                                .font(.subheadline)
-                                .foregroundStyle(.tertiary)
-                                .padding(.top, 14)
-                                .padding(.horizontal, 14)
-                        }
-
-                        TextEditor(text: $noteInput)
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-                            .scrollContentBackground(.hidden)
-                            .frame(minHeight: 96)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .focused($focusedWeightSheetField, equals: .note)
-                    }
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 18)
                     .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
                             .stroke(
-                                focusedWeightSheetField == .note ? Color.blue.opacity(0.55) : Color(.separator).opacity(0.14),
-                                lineWidth: focusedWeightSheetField == .note ? 1.5 : 1
+                                focusedWeightSheetField == .weight ? Color.blue.opacity(0.55) : Color(.separator).opacity(0.14),
+                                lineWidth: focusedWeightSheetField == .weight ? 1.5 : 1
                             )
                     }
                     .shadow(
-                        color: focusedWeightSheetField == .note ? Color.blue.opacity(0.10) : .clear,
-                        radius: 12,
+                        color: focusedWeightSheetField == .weight ? Color.blue.opacity(0.12) : .clear,
+                        radius: 14,
                         y: 6
                     )
 
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(weightNoteSuggestions, id: \.self) { suggestion in
-                                Button {
-                                    applyWeightNoteSuggestion(suggestion)
-                                } label: {
-                                    Text(suggestion)
-                                        .font(.caption.bold())
-                                        .foregroundStyle(hasWeightNoteSuggestion(suggestion) ? .blue : .secondary)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .background(
-                                            hasWeightNoteSuggestion(suggestion)
-                                            ? Color.blue.opacity(0.12)
-                                            : Color(.tertiarySystemFill)
-                                        )
-                                        .clipShape(Capsule())
-                                }
-                                .buttonStyle(.plain)
+                    if let latestWeightLog {
+                        HStack(spacing: 10) {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.blue)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("上次记录")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text("\(weightText(latestWeightLog.weight)) kg · \(chineseDateTime(latestWeightLog.date))")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
                             }
+
+                            Spacer()
+
+                            Button("填入上次") {
+                                weightInput = weightText(latestWeightLog.weight)
+                            }
+                            .font(.caption.bold())
+                            .foregroundStyle(.blue)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color.blue.opacity(0.10))
+                            .clipShape(Capsule())
+                            .buttonStyle(.plain)
                         }
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(Color.blue.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "text.bubble")
+                                .font(.caption.weight(.semibold))
+                            Text("备注")
+                                .font(.caption.bold())
+                        }
+                        .foregroundStyle(.secondary)
+
+                        ZStack(alignment: .topLeading) {
+                            if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text("可选，例如空腹、运动后、晚饭前")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.tertiary)
+                                    .padding(.top, 14)
+                                    .padding(.horizontal, 14)
+                            }
+
+                            TextEditor(text: $noteInput)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 96)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .focused($focusedWeightSheetField, equals: .note)
+                        }
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(
+                                    focusedWeightSheetField == .note ? Color.blue.opacity(0.55) : Color(.separator).opacity(0.14),
+                                    lineWidth: focusedWeightSheetField == .note ? 1.5 : 1
+                                )
+                        }
+                        .shadow(
+                            color: focusedWeightSheetField == .note ? Color.blue.opacity(0.10) : .clear,
+                            radius: 12,
+                            y: 6
+                        )
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(weightNoteSuggestions, id: \.self) { suggestion in
+                                    Button {
+                                        applyWeightNoteSuggestion(suggestion)
+                                    } label: {
+                                        Text(suggestion)
+                                            .font(.caption.bold())
+                                            .foregroundStyle(hasWeightNoteSuggestion(suggestion) ? .blue : .secondary)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .background(
+                                                hasWeightNoteSuggestion(suggestion)
+                                                ? Color.blue.opacity(0.12)
+                                                : Color(.tertiarySystemFill)
+                                            )
+                                            .clipShape(Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+
+                    Label("体重会保存到本地历史记录，并在 iCloud 可用时尝试同步。", systemImage: "info.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
-
-                Label("体重会保存到本地历史记录，并在 iCloud 可用时尝试同步。", systemImage: "info.circle")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
+                .padding(20)
+            }
+            .background(Color(.systemGroupedBackground))
+            .safeAreaInset(edge: .bottom) {
                 Button {
                     saveWeight()
                 } label: {
@@ -363,31 +391,32 @@ extension ContentView {
                             .font(.headline)
                     }
                     .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(
-                            LinearGradient(
-                                colors: weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                    ? [Color(.tertiarySystemFill), Color(.tertiarySystemFill)]
-                                    : [Color.blue, Color.cyan],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(
+                        LinearGradient(
+                            colors: weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? [Color(.tertiarySystemFill), Color(.tertiarySystemFill)]
+                                : [Color.blue, Color.cyan],
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .shadow(
-                            color: weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                ? .clear
-                                : Color.blue.opacity(0.22),
-                            radius: 14,
-                            y: 8
-                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(
+                        color: weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? .clear
+                            : Color.blue.opacity(0.22),
+                        radius: 14,
+                        y: 8
+                    )
                 }
                 .buttonStyle(.plain)
                 .disabled(weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
+                .background(.bar)
             }
-            .padding(20)
-            .background(Color(.systemGroupedBackground))
             .overlay(alignment: .top) {
                 if didShowWeightSaveFeedback {
                     Label("体重已保存", systemImage: "checkmark.circle.fill")
@@ -419,25 +448,23 @@ extension ContentView {
             .animation(.spring(response: 0.28, dampingFraction: 0.88), value: focusedWeightSheetField)
             .animation(.spring(response: 0.3, dampingFraction: 0.85), value: didShowWeightSaveFeedback)
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
     }
 
     var trendCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             Text("体重趋势")
                 .font(.title3.bold())
 
-            Picker("趋势粒度", selection: $trendGranularity) {
-                ForEach(WeightTrendGranularity.allCases) { granularity in
-                    Text(granularity.title)
-                        .tag(granularity)
-                }
-            }
-            .pickerStyle(.segmented)
+            AppSegmentedControl(
+                options: WeightTrendGranularity.allCases,
+                selection: $trendGranularity,
+                title: \.title
+            )
 
             if trendPoints.count >= 2 {
                 WeightTrendView(points: trendPoints, targetWeight: targetWeightValue)
-                    .frame(height: 120)
+                    .frame(height: 170)
             } else {
                 AppEmptyState(
                     title: "还没有趋势",
@@ -604,29 +631,30 @@ extension ContentView {
 
     var bodySettingsSheet: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("体重目标")
-                        .font(.title2.bold())
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("体重目标")
+                            .font(.title2.bold())
 
-                    Text("身高和目标体重通常很少变化，设置好之后会自动刷新目标进度和 BMI。")
-                        .font(.subheadline)
+                        Text("身高和目标体重通常很少变化，设置好之后会自动刷新目标进度和 BMI。")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        MeasurementField(title: "身高", value: $heightCm, placeholder: "175", unit: "cm", icon: "ruler", tint: .blue)
+                        MeasurementField(title: "目标体重", value: $targetWeight, placeholder: "65", unit: "kg", icon: "target", tint: .orange)
+                    }
+
+                    Label("建议用你能长期维持的目标体重，不需要一步到位。", systemImage: "sparkles")
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                VStack(alignment: .leading, spacing: 14) {
-                    MeasurementField(title: "身高", value: $heightCm, placeholder: "175", unit: "cm")
-                    MeasurementField(title: "目标体重", value: $targetWeight, placeholder: "65", unit: "kg")
-                }
-
-                Label("建议用你能长期维持的目标体重，不需要一步到位。", systemImage: "sparkles")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 2)
-
-                Spacer()
+                .padding(20)
             }
-            .padding(20)
             .background(Color(.systemGroupedBackground))
             .navigationTitle("体重目标设置")
             .navigationBarTitleDisplayMode(.inline)
@@ -648,7 +676,7 @@ extension ContentView {
                 }
             }
         }
-        .presentationDetents([.height(360)])
+        .presentationDetents([.medium, .large])
     }
 
     var historyCard: some View {
@@ -699,67 +727,79 @@ extension ContentView {
     }
 
     var planCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("今日减脂目标")
-                    .font(.title3.bold())
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Image(systemName: "target")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(LinearGradient(colors: [.orange, .pink], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
 
-                Text("写一句今天最想做到的事，让节奏更明确。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("今日减脂目标")
+                        .font(.title3.bold())
+                    Text("写一句今天最想做到的事，让节奏更明确。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
             }
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text("今天想坚持什么")
+            ZStack(alignment: .topLeading) {
+                if dailyGoal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text("例如：晚饭少吃一点，散步 20 分钟，早点睡。")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                        .padding(.top, 14)
+                        .padding(.horizontal, 14)
+                }
+
+                TextEditor(text: $dailyGoal)
+                    .font(.subheadline)
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 100)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+            }
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color(.separator).opacity(0.14), lineWidth: 1)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("快速选择")
                     .font(.caption.bold())
                     .foregroundStyle(.secondary)
 
-                ZStack(alignment: .topLeading) {
-                    if dailyGoal.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("例如：晚饭少吃一点，散步 20 分钟，早点睡。")
-                            .font(.subheadline)
-                            .foregroundStyle(.tertiary)
-                            .padding(.top, 14)
-                            .padding(.horizontal, 14)
-                    }
-
-                    TextEditor(text: $dailyGoal)
-                        .font(.subheadline)
-                        .scrollContentBackground(.hidden)
-                        .frame(minHeight: 108)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                }
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color(.separator).opacity(0.14), lineWidth: 1)
-                }
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(dailyGoalSuggestions, id: \.self) { suggestion in
-                        Button {
-                            dailyGoal = suggestion
-                        } label: {
-                            Text(suggestion)
-                                .font(.caption.bold())
-                                .foregroundStyle(dailyGoal == suggestion ? .blue : .secondary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(
-                                    dailyGoal == suggestion
-                                    ? Color.blue.opacity(0.12)
-                                    : Color(.tertiarySystemFill)
-                                )
-                                .clipShape(Capsule())
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(dailyGoalSuggestions, id: \.self) { suggestion in
+                            Button {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                    dailyGoal = suggestion
+                                }
+                            } label: {
+                                Text(suggestion)
+                                    .font(.caption.bold())
+                                    .foregroundStyle(dailyGoal == suggestion ? .orange : .secondary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        dailyGoal == suggestion
+                                        ? Color.orange.opacity(0.14)
+                                        : Color(.tertiarySystemFill)
+                                    )
+                                    .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
+                    .padding(.vertical, 2)
                 }
-                .padding(.vertical, 2)
             }
         }
         .padding()
@@ -802,14 +842,6 @@ extension ContentView {
                 }
             }
         )
-    }
-
-    var weightPlaceholder: String {
-        if let latestWeightLog {
-            return "上次 \(weightText(latestWeightLog.weight)) kg"
-        }
-
-        return latestWeight.isEmpty ? "输入今天体重" : latestWeight
     }
 
     var weightNoteSuggestions: [String] {

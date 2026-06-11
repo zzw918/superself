@@ -55,48 +55,62 @@ extension ContentView {
 
     var anniversaryAddSheet: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                Text("生日、结婚纪念日或其他重要日子，阴历阳历都可以记录。")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        anniversaryFieldLabel("类型")
 
-                Picker("纪念日类型", selection: $anniversaryKind) {
-                    ForEach(AnniversaryKind.allCases) { kind in
-                        Label(kind.title, systemImage: kind.icon)
-                            .tag(kind)
+                        HStack(spacing: 10) {
+                            ForEach(AnniversaryKind.allCases) { kind in
+                                anniversaryKindChip(kind)
+                            }
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        anniversaryFieldLabel("日期类型")
+                        AppSegmentedControl(
+                            options: AnniversaryCalendarKind.allCases,
+                            selection: $anniversaryCalendarKind,
+                            title: \.title
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        anniversaryFieldLabel("名称")
+                        ModernInputField(
+                            placeholder: anniversaryKind == .other ? "例如：第一次旅行" : "例如：妈妈生日",
+                            text: $anniversaryTitleInput,
+                            icon: anniversaryKind.icon,
+                            tint: .orange
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        anniversaryFieldLabel("日期")
+                        DatePicker("", selection: $anniversaryDate, displayedComponents: .date)
+                            .datePickerStyle(.graphical)
+                            .tint(.orange)
+                            .environment(\.locale, Locale(identifier: "zh_CN"))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     }
                 }
-                .pickerStyle(.segmented)
-
-                Picker("日期类型", selection: $anniversaryCalendarKind) {
-                    ForEach(AnniversaryCalendarKind.allCases) { kind in
-                        Text(kind.title)
-                            .tag(kind)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                ModernInputField(
-                    placeholder: anniversaryKind == .other ? "例如：第一次旅行" : "例如：妈妈生日",
-                    text: $anniversaryTitleInput,
-                    icon: anniversaryKind.icon,
-                    tint: .orange
-                )
-
-                DatePicker("日期", selection: $anniversaryDate, displayedComponents: .date)
-                    .datePickerStyle(.graphical)
-                    .environment(\.locale, Locale(identifier: "zh_CN"))
-
-                Button {
-                    addAnniversaryItem()
-                } label: {
-                    Label("添加纪念日", systemImage: "plus")
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .safeAreaInset(edge: .bottom) {
+                Button(action: addAnniversaryItem) {
+                    Text("添加纪念日")
                 }
                 .buttonStyle(AppPrimaryButtonStyle(tint: .orange))
                 .disabled(!canAddAnniversary)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+                .background(.bar)
             }
-            .padding()
-            .background(Color(.systemGroupedBackground))
             .navigationTitle("添加纪念日")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -110,6 +124,44 @@ extension ContentView {
             }
         }
         .presentationDetents([.large])
+    }
+
+    func anniversaryFieldLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.bold())
+            .foregroundStyle(.secondary)
+    }
+
+    func anniversaryKindChip(_ kind: AnniversaryKind) -> some View {
+        let isSelected = anniversaryKind == kind
+
+        return Button {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                anniversaryKind = kind
+            }
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: kind.icon)
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? .white : Color.orange)
+                    .frame(width: 40, height: 40)
+                    .background(isSelected ? AnyShapeStyle(Color.orange) : AnyShapeStyle(Color.orange.opacity(0.12)), in: Circle())
+
+                Text(kind.title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSelected ? Color.orange : Color(.separator).opacity(0.18), lineWidth: isSelected ? 2 : 1)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     var todoTasksCard: some View {
