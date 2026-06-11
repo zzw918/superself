@@ -74,6 +74,61 @@ struct WishlistItem: Identifiable, Equatable, Codable {
     }
 }
 
+enum AnniversaryKind: String, CaseIterable, Identifiable, Codable {
+    case birthday
+    case wedding
+    case other
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .birthday:
+            return "生日"
+        case .wedding:
+            return "结婚纪念日"
+        case .other:
+            return "其他"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .birthday:
+            return "birthday.cake"
+        case .wedding:
+            return "heart.fill"
+        case .other:
+            return "calendar.badge.heart"
+        }
+    }
+}
+
+enum AnniversaryCalendarKind: String, CaseIterable, Identifiable, Codable {
+    case solar
+    case lunar
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .solar:
+            return "阳历"
+        case .lunar:
+            return "阴历"
+        }
+    }
+}
+
+struct AnniversaryItem: Identifiable, Equatable, Codable {
+    var id = UUID()
+    var title: String
+    var kind: AnniversaryKind
+    var calendarKind: AnniversaryCalendarKind
+    var date: Date
+    var createdAt: Date
+}
+
 enum FinanceAssetKind: String, CaseIterable, Identifiable, Codable {
     case bankCard
     case stock

@@ -57,6 +57,25 @@ private enum HealthSection: String, CaseIterable, Identifiable {
     }
 }
 
+private enum MemoSection: String, CaseIterable, Identifiable {
+    case todo
+    case wishlist
+    case anniversary
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .todo:
+            return "TODO"
+        case .wishlist:
+            return "愿望清单"
+        case .anniversary:
+            return "纪念日"
+        }
+    }
+}
+
 private enum FinanceSection: String, CaseIterable, Identifiable {
     case assetRecord
     case stockResearch
@@ -85,7 +104,7 @@ private enum MainAppTab: String, CaseIterable, Identifiable, Codable, Hashable {
         case .health:
             return "健康"
         case .todo:
-            return "TODO"
+            return "备忘录"
         case .finance:
             return "理财"
         }
@@ -96,7 +115,7 @@ private enum MainAppTab: String, CaseIterable, Identifiable, Codable, Hashable {
         case .health:
             return "heart"
         case .todo:
-            return "checklist"
+            return "note.text"
         case .finance:
             return "yensign.circle"
         }
@@ -107,7 +126,7 @@ private enum MainAppTab: String, CaseIterable, Identifiable, Codable, Hashable {
         case .health:
             return "16 + 8、体重和健康目标"
         case .todo:
-            return "待办事项和愿望清单"
+            return "TODO、愿望清单和纪念日"
         case .finance:
             return "资产记录和股票研究"
         }
@@ -120,6 +139,8 @@ private struct MainTabPreferences: Codable {
 }
 
 struct ContentView: View {
+    @Environment(\.editMode) private var editMode
+
     private let cloudStore = NSUbiquitousKeyValueStore.default
     private let fastingStartTimeCloudKey = "fastingStartTime"
     private let isFastingCloudKey = "isFasting"
@@ -131,9 +152,13 @@ struct ContentView: View {
     private let dailyGoalCloudKey = "dailyGoal"
     private let todoTasksCloudKey = "todoTasks"
     private let wishlistItemsCloudKey = "wishlistItems"
+    private let anniversaryItemsCloudKey = "anniversaryItems"
     private let financeAssetsCloudKey = "financeAssets"
     private let financeSnapshotsCloudKey = "financeSnapshots"
     private let stockResearchItemsCloudKey = "stockResearchItems"
+    private let mainTabPreferencesCloudKey = "mainTabPreferences"
+    private let heightCmCloudKey = "heightCm"
+    private let targetWeightCloudKey = "targetWeight"
     private let planOptions = [(fasting: 16, eating: 8), (fasting: 18, eating: 6), (fasting: 20, eating: 4)]
     private let isoCalendar = Calendar(identifier: .iso8601)
 
@@ -146,6 +171,7 @@ struct ContentView: View {
     @AppStorage("fastingSessions") private var fastingSessionsData = Data()
     @AppStorage("todoTasks") private var todoTasksData = Data()
     @AppStorage("wishlistItems") private var wishlistItemsData = Data()
+    @AppStorage("anniversaryItems") private var anniversaryItemsData = Data()
     @AppStorage("financeAssets") private var financeAssetsData = Data()
     @AppStorage("financeSnapshots") private var financeSnapshotsData = Data()
     @AppStorage("stockResearchItems") private var stockResearchItemsData = Data()
@@ -161,24 +187,32 @@ struct ContentView: View {
     @State private var fastingSessions: [FastingSession] = []
     @State private var todoTasks: [TodoTask] = []
     @State private var wishlistItems: [WishlistItem] = []
+    @State private var anniversaryItems: [AnniversaryItem] = []
     @State private var todoInput = ""
     @State private var wishlistInput = ""
     @State private var wishlistCategory: WishlistCategory = .travel
+    @State private var anniversaryTitleInput = ""
+    @State private var anniversaryKind: AnniversaryKind = .birthday
+    @State private var anniversaryCalendarKind: AnniversaryCalendarKind = .solar
+    @State private var anniversaryDate = Date()
     @State private var financeAssets: [FinanceAsset] = []
     @State private var financeSnapshots: [FinanceSnapshot] = []
     @State private var financeAssetNameInput = ""
     @State private var financeAssetAmountInput = ""
     @State private var financeAssetKind: FinanceAssetKind = .bankCard
     @State private var healthSection: HealthSection = .fasting
+    @State private var memoSection: MemoSection = .todo
     @State private var financeSection: FinanceSection = .assetRecord
     @State private var stockResearchItems: [StockResearchItem] = []
     @State private var stockNameInput = ""
     @State private var stockSearchText = ""
+    @State private var editingStockResearchItem: StockResearchItem?
     @State private var mainTabOrder = MainAppTab.allCases
     @State private var visibleMainTabSet = Set(MainAppTab.allCases)
     @State private var syncStatus = "iCloud 同步准备中"
     @State private var isShowingWeightSheet = false
     @State private var isShowingBodySettings = false
+    @State private var isShowingFinanceAssetSheet = false
     @State private var trendGranularity: WeightTrendGranularity = .day
     @State private var visibleWeightHistoryDays = 10
 
@@ -214,11 +248,27 @@ struct ContentView: View {
         .onChange(of: eatingGoalHours) {
             persistSettingsToICloud()
         }
+        .onChange(of: heightCm) {
+            persistSettingsToICloud()
+        }
+        .onChange(of: targetWeight) {
+            persistSettingsToICloud()
+        }
         .sheet(isPresented: $isShowingWeightSheet) {
             addWeightSheet
         }
         .sheet(isPresented: $isShowingBodySettings) {
             bodySettingsSheet
+        }
+        .sheet(isPresented: $isShowingFinanceAssetSheet) {
+            financeAddAssetSheet
+        }
+        .sheet(item: $editingStockResearchItem) { item in
+            StockResearchEditorSheet(
+                item: item,
+                thesis: stockResearchThesisBinding(for: item),
+                updatedText: chineseDateTime(item.updatedAt)
+            )
         }
     }
 
@@ -228,7 +278,7 @@ struct ContentView: View {
         case .health:
             healthPage
         case .todo:
-            todoPage
+            memoPage
         case .finance:
             financePage
         }
@@ -275,7 +325,6 @@ struct ContentView: View {
             actionCard
             fastingHistoryCard
             planCard
-            syncCard
         }
     }
 
@@ -288,19 +337,36 @@ struct ContentView: View {
         }
     }
 
-    private var todoPage: some View {
+    private var memoPage: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    todoOverviewCard
-                    todoTasksCard
-                    wishlistCard
+                    memoSectionPicker
+
+                    switch memoSection {
+                    case .todo:
+                        todoTasksCard
+                    case .wishlist:
+                        wishlistCard
+                    case .anniversary:
+                        anniversaryCard
+                    }
                 }
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("TODO")
+            .navigationTitle("备忘录")
         }
+    }
+
+    private var memoSectionPicker: some View {
+        Picker("备忘录模块", selection: $memoSection) {
+            ForEach(MemoSection.allCases) { section in
+                Text(section.title)
+                    .tag(section)
+            }
+        }
+        .pickerStyle(.segmented)
     }
 
     private var financePage: some View {
@@ -336,7 +402,6 @@ struct ContentView: View {
     private var financeAssetRecordSection: some View {
         VStack(spacing: 20) {
             financeSummaryCard
-            financeAddAssetCard
             financeTrendCard
             financeAssetsCard
         }
@@ -377,9 +442,21 @@ struct ContentView: View {
                     }
                     .onMove(perform: moveMainTabs)
                 } header: {
-                    Text("底部 Tab 管理")
+                    HStack {
+                        Text("功能管理")
+
+                        Spacer()
+
+                        Button {
+                            toggleTabEditMode()
+                        } label: {
+                            Image(systemName: isEditingTabs ? "checkmark.circle.fill" : "square.and.pencil")
+                                .font(.headline)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 } footer: {
-                    Text("拖动可调整健康、TODO、理财的顺序；关闭开关可隐藏不常用 Tab。“我的”固定在最右侧，不参与排序和隐藏。")
+                    Text("拖动可调整健康、备忘录、理财的顺序；关闭开关可隐藏不常用功能。“我的”固定在最右侧，不参与排序和隐藏。")
                 }
 
                 Section {
@@ -404,11 +481,18 @@ struct ContentView: View {
                     }
                     .padding(.vertical, 4)
                 }
+
+                Section {
+                    syncCard
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                } header: {
+                    Text("数据同步")
+                } footer: {
+                    Text("健康、备忘录、理财、股票研究、功能设置和个人目标都会保存到本地，并在 iCloud 可用时同步。")
+                }
             }
             .navigationTitle("我的")
-            .toolbar {
-                EditButton()
-            }
         }
     }
 
@@ -478,6 +562,27 @@ struct ContentView: View {
         wishlistItems
             .filter(\.isCompleted)
             .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
+    }
+
+    private var sortedAnniversaryItems: [AnniversaryItem] {
+        anniversaryItems.sorted { lhs, rhs in
+            let lhsDate = nextAnniversaryDate(for: lhs) ?? lhs.date
+            let rhsDate = nextAnniversaryDate(for: rhs) ?? rhs.date
+
+            if lhsDate == rhsDate {
+                return lhs.createdAt > rhs.createdAt
+            }
+
+            return lhsDate < rhsDate
+        }
+    }
+
+    private var canAddAnniversary: Bool {
+        !anniversaryTitleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var isEditingTabs: Bool {
+        editMode?.wrappedValue.isEditing == true
     }
 
     private var visibleMainTabs: [MainAppTab] {
@@ -625,14 +730,54 @@ struct ContentView: View {
         let difference = currentWeight - targetWeightValue
 
         if abs(difference) < 0.05 {
-            return "已达到目标体重，继续保持。"
+            return "已达标，继续保持"
         }
 
         if difference > 0 {
-            return "距离目标还差 \(weightText(difference)) kg"
+            return "还差 \(weightText(difference)) kg，抓紧"
         }
 
-        return "已经低于目标 \(weightText(abs(difference))) kg，注意保持健康。"
+        return "低于目标 \(weightText(abs(difference))) kg，注意健康"
+    }
+
+    private var targetProgressColor: Color {
+        guard let currentWeight = latestWeightLog?.weight, let targetWeightValue else {
+            return .secondary
+        }
+
+        let difference = currentWeight - targetWeightValue
+
+        if abs(difference) < 0.05 {
+            return .green
+        }
+
+        if difference >= 3 {
+            return .red
+        }
+
+        if difference > 0 {
+            return .orange
+        }
+
+        return .orange
+    }
+
+    private var targetProgressIcon: String {
+        guard let currentWeight = latestWeightLog?.weight, let targetWeightValue else {
+            return "flag.checkered"
+        }
+
+        let difference = currentWeight - targetWeightValue
+
+        if abs(difference) < 0.05 {
+            return "checkmark.seal.fill"
+        }
+
+        if difference > 0 {
+            return difference >= 3 ? "exclamationmark.triangle.fill" : "flame.fill"
+        }
+
+        return "heart.text.square.fill"
     }
 
     private var statusCard: some View {
@@ -953,12 +1098,16 @@ struct ContentView: View {
 
                 Spacer()
 
-                HStack(spacing: 4) {
-                    Image(systemName: "flag.checkered")
+                HStack(spacing: 5) {
+                    Image(systemName: targetProgressIcon)
                     Text(targetProgressText)
                 }
-                .font(.subheadline.bold())
-                .foregroundStyle(.blue)
+                .font(.caption.bold())
+                .foregroundStyle(targetProgressColor)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(targetProgressColor.opacity(0.12))
+                .clipShape(Capsule())
             }
 
             VStack(alignment: .leading, spacing: 10) {
@@ -1095,14 +1244,83 @@ struct ContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
-    private var todoOverviewCard: some View {
-        HStack(spacing: 14) {
-            SummaryPill(title: "待办", value: "\(activeTodoTasks.count)", color: .blue)
-            SummaryPill(title: "已完成", value: "\(completedTodoTasks.count)", color: .green)
-            SummaryPill(title: "愿望", value: "\(openWishlistItems.count)", color: .purple)
+    private var anniversaryCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("纪念日")
+                    .font(.title3.bold())
+                Text("生日、结婚纪念日或其他重要日子，阴历阳历都可以记录。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Picker("纪念日类型", selection: $anniversaryKind) {
+                ForEach(AnniversaryKind.allCases) { kind in
+                    Label(kind.title, systemImage: kind.icon)
+                        .tag(kind)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Picker("日期类型", selection: $anniversaryCalendarKind) {
+                ForEach(AnniversaryCalendarKind.allCases) { kind in
+                    Text(kind.title)
+                        .tag(kind)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            ModernInputField(
+                placeholder: anniversaryKind == .other ? "例如：第一次旅行" : "例如：妈妈生日",
+                text: $anniversaryTitleInput,
+                icon: anniversaryKind.icon,
+                tint: .orange
+            )
+
+            DatePicker("日期", selection: $anniversaryDate, displayedComponents: .date)
+                .datePickerStyle(.compact)
+
+            Button {
+                addAnniversaryItem()
+            } label: {
+                Label("添加纪念日", systemImage: "plus")
+                    .font(.headline)
+                    .foregroundStyle(canAddAnniversary ? .white : Color(.tertiaryLabel))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(canAddAnniversary ? Color.orange : Color(.tertiarySystemFill))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canAddAnniversary)
+
+            if anniversaryItems.isEmpty {
+                ContentUnavailableView(
+                    "还没有纪念日",
+                    systemImage: "calendar.badge.plus",
+                    description: Text("把生日、结婚纪念日或其他重要日子记下来。")
+                )
+                .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(sortedAnniversaryItems) { item in
+                        AnniversaryRow(
+                            item: item,
+                            dateText: anniversaryDateText(for: item),
+                            nextText: nextAnniversaryText(for: item)
+                        ) {
+                            deleteAnniversaryItem(item)
+                        }
+
+                        if item.id != sortedAnniversaryItems.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+            }
         }
         .padding()
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
@@ -1111,7 +1329,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("未来要做")
+                    Text("TODO")
                         .font(.title3.bold())
                     Text("想到什么先记下来，做完就打勾。")
                         .font(.caption)
@@ -1125,26 +1343,19 @@ struct ContentView: View {
                     .foregroundStyle(.blue)
             }
 
-            HStack(spacing: 10) {
-                TextField("例如：周末整理房间", text: $todoInput, axis: .vertical)
-                    .lineLimit(1...3)
-                    .textFieldStyle(.roundedBorder)
-
-                Button {
-                    addTodoTask()
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.headline)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(todoInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
+            AddEntryBar(
+                placeholder: "例如：周末整理房间",
+                text: $todoInput,
+                icon: "plus.circle",
+                tint: .blue,
+                action: addTodoTask
+            )
 
             if activeTodoTasks.isEmpty && completedTodoTasks.isEmpty {
                 ContentUnavailableView(
                     "还没有待办",
                     systemImage: "checklist",
-                    description: Text("把未来要做的事情写在这里，避免之后忘记。")
+                    description: Text("把要做的事情写在这里，避免之后忘记。")
                 )
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else {
@@ -1211,21 +1422,13 @@ struct ContentView: View {
             }
             .pickerStyle(.segmented)
 
-            HStack(spacing: 10) {
-                TextField("例如：去海边看日落", text: $wishlistInput, axis: .vertical)
-                    .lineLimit(1...3)
-                    .textFieldStyle(.roundedBorder)
-
-                Button {
-                    addWishlistItem()
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.headline)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.purple)
-                .disabled(wishlistInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
+            AddEntryBar(
+                placeholder: "例如：去海边看日落",
+                text: $wishlistInput,
+                icon: wishlistCategory.icon,
+                tint: .purple,
+                action: addWishlistItem
+            )
 
             if openWishlistItems.isEmpty && completedWishlistItems.isEmpty {
                 ContentUnavailableView(
@@ -1310,47 +1513,55 @@ struct ContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
-    private var financeAddAssetCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("添加资产")
-                    .font(.title3.bold())
-                Text("银行卡可以添加多张；股票、期权、支付宝、微信和其他资产也可以分别记录。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Picker("资产类型", selection: $financeAssetKind) {
-                ForEach(FinanceAssetKind.allCases) { kind in
-                    Label(kind.title, systemImage: kind.icon)
-                        .tag(kind)
+    private var financeAddAssetSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("银行卡可以添加多张；股票、期权、支付宝、微信和其他资产也可以分别记录。")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-            }
-            .pickerStyle(.menu)
 
-            TextField(financeAssetKind == .custom ? "自定义类目名称" : "名称，例如：招商银行卡", text: $financeAssetNameInput)
-                .textFieldStyle(.roundedBorder)
-
-            HStack(spacing: 10) {
-                TextField("金额，例如：12000", text: $financeAssetAmountInput)
-                    .keyboardType(.decimalPad)
-                    .textFieldStyle(.roundedBorder)
-
-                Button {
-                    addFinanceAsset()
-                } label: {
-                    Label("添加", systemImage: "plus")
-                        .font(.headline)
+                Picker("资产类型", selection: $financeAssetKind) {
+                    ForEach(FinanceAssetKind.allCases) { kind in
+                        Label(kind.title, systemImage: kind.icon)
+                            .tag(kind)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .disabled(financeAssetAmountInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .pickerStyle(.menu)
+
+                ModernInputField(
+                    placeholder: financeAssetKind == .custom ? "自定义类目名称" : "名称，例如：招商银行卡",
+                    text: $financeAssetNameInput,
+                    icon: financeAssetKind.icon,
+                    tint: .green
+                )
+
+                AddEntryBar(
+                    placeholder: "金额，例如：12000",
+                    text: $financeAssetAmountInput,
+                    icon: "yensign.circle",
+                    tint: .green,
+                    keyboardType: .decimalPad,
+                    buttonTitle: "添加",
+                    action: addFinanceAsset
+                )
+
+                Spacer()
+            }
+            .padding()
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("添加资产")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        isShowingFinanceAssetSheet = false
+                    }
+                }
             }
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .presentationDetents([.medium])
     }
 
     private var financeTrendCard: some View {
@@ -1394,12 +1605,28 @@ struct ContentView: View {
     private var financeAssetsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("资产明细")
-                    .font(.title3.bold())
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("资产明细")
+                        .font(.title3.bold())
+                    Text("\(financeAssets.count) 项")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
                 Spacer()
-                Text("\(financeAssets.count) 项")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+
+                Button {
+                    isShowingFinanceAssetSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(Color.green)
+                        .clipShape(Circle())
+                        .shadow(color: Color.green.opacity(0.22), radius: 8, x: 0, y: 4)
+                }
+                .buttonStyle(.plain)
             }
 
             if financeAssets.isEmpty {
@@ -1445,20 +1672,14 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 10) {
-                TextField("例如：腾讯控股、贵州茅台", text: $stockNameInput)
-                    .textFieldStyle(.roundedBorder)
-
-                Button {
-                    addStockResearchItem()
-                } label: {
-                    Label("添加", systemImage: "plus")
-                        .font(.headline)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.blue)
-                .disabled(stockNameInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
+            AddEntryBar(
+                placeholder: "例如：腾讯控股、贵州茅台",
+                text: $stockNameInput,
+                icon: "chart.line.text.clipboard",
+                tint: .blue,
+                buttonTitle: "添加",
+                action: addStockResearchItem
+            )
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1484,8 +1705,7 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
             }
 
-            TextField("搜索股票名称", text: $stockSearchText)
-                .textFieldStyle(.roundedBorder)
+            SearchInputBar(placeholder: "搜索股票名称", text: $stockSearchText)
 
             if stockResearchItems.isEmpty {
                 ContentUnavailableView(
@@ -1506,11 +1726,12 @@ struct ContentView: View {
                     ForEach(filteredStockResearchItems) { item in
                         StockResearchRow(
                             item: item,
-                            thesis: stockResearchThesisBinding(for: item),
-                            updatedText: chineseDateTime(item.updatedAt)
-                        ) {
+                            updatedText: chineseDateTime(item.updatedAt),
+                            onOpen: {
+                            editingStockResearchItem = item
+                        }, onDelete: {
                             deleteStockResearchItem(item)
-                        }
+                        })
 
                         if item.id != filteredStockResearchItems.last?.id {
                             Divider()
@@ -1676,6 +1897,55 @@ struct ContentView: View {
         return formatter.string(from: date)
     }
 
+    private func anniversaryDateText(for item: AnniversaryItem) -> String {
+        let calendar = item.calendarKind == .lunar ? Calendar(identifier: .chinese) : Calendar.current
+        let components = calendar.dateComponents([.month, .day], from: item.date)
+        let prefix = item.calendarKind.title
+
+        return "\(prefix) \(components.month ?? 1)月\(components.day ?? 1)日"
+    }
+
+    private func nextAnniversaryText(for item: AnniversaryItem) -> String {
+        guard let nextDate = nextAnniversaryDate(for: item) else {
+            return "待计算"
+        }
+
+        if Calendar.current.isDateInToday(nextDate) {
+            return "就是今天"
+        }
+
+        let days = Calendar.current.dateComponents(
+            [.day],
+            from: Calendar.current.startOfDay(for: Date()),
+            to: Calendar.current.startOfDay(for: nextDate)
+        ).day ?? 0
+
+        return days == 0 ? "就是今天" : "还有 \(max(0, days)) 天"
+    }
+
+    private func nextAnniversaryDate(for item: AnniversaryItem) -> Date? {
+        let sourceCalendar = item.calendarKind == .lunar ? Calendar(identifier: .chinese) : Calendar.current
+        let targetComponents = sourceCalendar.dateComponents([.month, .day], from: item.date)
+        let today = Date()
+
+        for yearOffset in 0...3 {
+            let candidateBaseDate = Calendar.current.date(byAdding: .year, value: yearOffset, to: today) ?? today
+            let candidateYear = sourceCalendar.component(.year, from: candidateBaseDate)
+            var components = DateComponents()
+            components.calendar = sourceCalendar
+            components.year = candidateYear
+            components.month = targetComponents.month
+            components.day = targetComponents.day
+
+            if let candidateDate = sourceCalendar.date(from: components),
+               Calendar.current.startOfDay(for: candidateDate) >= Calendar.current.startOfDay(for: today) {
+                return candidateDate
+            }
+        }
+
+        return nil
+    }
+
     private func switchPhase() {
         if isFasting {
             recordCurrentFastingSession(endDate: Date())
@@ -1736,22 +2006,33 @@ struct ContentView: View {
     private func loadMainTabPreferences() {
         guard !mainTabPreferencesData.isEmpty,
               let preferences = try? JSONDecoder().decode(MainTabPreferences.self, from: mainTabPreferencesData) else {
-            persistMainTabPreferences()
             return
         }
 
-        let validOrder = preferences.order.filter { MainAppTab.allCases.contains($0) }
-        let missingTabs = MainAppTab.allCases.filter { !validOrder.contains($0) }
-        mainTabOrder = validOrder + missingTabs
-
-        let validVisibleTabs = Set(preferences.visibleTabs.filter { MainAppTab.allCases.contains($0) })
-        visibleMainTabSet = validVisibleTabs.isEmpty ? Set(MainAppTab.allCases) : validVisibleTabs
+        applyMainTabPreferences(preferences)
     }
 
     private func persistMainTabPreferences() {
         let preferences = MainTabPreferences(order: mainTabOrder, visibleTabs: Array(visibleMainTabSet))
 
         if let encodedPreferences = try? JSONEncoder().encode(preferences) {
+            mainTabPreferencesData = encodedPreferences
+            cloudStore.set(encodedPreferences, forKey: mainTabPreferencesCloudKey)
+            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+        }
+    }
+
+    private func applyMainTabPreferences(_ preferences: MainTabPreferences) {
+        let validOrder = preferences.order.filter { MainAppTab.allCases.contains($0) }
+        let missingTabs = MainAppTab.allCases.filter { !validOrder.contains($0) }
+        mainTabOrder = validOrder + missingTabs
+
+        let validVisibleTabs = Set(preferences.visibleTabs.filter { MainAppTab.allCases.contains($0) })
+        visibleMainTabSet = validVisibleTabs.isEmpty ? Set(MainAppTab.allCases) : validVisibleTabs
+
+        if let encodedPreferences = try? JSONEncoder().encode(
+            MainTabPreferences(order: mainTabOrder, visibleTabs: Array(visibleMainTabSet))
+        ) {
             mainTabPreferencesData = encodedPreferences
         }
     }
@@ -1786,12 +2067,19 @@ struct ContentView: View {
         persistMainTabPreferences()
     }
 
+    private func toggleTabEditMode() {
+        withAnimation {
+            editMode?.wrappedValue = isEditingTabs ? .inactive : .active
+        }
+    }
+
     private func loadAppData() {
         loadMainTabPreferences()
         loadWeightLogs()
         loadFastingSessions()
         loadTodoTasks()
         loadWishlistItems()
+        loadAnniversaryItems()
         loadFinanceAssets()
         loadFinanceSnapshots()
         loadStockResearchItems()
@@ -1911,6 +2199,46 @@ struct ContentView: View {
         }
     }
 
+    private func loadAnniversaryItems() {
+        guard !anniversaryItemsData.isEmpty else { return }
+
+        if let decodedItems = try? JSONDecoder().decode([AnniversaryItem].self, from: anniversaryItemsData) {
+            anniversaryItems = decodedItems
+        }
+    }
+
+    private func addAnniversaryItem() {
+        let trimmedTitle = anniversaryTitleInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+
+        anniversaryItems.insert(
+            AnniversaryItem(
+                title: trimmedTitle,
+                kind: anniversaryKind,
+                calendarKind: anniversaryCalendarKind,
+                date: anniversaryDate,
+                createdAt: Date()
+            ),
+            at: 0
+        )
+        anniversaryTitleInput = ""
+        anniversaryDate = Date()
+        persistAnniversaryItems()
+    }
+
+    private func deleteAnniversaryItem(_ item: AnniversaryItem) {
+        anniversaryItems.removeAll { $0.id == item.id }
+        persistAnniversaryItems()
+    }
+
+    private func persistAnniversaryItems() {
+        if let encodedItems = try? JSONEncoder().encode(anniversaryItems) {
+            anniversaryItemsData = encodedItems
+            cloudStore.set(encodedItems, forKey: anniversaryItemsCloudKey)
+            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+        }
+    }
+
     private func loadFinanceAssets() {
         guard !financeAssetsData.isEmpty else { return }
 
@@ -1942,6 +2270,7 @@ struct ContentView: View {
         financeAssetNameInput = ""
         financeAssetAmountInput = ""
         persistFinanceAssets(recordSnapshot: true)
+        isShowingFinanceAssetSheet = false
     }
 
     private func updateFinanceAsset(_ asset: FinanceAsset, amount: Double) {
@@ -2096,6 +2425,11 @@ struct ContentView: View {
             mergeWishlistItems(cloudWishlistItems)
         }
 
+        if let cloudAnniversaryItemsData = cloudStore.data(forKey: anniversaryItemsCloudKey),
+           let cloudAnniversaryItems = try? JSONDecoder().decode([AnniversaryItem].self, from: cloudAnniversaryItemsData) {
+            mergeAnniversaryItems(cloudAnniversaryItems)
+        }
+
         if let cloudFinanceAssetsData = cloudStore.data(forKey: financeAssetsCloudKey),
            let cloudFinanceAssets = try? JSONDecoder().decode([FinanceAsset].self, from: cloudFinanceAssetsData) {
             mergeFinanceAssets(cloudFinanceAssets)
@@ -2109,6 +2443,11 @@ struct ContentView: View {
         if let cloudStockResearchItemsData = cloudStore.data(forKey: stockResearchItemsCloudKey),
            let cloudStockResearchItems = try? JSONDecoder().decode([StockResearchItem].self, from: cloudStockResearchItemsData) {
             mergeStockResearchItems(cloudStockResearchItems)
+        }
+
+        if let cloudMainTabPreferencesData = cloudStore.data(forKey: mainTabPreferencesCloudKey),
+           let cloudMainTabPreferences = try? JSONDecoder().decode(MainTabPreferences.self, from: cloudMainTabPreferencesData) {
+            applyMainTabPreferences(cloudMainTabPreferences)
         }
 
         if cloudStore.object(forKey: fastingStartTimeCloudKey) != nil {
@@ -2127,12 +2466,20 @@ struct ContentView: View {
             eatingGoalHours = Int(cloudStore.longLong(forKey: eatingGoalHoursCloudKey))
         }
 
-        if let cloudLatestWeight = cloudStore.string(forKey: latestWeightCloudKey), !cloudLatestWeight.isEmpty {
-            latestWeight = cloudLatestWeight
+        if cloudStore.object(forKey: latestWeightCloudKey) != nil {
+            latestWeight = cloudStore.string(forKey: latestWeightCloudKey) ?? ""
         }
 
-        if let cloudDailyGoal = cloudStore.string(forKey: dailyGoalCloudKey), !cloudDailyGoal.isEmpty {
-            dailyGoal = cloudDailyGoal
+        if cloudStore.object(forKey: dailyGoalCloudKey) != nil {
+            dailyGoal = cloudStore.string(forKey: dailyGoalCloudKey) ?? ""
+        }
+
+        if cloudStore.object(forKey: heightCmCloudKey) != nil {
+            heightCm = cloudStore.string(forKey: heightCmCloudKey) ?? ""
+        }
+
+        if cloudStore.object(forKey: targetWeightCloudKey) != nil {
+            targetWeight = cloudStore.string(forKey: targetWeightCloudKey) ?? ""
         }
 
         syncStatus = "已从 iCloud 检查更新"
@@ -2157,6 +2504,10 @@ struct ContentView: View {
             cloudStore.set(encodedWishlistItems, forKey: wishlistItemsCloudKey)
         }
 
+        if let encodedAnniversaryItems = try? JSONEncoder().encode(anniversaryItems) {
+            cloudStore.set(encodedAnniversaryItems, forKey: anniversaryItemsCloudKey)
+        }
+
         if let encodedFinanceAssets = try? JSONEncoder().encode(financeAssets) {
             cloudStore.set(encodedFinanceAssets, forKey: financeAssetsCloudKey)
         }
@@ -2169,6 +2520,13 @@ struct ContentView: View {
             cloudStore.set(encodedStockResearchItems, forKey: stockResearchItemsCloudKey)
         }
 
+        if let encodedMainTabPreferences = try? JSONEncoder().encode(
+            MainTabPreferences(order: mainTabOrder, visibleTabs: Array(visibleMainTabSet))
+        ) {
+            mainTabPreferencesData = encodedMainTabPreferences
+            cloudStore.set(encodedMainTabPreferences, forKey: mainTabPreferencesCloudKey)
+        }
+
         syncStatus = cloudStore.synchronize() ? "已请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
     }
 
@@ -2179,6 +2537,8 @@ struct ContentView: View {
         cloudStore.set(Int64(eatingGoalHours), forKey: eatingGoalHoursCloudKey)
         cloudStore.set(latestWeight, forKey: latestWeightCloudKey)
         cloudStore.set(dailyGoal, forKey: dailyGoalCloudKey)
+        cloudStore.set(heightCm, forKey: heightCmCloudKey)
+        cloudStore.set(targetWeight, forKey: targetWeightCloudKey)
     }
 
     private func mergeWeightLogs(_ cloudLogs: [FastingLog]) {
@@ -2236,6 +2596,22 @@ struct ContentView: View {
 
         if let encodedItems = try? JSONEncoder().encode(wishlistItems) {
             wishlistItemsData = encodedItems
+        }
+    }
+
+    private func mergeAnniversaryItems(_ cloudItems: [AnniversaryItem]) {
+        var mergedItemsByID = Dictionary(uniqueKeysWithValues: anniversaryItems.map { ($0.id, $0) })
+
+        for item in cloudItems {
+            mergedItemsByID[item.id] = item
+        }
+
+        anniversaryItems = mergedItemsByID.values.sorted {
+            (nextAnniversaryDate(for: $0) ?? $0.date) < (nextAnniversaryDate(for: $1) ?? $1.date)
+        }
+
+        if let encodedItems = try? JSONEncoder().encode(anniversaryItems) {
+            anniversaryItemsData = encodedItems
         }
     }
 
@@ -2378,6 +2754,123 @@ private struct SummaryPill: View {
     }
 }
 
+private struct ModernInputField: View {
+    let placeholder: String
+    @Binding var text: String
+    let icon: String
+    let tint: Color
+    var keyboardType: UIKeyboardType = .default
+    var axis: Axis = .horizontal
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 20)
+
+            TextField(placeholder, text: $text, axis: axis)
+                .lineLimit(axis == .vertical ? 1...3 : 1...1)
+                .keyboardType(keyboardType)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+        }
+        .font(.body)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(minHeight: 48)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(.separator).opacity(0.22), lineWidth: 1)
+        }
+    }
+}
+
+private struct AddEntryBar: View {
+    let placeholder: String
+    @Binding var text: String
+    let icon: String
+    let tint: Color
+    var keyboardType: UIKeyboardType = .default
+    var buttonTitle: String?
+    let action: () -> Void
+
+    private var canSubmit: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ModernInputField(
+                placeholder: placeholder,
+                text: $text,
+                icon: icon,
+                tint: tint,
+                keyboardType: keyboardType,
+                axis: .vertical
+            )
+
+            Button(action: action) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.headline.weight(.bold))
+
+                    if let buttonTitle {
+                        Text(buttonTitle)
+                            .font(.headline)
+                    }
+                }
+                .foregroundStyle(canSubmit ? .white : Color(.tertiaryLabel))
+                .frame(minWidth: buttonTitle == nil ? 48 : 86)
+                .frame(height: 48)
+                .background(canSubmit ? tint : Color(.tertiarySystemFill))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: canSubmit ? tint.opacity(0.22) : .clear, radius: 8, y: 4)
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSubmit)
+        }
+    }
+}
+
+private struct SearchInputBar: View {
+    let placeholder: String
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            TextField(placeholder, text: $text)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(minHeight: 48)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(.separator).opacity(0.18), lineWidth: 1)
+        }
+    }
+}
+
 private struct SwipeToDeleteRow<Content: View>: View {
     let onDelete: () -> Void
     @ViewBuilder let content: () -> Content
@@ -2387,28 +2880,31 @@ private struct SwipeToDeleteRow<Content: View>: View {
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            Button(role: .destructive) {
-                withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
-                    offset = 0
-                    onDelete()
+            if offset < 0 {
+                Button {
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
+                        offset = 0
+                        onDelete()
+                    }
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "trash")
+                            .font(.headline)
+                        Text("删除")
+                            .font(.caption.bold())
+                    }
+                    .foregroundStyle(.white)
+                    .frame(width: actionWidth)
+                    .frame(maxHeight: .infinity)
+                    .background(Color.red)
                 }
-            } label: {
-                VStack(spacing: 4) {
-                    Image(systemName: "trash")
-                        .font(.headline)
-                    Text("删除")
-                        .font(.caption.bold())
-                }
-                .foregroundStyle(.white)
-                .frame(width: actionWidth)
-                .frame(maxHeight: .infinity)
-                .background(Color.red)
+                .buttonStyle(.plain)
+                .transition(.opacity)
             }
-            .buttonStyle(.plain)
 
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.background)
+                .background(Color(.systemBackground))
                 .offset(x: offset)
                 .contentShape(Rectangle())
                 .gesture(
@@ -2528,16 +3024,60 @@ private struct WishlistRow: View {
     }
 }
 
-private struct StockResearchRow: View {
-    let item: StockResearchItem
-    @Binding var thesis: String
-    let updatedText: String
+private struct AnniversaryRow: View {
+    let item: AnniversaryItem
+    let dateText: String
+    let nextText: String
     let onDelete: () -> Void
 
     var body: some View {
         SwipeToDeleteRow(onDelete: onDelete) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: item.kind.icon)
+                    .font(.title3)
+                    .foregroundStyle(.orange)
+                    .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Text(item.title)
+                            .font(.headline)
+
+                        Text(item.kind.title)
+                            .font(.caption.bold())
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.orange.opacity(0.14))
+                            .foregroundStyle(.orange)
+                            .clipShape(Capsule())
+                    }
+
+                    HStack(spacing: 8) {
+                        Text(dateText)
+                        Text(nextText)
+                            .font(.caption.bold())
+                            .foregroundStyle(.orange)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+            }
+        }
+    }
+}
+
+private struct StockResearchRow: View {
+    let item: StockResearchItem
+    let updatedText: String
+    let onOpen: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        SwipeToDeleteRow(onDelete: onDelete) {
+            Button(action: onOpen) {
+                HStack(alignment: .center, spacing: 10) {
                     Image(systemName: "chart.line.text.clipboard")
                         .font(.title3)
                         .foregroundStyle(.blue)
@@ -2546,20 +3086,57 @@ private struct StockResearchRow: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(item.name)
                             .font(.headline)
+                            .foregroundStyle(.primary)
 
-                        Text("更新于 \(updatedText)")
+                        Text(stockResearchSummary)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
 
                     Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.tertiary)
                 }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var stockResearchSummary: String {
+        item.thesis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "还没有研究笔记 · 更新于 \(updatedText)"
+            : "已有研究笔记 · 更新于 \(updatedText)"
+    }
+}
+
+private struct StockResearchEditorSheet: View {
+    let item: StockResearchItem
+    @Binding var thesis: String
+    let updatedText: String
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.name)
+                        .font(.title2.bold())
+
+                    Text("更新于 \(updatedText)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal)
+                .padding(.top)
 
                 TextEditor(text: $thesis)
-                    .frame(minHeight: 140)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(8)
                     .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
                     .overlay(alignment: .topLeading) {
                         if thesis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             Text("写下你对这只股票的理解：商业模式、护城河、估值、风险、跟踪点……")
@@ -2570,6 +3147,18 @@ private struct StockResearchRow: View {
                                 .allowsHitTesting(false)
                         }
                     }
+                    .padding(.horizontal)
+                    .padding(.bottom)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("股票研究")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("完成") {
+                        dismiss()
+                    }
+                }
             }
         }
     }
@@ -2610,15 +3199,26 @@ private struct FinanceAssetRow: View {
                         .foregroundStyle(.secondary)
 
                     HStack(spacing: 8) {
-                        TextField("更新金额", text: $amountInput)
-                            .keyboardType(.decimalPad)
-                            .textFieldStyle(.roundedBorder)
+                        ModernInputField(
+                            placeholder: "更新金额",
+                            text: $amountInput,
+                            icon: "yensign.circle",
+                            tint: .green,
+                            keyboardType: .decimalPad
+                        )
 
-                        Button("保存") {
+                        Button {
                             saveAmount()
+                        } label: {
+                            Text("保存")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(canSaveAmount ? .white : Color(.tertiaryLabel))
+                                .frame(width: 58, height: 48)
+                                .background(canSaveAmount ? Color.green : Color(.tertiarySystemFill))
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
-                        .buttonStyle(.bordered)
-                        .disabled(amountInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .buttonStyle(.plain)
+                        .disabled(!canSaveAmount)
                     }
                 }
 
@@ -2631,6 +3231,10 @@ private struct FinanceAssetRow: View {
         .onChange(of: asset.amount) {
             amountInput = String(format: "%.2f", asset.amount)
         }
+    }
+
+    private var canSaveAmount: Bool {
+        !amountInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func saveAmount() {
