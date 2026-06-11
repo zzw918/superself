@@ -46,6 +46,7 @@ struct ContentView: View {
     @AppStorage("dailyGoal") var dailyGoal = "多喝水，优先吃蛋白质，散步 20 分钟"
     @AppStorage("heightCm") var heightCm = ""
     @AppStorage("targetWeight") var targetWeight = ""
+    @AppStorage("appearanceMode") var appearanceModeRaw = AppearanceMode.system.rawValue
 
     @State var now = Date()
     @State var weightInput = ""
@@ -90,6 +91,13 @@ struct ContentView: View {
 
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
+    var appearanceMode: Binding<AppearanceMode> {
+        Binding(
+            get: { AppearanceMode(rawValue: appearanceModeRaw) ?? .system },
+            set: { appearanceModeRaw = $0.rawValue }
+        )
+    }
+
     var body: some View {
         TabView {
             ForEach(visibleMainTabs) { tab in
@@ -104,6 +112,7 @@ struct ContentView: View {
                     Label("我的", systemImage: "person.crop.circle")
                 }
         }
+        .preferredColorScheme(appearanceMode.wrappedValue.colorScheme)
         .onReceive(timer) { currentTime in
             now = currentTime
         }

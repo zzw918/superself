@@ -150,6 +150,13 @@ extension ContentView {
 
                 profileSectionNoteRow("拖动可调整健康、备忘录、理财的顺序；关闭开关可隐藏不常用功能。“我的”固定在最右侧，不参与排序和隐藏。")
 
+                profileSectionTitleRow("外观")
+
+                appearanceCard
+                    .profileCardRow()
+
+                profileSectionNoteRow("选择“浅色”或“深色”可固定使用某种外观；选择“跟随系统”则随系统设置自动切换。")
+
                 profileSectionTitleRow("数据同步")
 
                 syncCard
@@ -208,6 +215,34 @@ extension ContentView {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(Color(.tertiarySystemFill), in: Capsule())
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var appearanceCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 14) {
+                profileIcon("circle.lefthalf.filled", tint: .indigo)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("外观")
+                        .font(.headline)
+                    Text("浅色、深色或跟随系统")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+            }
+
+            AppSegmentedControl(
+                options: AppearanceMode.allCases,
+                selection: appearanceMode,
+                title: \.title
+            )
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)

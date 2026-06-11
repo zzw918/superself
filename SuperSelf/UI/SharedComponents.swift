@@ -323,6 +323,8 @@ struct SwipeToDeleteRow<Content: View>: View {
 
     var body: some View {
         ZStack(alignment: .trailing) {
+            Color.red
+
             if offset < 0 {
                 Button {
                     triggerDelete()
@@ -333,11 +335,12 @@ struct SwipeToDeleteRow<Content: View>: View {
                         Text("删除")
                             .font(.caption.bold())
                     }
-                    .frame(width: actionWidth)
+                    .foregroundStyle(.white)
+                    .frame(width: -offset, alignment: .center)
                     .frame(maxHeight: .infinity)
+                    .clipped()
                 }
-                .buttonStyle(AppDestructiveButtonStyle())
-                .transition(.opacity)
+                .buttonStyle(.plain)
             }
 
             content()
@@ -365,10 +368,13 @@ struct SwipeToDeleteRow<Content: View>: View {
                         }
                 )
         }
-        .clipShape(Rectangle())
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .alert(confirmation?.title ?? "确认删除", isPresented: $isShowingDeleteConfirmation) {
-            Button("取消", role: .cancel) {}
+            Button("取消", role: .cancel) {
+                resetOffset()
+            }
             Button(confirmation?.confirmTitle ?? "删除", role: .destructive) {
+                resetOffset()
                 onDelete()
             }
         } message: {
@@ -379,14 +385,17 @@ struct SwipeToDeleteRow<Content: View>: View {
     }
 
     func triggerDelete() {
-        withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
-            offset = 0
-        }
-
         if confirmation != nil {
             isShowingDeleteConfirmation = true
         } else {
+            resetOffset()
             onDelete()
+        }
+    }
+
+    func resetOffset() {
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
+            offset = 0
         }
     }
 }
