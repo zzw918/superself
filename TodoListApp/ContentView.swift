@@ -41,6 +41,14 @@ private struct FinanceTrendPoint: Identifiable {
     }
 }
 
+private struct FinanceDistributionPoint: Identifiable {
+    let title: String
+    let amount: Double
+    let color: Color
+
+    var id: String { title }
+}
+
 private enum HealthSection: String, CaseIterable, Identifiable {
     case fasting
     case weight
@@ -206,6 +214,7 @@ struct ContentView: View {
     @State private var stockResearchItems: [StockResearchItem] = []
     @State private var stockNameInput = ""
     @State private var stockSearchText = ""
+    @State private var editingFinanceAsset: FinanceAsset?
     @State private var editingStockResearchItem: StockResearchItem?
     @State private var mainTabOrder = MainAppTab.allCases
     @State private var visibleMainTabSet = Set(MainAppTab.allCases)
@@ -213,6 +222,7 @@ struct ContentView: View {
     @State private var isShowingWeightSheet = false
     @State private var isShowingBodySettings = false
     @State private var isShowingFinanceAssetSheet = false
+    @State private var isShowingAnniversarySheet = false
     @State private var trendGranularity: WeightTrendGranularity = .day
     @State private var visibleWeightHistoryDays = 10
 
@@ -263,6 +273,14 @@ struct ContentView: View {
         .sheet(isPresented: $isShowingFinanceAssetSheet) {
             financeAddAssetSheet
         }
+        .sheet(isPresented: $isShowingAnniversarySheet) {
+            anniversaryAddSheet
+        }
+        .sheet(item: $editingFinanceAsset) { asset in
+            FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newAmount in
+                updateFinanceAsset(asset, amount: newAmount)
+            }
+        }
         .sheet(item: $editingStockResearchItem) { item in
             StockResearchEditorSheet(
                 item: item,
@@ -310,13 +328,11 @@ struct ContentView: View {
     }
 
     private var healthSectionPicker: some View {
-        Picker("健康模块", selection: $healthSection) {
-            ForEach(HealthSection.allCases) { section in
-                Text(section.title)
-                    .tag(section)
-            }
-        }
-        .pickerStyle(.segmented)
+        AppSegmentedControl(
+            options: HealthSection.allCases,
+            selection: $healthSection,
+            title: \.title
+        )
     }
 
     private var fastingSection: some View {
@@ -360,13 +376,11 @@ struct ContentView: View {
     }
 
     private var memoSectionPicker: some View {
-        Picker("备忘录模块", selection: $memoSection) {
-            ForEach(MemoSection.allCases) { section in
-                Text(section.title)
-                    .tag(section)
-            }
-        }
-        .pickerStyle(.segmented)
+        AppSegmentedControl(
+            options: MemoSection.allCases,
+            selection: $memoSection,
+            title: \.title
+        )
     }
 
     private var financePage: some View {
@@ -390,19 +404,18 @@ struct ContentView: View {
     }
 
     private var financeSectionPicker: some View {
-        Picker("理财模块", selection: $financeSection) {
-            ForEach(FinanceSection.allCases) { section in
-                Text(section.title)
-                    .tag(section)
-            }
-        }
-        .pickerStyle(.segmented)
+        AppSegmentedControl(
+            options: FinanceSection.allCases,
+            selection: $financeSection,
+            title: \.title
+        )
     }
 
     private var financeAssetRecordSection: some View {
         VStack(spacing: 20) {
             financeSummaryCard
             financeTrendCard
+            financeDistributionCard
             financeAssetsCard
         }
     }
@@ -592,6 +605,25 @@ struct ContentView: View {
 
     private var totalFinanceAmount: Double {
         financeAssets.map(\.amount).reduce(0, +)
+    }
+
+    private var financeDistributionPoints: [FinanceDistributionPoint] {
+        let amountsByKind = Dictionary(grouping: financeAssets, by: \.kind)
+            .mapValues { assets in
+                assets.map(\.amount).reduce(0, +)
+            }
+
+        return amountsByKind
+            .filter { $0.value > 0 }
+            .sorted { $0.value > $1.value }
+            .enumerated()
+            .map { index, item in
+                FinanceDistributionPoint(
+                    title: item.key.title,
+                    amount: item.value,
+                    color: financeDistributionColor(at: index)
+                )
+            }
     }
 
     private var sortedFinanceAssets: [FinanceAsset] {
@@ -848,10 +880,18 @@ struct ContentView: View {
             }
             .pickerStyle(.segmented)
 
-            Button("重置当前阶段") {
+            Button {
                 resetCurrentPhase()
+            } label: {
+                Label("重置当前阶段", systemImage: "arrow.counterclockwise")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
+                    .background(Color(.tertiarySystemFill))
+                    .clipShape(Capsule())
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.plain)
         }
         .padding()
         .frame(maxWidth: .infinity)
@@ -1246,53 +1286,30 @@ struct ContentView: View {
 
     private var anniversaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("纪念日")
-                    .font(.title3.bold())
-                Text("生日、结婚纪念日或其他重要日子，阴历阳历都可以记录。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Picker("纪念日类型", selection: $anniversaryKind) {
-                ForEach(AnniversaryKind.allCases) { kind in
-                    Label(kind.title, systemImage: kind.icon)
-                        .tag(kind)
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("纪念日")
+                        .font(.title3.bold())
+                    Text("生日、结婚纪念日或其他重要日子，阴历阳历都可以记录。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-            }
-            .pickerStyle(.segmented)
 
-            Picker("日期类型", selection: $anniversaryCalendarKind) {
-                ForEach(AnniversaryCalendarKind.allCases) { kind in
-                    Text(kind.title)
-                        .tag(kind)
+                Spacer()
+
+                Button {
+                    isShowingAnniversarySheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(Color.orange)
+                        .clipShape(Circle())
+                        .shadow(color: Color.orange.opacity(0.22), radius: 8, x: 0, y: 4)
                 }
+                .buttonStyle(.plain)
             }
-            .pickerStyle(.segmented)
-
-            ModernInputField(
-                placeholder: anniversaryKind == .other ? "例如：第一次旅行" : "例如：妈妈生日",
-                text: $anniversaryTitleInput,
-                icon: anniversaryKind.icon,
-                tint: .orange
-            )
-
-            DatePicker("日期", selection: $anniversaryDate, displayedComponents: .date)
-                .datePickerStyle(.compact)
-
-            Button {
-                addAnniversaryItem()
-            } label: {
-                Label("添加纪念日", systemImage: "plus")
-                    .font(.headline)
-                    .foregroundStyle(canAddAnniversary ? .white : Color(.tertiaryLabel))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(canAddAnniversary ? Color.orange : Color(.tertiarySystemFill))
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .disabled(!canAddAnniversary)
 
             if anniversaryItems.isEmpty {
                 ContentUnavailableView(
@@ -1325,6 +1342,69 @@ struct ContentView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
+    private var anniversaryAddSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("生日、结婚纪念日或其他重要日子，阴历阳历都可以记录。")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Picker("纪念日类型", selection: $anniversaryKind) {
+                    ForEach(AnniversaryKind.allCases) { kind in
+                        Label(kind.title, systemImage: kind.icon)
+                            .tag(kind)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Picker("日期类型", selection: $anniversaryCalendarKind) {
+                    ForEach(AnniversaryCalendarKind.allCases) { kind in
+                        Text(kind.title)
+                            .tag(kind)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                ModernInputField(
+                    placeholder: anniversaryKind == .other ? "例如：第一次旅行" : "例如：妈妈生日",
+                    text: $anniversaryTitleInput,
+                    icon: anniversaryKind.icon,
+                    tint: .orange
+                )
+
+                DatePicker("日期", selection: $anniversaryDate, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .environment(\.locale, Locale(identifier: "zh_CN"))
+
+                Button {
+                    addAnniversaryItem()
+                } label: {
+                    Label("添加纪念日", systemImage: "plus")
+                        .font(.headline)
+                        .foregroundStyle(canAddAnniversary ? .white : Color(.tertiaryLabel))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(canAddAnniversary ? Color.orange : Color(.tertiarySystemFill))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(!canAddAnniversary)
+            }
+            .padding()
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("添加纪念日")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        isShowingAnniversarySheet = false
+                    }
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+
     private var todoTasksCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -1346,7 +1426,7 @@ struct ContentView: View {
             AddEntryBar(
                 placeholder: "例如：周末整理房间",
                 text: $todoInput,
-                icon: "plus.circle",
+                icon: "checklist",
                 tint: .blue,
                 action: addTodoTask
             )
@@ -1378,7 +1458,7 @@ struct ContentView: View {
                 if !completedTodoTasks.isEmpty {
                     Divider()
 
-                    DisclosureGroup("已完成 \(completedTodoTasks.count) 件") {
+                    DisclosureGroup {
                         VStack(spacing: 10) {
                             ForEach(completedTodoTasks.prefix(8)) { task in
                                 TodoTaskRow(task: task) {
@@ -1393,8 +1473,19 @@ struct ContentView: View {
                             }
                         }
                         .padding(.top, 8)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle")
+                            Text("已完成 \(completedTodoTasks.count) 件")
+                        }
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(.tertiarySystemFill))
+                        .clipShape(Capsule())
                     }
-                    .font(.subheadline.bold())
+                    .tint(.secondary)
                 }
             }
         }
@@ -1498,11 +1589,11 @@ struct ContentView: View {
 
                 Text(currencyText(totalFinanceAmount))
                     .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(.blue)
             }
 
             HStack(spacing: 14) {
-                SummaryPill(title: "资产项", value: "\(financeAssets.count)", color: .green)
+                SummaryPill(title: "资产项", value: "\(financeAssets.count)", color: .blue)
                 SummaryPill(title: "历史记录", value: "\(financeSnapshots.count)", color: .blue)
                 SummaryPill(title: "月变化", value: financeMonthChangeText ?? "--", color: .orange)
             }
@@ -1534,14 +1625,14 @@ struct ContentView: View {
                     placeholder: financeAssetKind == .custom ? "自定义类目名称" : "名称，例如：招商银行卡",
                     text: $financeAssetNameInput,
                     icon: financeAssetKind.icon,
-                    tint: .green
+                    tint: .blue
                 )
 
                 AddEntryBar(
                     placeholder: "金额，例如：12000",
                     text: $financeAssetAmountInput,
                     icon: "yensign.circle",
-                    tint: .green,
+                    tint: .blue,
                     keyboardType: .decimalPad,
                     buttonTitle: "添加",
                     action: addFinanceAsset
@@ -1580,7 +1671,7 @@ struct ContentView: View {
                 if let financeMonthChangeText {
                     Text(financeMonthChangeText)
                         .font(.caption.bold())
-                        .foregroundStyle(financeMonthChangeText.hasPrefix("-") ? .red : .green)
+                        .foregroundStyle(financeMonthChangeText.hasPrefix("-") ? .red : .blue)
                 }
             }
 
@@ -1594,6 +1685,36 @@ struct ContentView: View {
                     description: Text("至少跨 2 个月保存资产记录后，会显示月度变化。")
                 )
                 .frame(maxWidth: .infinity, minHeight: 130)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    private var financeDistributionCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("资产分布")
+                    .font(.title3.bold())
+                Text("按资产类型汇总，快速看出钱主要放在哪里。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if financeDistributionPoints.isEmpty {
+                ContentUnavailableView(
+                    "还没有分布",
+                    systemImage: "chart.pie",
+                    description: Text("添加资产后，会显示各类资产占比。")
+                )
+                .frame(maxWidth: .infinity, minHeight: 130)
+            } else {
+                FinanceDistributionView(
+                    points: financeDistributionPoints,
+                    amountText: currencyText
+                )
             }
         }
         .padding()
@@ -1619,12 +1740,11 @@ struct ContentView: View {
                     isShowingFinanceAssetSheet = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(Color.green)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.blue)
+                        .frame(width: 30, height: 30)
+                        .background(Color.blue.opacity(0.12))
                         .clipShape(Circle())
-                        .shadow(color: Color.green.opacity(0.22), radius: 8, x: 0, y: 4)
                 }
                 .buttonStyle(.plain)
             }
@@ -1643,8 +1763,8 @@ struct ContentView: View {
                             asset: asset,
                             amountText: currencyText(asset.amount),
                             updatedText: chineseDateTime(asset.updatedAt)
-                        ) { newAmount in
-                            updateFinanceAsset(asset, amount: newAmount)
+                        ) {
+                            editingFinanceAsset = asset
                         } onDelete: {
                             deleteFinanceAsset(asset)
                         }
@@ -2224,6 +2344,7 @@ struct ContentView: View {
         anniversaryTitleInput = ""
         anniversaryDate = Date()
         persistAnniversaryItems()
+        isShowingAnniversarySheet = false
     }
 
     private func deleteAnniversaryItem(_ item: AnniversaryItem) {
@@ -2712,8 +2833,21 @@ struct ContentView: View {
         formatter.numberStyle = .currency
         formatter.currencyCode = "CNY"
         formatter.currencySymbol = "¥"
-        formatter.maximumFractionDigits = amount.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2
-        return formatter.string(from: NSNumber(value: amount)) ?? String(format: "¥%.2f", amount)
+        formatter.maximumFractionDigits = 0
+        formatter.roundingMode = .halfUp
+        return formatter.string(from: NSNumber(value: amount)) ?? String(format: "¥%.0f", amount)
+    }
+
+    private func financeDistributionColor(at index: Int) -> Color {
+        let colors: [Color] = [
+            .blue,
+            Color(red: 0.24, green: 0.51, blue: 0.96),
+            Color(red: 0.42, green: 0.64, blue: 1.0),
+            Color(red: 0.37, green: 0.72, blue: 0.95),
+            Color(red: 0.55, green: 0.76, blue: 1.0),
+            Color(red: 0.28, green: 0.42, blue: 0.82)
+        ]
+        return colors[index % colors.count]
     }
 }
 
@@ -2751,6 +2885,48 @@ private struct SummaryPill: View {
         .padding(.vertical, 12)
         .background(color.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+private struct AppSegmentedControl<Option: Identifiable & Hashable>: View {
+    let options: [Option]
+    @Binding var selection: Option
+    let title: (Option) -> String
+
+    @Namespace private var selectionNamespace
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(options) { option in
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                        selection = option
+                    }
+                } label: {
+                    Text(title(option))
+                        .font(selection == option ? .headline.bold() : .subheadline.bold())
+                        .foregroundStyle(selection == option ? .white : .secondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 46)
+                        .background {
+                            if selection == option {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.blue.gradient)
+                                    .matchedGeometryEffect(id: "selection", in: selectionNamespace)
+                                    .shadow(color: Color.blue.opacity(0.26), radius: 10, x: 0, y: 4)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color(.separator).opacity(0.16), lineWidth: 1)
+        }
     }
 }
 
@@ -3164,77 +3340,78 @@ private struct StockResearchEditorSheet: View {
     }
 }
 
-private struct FinanceAssetRow: View {
+private struct FinanceAssetEditorSheet: View {
     let asset: FinanceAsset
     let amountText: String
-    let updatedText: String
     let onSave: (Double) -> Void
-    let onDelete: () -> Void
 
-    @State private var amountInput = ""
+    @Environment(\.dismiss) private var dismiss
+    @State private var amountInput: String
 
-    var body: some View {
-        SwipeToDeleteRow(onDelete: onDelete) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: asset.kind.icon)
-                    .foregroundStyle(.green)
-                    .frame(width: 24)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        Text(asset.name)
-                            .font(.headline)
-
-                        Text(asset.kind.title)
-                            .font(.caption.bold())
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.green.opacity(0.14))
-                            .foregroundStyle(.green)
-                            .clipShape(Capsule())
-                    }
-
-                    Text("\(amountText) · 更新于 \(updatedText)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    HStack(spacing: 8) {
-                        ModernInputField(
-                            placeholder: "更新金额",
-                            text: $amountInput,
-                            icon: "yensign.circle",
-                            tint: .green,
-                            keyboardType: .decimalPad
-                        )
-
-                        Button {
-                            saveAmount()
-                        } label: {
-                            Text("保存")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(canSaveAmount ? .white : Color(.tertiaryLabel))
-                                .frame(width: 58, height: 48)
-                                .background(canSaveAmount ? Color.green : Color(.tertiarySystemFill))
-                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!canSaveAmount)
-                    }
-                }
-
-                Spacer()
-            }
-        }
-        .onAppear {
-            amountInput = String(format: "%.2f", asset.amount)
-        }
-        .onChange(of: asset.amount) {
-            amountInput = String(format: "%.2f", asset.amount)
-        }
+    init(asset: FinanceAsset, amountText: String, onSave: @escaping (Double) -> Void) {
+        self.asset = asset
+        self.amountText = amountText
+        self.onSave = onSave
+        _amountInput = State(initialValue: String(format: "%.0f", asset.amount))
     }
 
     private var canSaveAmount: Bool {
         !amountInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(asset.name)
+                        .font(.title2.bold())
+
+                    Text("\(asset.kind.title) · 当前 \(amountText)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                ModernInputField(
+                    placeholder: "输入新的金额",
+                    text: $amountInput,
+                    icon: "yensign.circle",
+                    tint: .blue,
+                    keyboardType: .numberPad
+                )
+
+                Text("这里只记录整数金额，几毛几分钱会自动忽略。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button {
+                    saveAmount()
+                } label: {
+                    Text("保存金额")
+                        .font(.headline)
+                        .foregroundStyle(canSaveAmount ? .white : Color(.tertiaryLabel))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(canSaveAmount ? Color.blue : Color(.tertiarySystemFill))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSaveAmount)
+            }
+            .padding()
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("修改资产")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 
     private func saveAmount() {
@@ -3244,6 +3421,63 @@ private struct FinanceAssetRow: View {
 
         guard let amount = Double(normalizedAmount) else { return }
         onSave(amount)
+        dismiss()
+    }
+}
+
+private struct FinanceAssetRow: View {
+    let asset: FinanceAsset
+    let amountText: String
+    let updatedText: String
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        SwipeToDeleteRow(onDelete: onDelete) {
+            Button(action: onEdit) {
+                HStack(alignment: .center, spacing: 12) {
+                    Image(systemName: asset.kind.icon)
+                        .font(.headline)
+                        .foregroundStyle(.blue)
+                        .frame(width: 28, height: 28)
+                        .background(Color.blue.opacity(0.10))
+                        .clipShape(Circle())
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 8) {
+                            Text(asset.name)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+
+                            Text(asset.kind.title)
+                                .font(.caption.bold())
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Color.blue.opacity(0.12))
+                                .foregroundStyle(.blue)
+                                .clipShape(Capsule())
+                        }
+
+                        Text("更新于 \(updatedText)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(amountText)
+                            .font(.headline.bold())
+                            .foregroundStyle(.primary)
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption.bold())
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 
@@ -3284,7 +3518,7 @@ private struct FinanceTrendView: View {
                                     .frame(height: chartHeight)
 
                                 RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.green.gradient)
+                                    .fill(Color.blue.gradient)
                                     .frame(height: barHeight(for: point.amount))
 
                                 Text(compactAmountText(point.amount))
@@ -3314,10 +3548,102 @@ private struct FinanceTrendView: View {
 
     private func compactAmountText(_ amount: Double) -> String {
         if abs(amount) >= 10_000 {
-            return String(format: "%.1f万", amount / 10_000)
+            return String(format: "%.0f万", amount / 10_000)
         }
 
         return String(format: "%.0f", amount)
+    }
+}
+
+private struct FinanceDistributionView: View {
+    let points: [FinanceDistributionPoint]
+    let amountText: (Double) -> String
+
+    private var totalAmount: Double {
+        points.map(\.amount).reduce(0, +)
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 18) {
+            ZStack {
+                ForEach(Array(points.enumerated()), id: \.element.id) { index, point in
+                    PieSliceShape(
+                        startAngle: startAngle(for: index),
+                        endAngle: endAngle(for: index)
+                    )
+                    .fill(point.color)
+                }
+
+                Circle()
+                    .fill(Color(.systemBackground))
+                    .frame(width: 72, height: 72)
+
+                VStack(spacing: 2) {
+                    Text("总计")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(amountText(totalAmount))
+                        .font(.caption.bold())
+                        .foregroundStyle(.primary)
+                }
+            }
+            .frame(width: 150, height: 150)
+
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(points.prefix(5)) { point in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(point.color)
+                            .frame(width: 9, height: 9)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(point.title)
+                                .font(.caption.bold())
+                            Text("\(amountText(point.amount)) · \(percentageText(for: point.amount))")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+        }
+    }
+
+    private func startAngle(for index: Int) -> Angle {
+        let previousAmount = points.prefix(index).map(\.amount).reduce(0, +)
+        return .degrees(-90 + 360 * previousAmount / max(totalAmount, 1))
+    }
+
+    private func endAngle(for index: Int) -> Angle {
+        let amount = points.prefix(index + 1).map(\.amount).reduce(0, +)
+        return .degrees(-90 + 360 * amount / max(totalAmount, 1))
+    }
+
+    private func percentageText(for amount: Double) -> String {
+        String(format: "%.0f%%", amount / max(totalAmount, 1) * 100)
+    }
+}
+
+private struct PieSliceShape: Shape {
+    let startAngle: Angle
+    let endAngle: Angle
+
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        var path = Path()
+        path.move(to: center)
+        path.addArc(
+            center: center,
+            radius: radius,
+            startAngle: startAngle,
+            endAngle: endAngle,
+            clockwise: false
+        )
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -3335,12 +3661,14 @@ private struct WeightLogRow: View {
                     .frame(width: 24)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(weightText) kg")
-                        .font(.headline)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("\(weightText) kg")
+                            .font(.headline)
 
-                    Text(dateText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        Text(dateText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
 
                     if !log.note.isEmpty {
                         Text(log.note)
