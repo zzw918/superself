@@ -30,6 +30,7 @@
 		A1B2C3D31A2B3C4D00000003 /* TodoItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoItem.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000005 /* TodoListApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TodoListApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D31A2B3C4D00000006 /* TodoListApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TodoListApp.entitlements; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000010 /* AppTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTypes.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000011 /* ContentView+Pages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Pages.swift"; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000012 /* ContentView+Computed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Computed.swift"; sourceTree = "<group>"; };
@@ -68,6 +69,7 @@
 				A1B2C3D31A2B3C4D00000001 /* TodoListAppApp.swift */,
 				A1B2C3D31A2B3C4D00000002 /* ContentView.swift */,
 				A1B2C3D31A2B3C4D00000003 /* TodoItem.swift */,
+				A1B2C3D31A2B3C4D00000006 /* TodoListApp.entitlements */,
 				A1B2C3D61A2B3C4D00000004 /* Core */,
 				A1B2C3D61A2B3C4D00000005 /* Features */,
 				A1B2C3D61A2B3C4D00000010 /* Services */,
@@ -75,6 +77,14 @@
 				A1B2C3D31A2B3C4D00000004 /* Assets.xcassets */,
 			);
 			path = TodoListApp;
+			sourceTree = "<group>";
+		};
+		A1B2C3D61A2B3C4D00000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D31A2B3C4D00000005 /* TodoListApp.app */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 		A1B2C3D61A2B3C4D00000004 /* Core */ = {
@@ -148,14 +158,6 @@
 			path = UI;
 			sourceTree = "<group>";
 		};
-		A1B2C3D61A2B3C4D00000003 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				A1B2C3D31A2B3C4D00000005 /* TodoListApp.app */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -188,6 +190,11 @@
 				TargetAttributes = {
 					A1B2C3D71A2B3C4D00000001 = {
 						CreatedOnToolsVersion = 15.0;
+						SystemCapabilities = {
+							com.apple.iCloud = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -364,12 +371,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TodoListApp/TodoListApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = UK5G7LY52C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SuperSelf;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -377,8 +386,8 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.wayne.personalApp;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.wayne.superself;
+				PRODUCT_NAME = SuperSelf;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -393,12 +402,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = TodoListApp/TodoListApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = UK5G7LY52C;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SuperSelf;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -406,8 +417,8 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.wayne.personalApp;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.wayne.superself;
+				PRODUCT_NAME = SuperSelf;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
