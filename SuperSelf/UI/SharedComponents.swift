@@ -342,6 +342,7 @@ struct SwipeToDeleteRow<Content: View>: View {
     let onDelete: () -> Void
     var confirmation: DeleteConfirmationContent?
     var pinAction: SwipePinAction?
+    var cornerRadius: CGFloat = 16
     @ViewBuilder let content: () -> Content
 
     @State private var offset: CGFloat = 0
@@ -352,11 +353,13 @@ struct SwipeToDeleteRow<Content: View>: View {
         onDelete: @escaping () -> Void,
         confirmation: DeleteConfirmationContent? = nil,
         pinAction: SwipePinAction? = nil,
+        cornerRadius: CGFloat = 16,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.onDelete = onDelete
         self.confirmation = confirmation
         self.pinAction = pinAction
+        self.cornerRadius = cornerRadius
         self.content = content
     }
 
@@ -401,7 +404,7 @@ struct SwipeToDeleteRow<Content: View>: View {
 
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.systemBackground))
+                .background(Color(.tertiarySystemGroupedBackground))
                 .offset(x: offset)
                 .highPriorityGesture(
                     DragGesture(minimumDistance: 18)

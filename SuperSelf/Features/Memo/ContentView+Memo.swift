@@ -254,13 +254,11 @@ extension ContentView {
                     .foregroundStyle(.secondary)
             }
 
-            Picker("类型", selection: $wishlistCategory) {
-                ForEach(WishlistCategory.allCases) { category in
-                    Label(category.title, systemImage: category.icon)
-                        .tag(category)
-                }
-            }
-            .pickerStyle(.segmented)
+            AppSegmentedControl(
+                options: WishlistCategory.allCases,
+                selection: $wishlistCategory,
+                title: \.title
+            )
 
             AddEntryBar(
                 placeholder: "想要点什么",
@@ -291,7 +289,7 @@ extension ContentView {
                 }
 
                 if !completedWishlistItems.isEmpty {
-                    DisclosureGroup("已经实现 \(completedWishlistItems.count) 个") {
+                    DisclosureGroup {
                         VStack(spacing: 8) {
                             ForEach(completedWishlistItems.prefix(8)) { item in
                                 WishlistRow(item: item) {
@@ -302,8 +300,19 @@ extension ContentView {
                             }
                         }
                         .padding(.top, 8)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle")
+                            Text("已经实现 \(completedWishlistItems.count) 个")
+                        }
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(.tertiarySystemFill))
+                        .clipShape(Capsule())
                     }
-                    .font(.subheadline.bold())
+                    .tint(.secondary)
                 }
             }
         }

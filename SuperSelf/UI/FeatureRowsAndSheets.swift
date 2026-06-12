@@ -32,7 +32,7 @@ struct TodoTaskRow: View {
             .padding(.horizontal, 14)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
+                    .fill(Color(.tertiarySystemGroupedBackground))
             )
         }
     }
@@ -90,7 +90,7 @@ struct WishlistRow: View {
             .padding(.horizontal, 14)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
+                    .fill(Color(.tertiarySystemGroupedBackground))
             )
         }
     }
@@ -159,7 +159,7 @@ struct AnniversaryRow: View {
             .padding(.horizontal, 16)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
+                    .fill(Color(.tertiarySystemGroupedBackground))
             )
         }
     }
@@ -253,7 +253,7 @@ struct StockResearchRow: View {
                 .padding(.horizontal, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color(.secondarySystemGroupedBackground))
+                        .fill(Color(.tertiarySystemGroupedBackground))
                 )
             }
             .buttonStyle(.plain)
@@ -605,7 +605,7 @@ struct FinanceAssetRow: View {
                 .padding(.horizontal, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color(.secondarySystemGroupedBackground))
+                        .fill(Color(.tertiarySystemGroupedBackground))
                 )
             }
             .buttonStyle(.plain)
@@ -661,7 +661,7 @@ struct WeightLogRow: View {
             .padding(.horizontal, 14)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
+                    .fill(Color(.tertiarySystemGroupedBackground))
             )
         }
     }
