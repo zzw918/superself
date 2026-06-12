@@ -158,7 +158,12 @@ extension ContentView {
     }
 
     var sortedStockResearchItems: [StockResearchItem] {
-        stockResearchItems.sorted { $0.updatedAt > $1.updatedAt }
+        stockResearchItems.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned {
+                return lhs.isPinned && !rhs.isPinned
+            }
+            return lhs.updatedAt > rhs.updatedAt
+        }
     }
 
     var filteredStockResearchItems: [StockResearchItem] {

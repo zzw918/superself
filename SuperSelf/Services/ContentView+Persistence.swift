@@ -358,6 +358,23 @@ extension ContentView {
         persistStockResearchItems()
     }
 
+    func renameStockResearchItem(_ item: StockResearchItem, name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty,
+              let index = stockResearchItems.firstIndex(where: { $0.id == item.id }) else { return }
+
+        stockResearchItems[index].name = trimmedName
+        stockResearchItems[index].updatedAt = Date()
+        persistStockResearchItems()
+    }
+
+    func toggleStockResearchPinned(_ item: StockResearchItem) {
+        guard let index = stockResearchItems.firstIndex(where: { $0.id == item.id }) else { return }
+
+        stockResearchItems[index].isPinned.toggle()
+        persistStockResearchItems()
+    }
+
     func deleteStockResearchItem(_ item: StockResearchItem) {
         stockResearchItems.removeAll { $0.id == item.id }
         persistStockResearchItems()

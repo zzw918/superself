@@ -130,7 +130,7 @@ extension ContentView {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
     }
 
     func financeFieldLabel(_ text: String) -> some View {
@@ -358,6 +358,8 @@ extension ContentView {
                             editingStockResearchItem = item
                         }, onDelete: {
                             deleteStockResearchItem(item)
+                        }, onTogglePin: {
+                            toggleStockResearchPinned(item)
                         })
 
                         if item.id != filteredStockResearchItems.last?.id {

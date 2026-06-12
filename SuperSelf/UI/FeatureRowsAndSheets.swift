@@ -149,6 +149,7 @@ struct StockResearchRow: View {
     let updatedText: String
     let onOpen: () -> Void
     let onDelete: () -> Void
+    let onTogglePin: () -> Void
 
     var body: some View {
         SwipeToDeleteRow(
@@ -157,7 +158,8 @@ struct StockResearchRow: View {
                 title: "删除股票研究？",
                 message: "“\(item.name)” 的研究笔记会一起删除，后续无法恢复。",
                 confirmTitle: "删除研究"
-            )
+            ),
+            pinAction: SwipePinAction(isPinned: item.isPinned, onToggle: onTogglePin)
         ) {
             Button(action: onOpen) {
                 HStack(alignment: .center, spacing: 10) {
@@ -167,13 +169,31 @@ struct StockResearchRow: View {
                         .frame(width: 24)
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(item.name)
-                            .font(.headline)
-                            .foregroundStyle(.primary)
+                        HStack(spacing: 6) {
+                            if item.isPinned {
+                                Image(systemName: "pin.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                            }
 
-                        Text(stockResearchSummary)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            Text(item.name)
+                                .font(.headline)
+                                .foregroundStyle(.primary)
+                        }
+
+                        if let preview = stockResearchPreview {
+                            Text(preview)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                            Text("更新于 \(updatedText)")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        } else {
+                            Text("还没有研究笔记 · 更新于 \(updatedText)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
 
                     Spacer()
@@ -187,10 +207,14 @@ struct StockResearchRow: View {
         }
     }
 
-    var stockResearchSummary: String {
-        item.thesis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? "还没有研究笔记 · 更新于 \(updatedText)"
-            : "已有研究笔记 · 更新于 \(updatedText)"
+    var stockResearchPreview: String? {
+        let trimmed = item.thesis.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        return trimmed
+            .split(whereSeparator: \.isNewline)
+            .prefix(2)
+            .joined(separator: " ")
     }
 }
 
@@ -198,15 +222,38 @@ struct StockResearchEditorSheet: View {
     let item: StockResearchItem
     @Binding var thesis: String
     let updatedText: String
+    let onRename: (String) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var nameInput: String
+
+    init(
+        item: StockResearchItem,
+        thesis: Binding<String>,
+        updatedText: String,
+        onRename: @escaping (String) -> Void
+    ) {
+        self.item = item
+        _thesis = thesis
+        self.updatedText = updatedText
+        self.onRename = onRename
+        _nameInput = State(initialValue: item.name)
+    }
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(item.name)
-                        .font(.title2.bold())
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("股票名称")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+
+                    TextField("股票名称", text: $nameInput)
+                        .font(.title3.bold())
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
 
                     Text("更新于 \(updatedText)")
                         .font(.caption)
@@ -239,6 +286,10 @@ struct StockResearchEditorSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("完成") {
+                        let trimmedName = nameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !trimmedName.isEmpty, trimmedName != item.name {
+                            onRename(trimmedName)
+                        }
                         dismiss()
                     }
                     .font(.subheadline.bold())

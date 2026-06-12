@@ -39,8 +39,21 @@ extension ContentView {
             .frame(width: 220, height: 220)
 
             HStack {
-                Label(startTimeText, systemImage: "play.circle")
+                Button {
+                    isShowingStartTimeSheet = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "play.circle")
+                        Text(startTimeText)
+                        Image(systemName: "pencil")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.blue)
+                    }
+                }
+                .buttonStyle(.plain)
+
                 Spacer()
+
                 Label(endTimeText, systemImage: "flag.checkered")
             }
             .font(.caption)
@@ -61,39 +74,43 @@ extension ContentView {
             }
             .buttonStyle(AppPrimaryButtonStyle(tint: primaryActionTint))
 
-            HStack(spacing: 8) {
-                ForEach(planOptions, id: \.fasting) { option in
-                    let isSelected = fastingGoalHours == option.fasting
+            HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "timer")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.blue)
 
-                    Button {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
-                            planSelection.wrappedValue = option.fasting
-                        }
-                    } label: {
-                        VStack(spacing: 2) {
-                            Text("\(option.fasting)+\(option.eating)")
-                                .font(isSelected ? .headline.bold() : .subheadline.bold())
-                            Text("断食+进食")
-                                .font(.caption2)
-                                .opacity(0.85)
-                        }
-                        .foregroundStyle(isSelected ? .white : .secondary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background {
-                            if isSelected {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(Color.blue.gradient)
-                                    .shadow(color: Color.blue.opacity(0.26), radius: 10, y: 4)
-                            } else {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(Color(.secondarySystemGroupedBackground))
-                            }
-                        }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("当前计划")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text("\(fastingGoalHours) + \(eatingGoalHours)（断食 + 进食）")
+                            .font(.subheadline.bold())
                     }
-                    .buttonStyle(.plain)
                 }
+
+                Spacer()
+
+                Button {
+                    isShowingPlanSheet = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "slider.horizontal.3")
+                        Text("调整")
+                    }
+                    .font(.caption.bold())
+                    .foregroundStyle(.blue)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.blue.opacity(0.10))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             Button {
                 resetCurrentPhase()
@@ -235,6 +252,7 @@ extension ContentView {
                                     Text("0.0")
                                         .font(.system(size: 44, weight: .bold, design: .rounded))
                                         .foregroundStyle(.tertiary)
+                                        .allowsHitTesting(false)
                                 }
 
                                 TextField("", text: $weightInput)
@@ -242,14 +260,16 @@ extension ContentView {
                                     .font(.system(size: 44, weight: .bold, design: .rounded))
                                     .foregroundStyle(.primary)
                                     .focused($focusedWeightSheetField, equals: .weight)
-                                    .fixedSize()
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                focusedWeightSheetField = .weight
                             }
 
                             Text("kg")
                                 .font(.title3.bold())
                                 .foregroundStyle(.secondary)
-
-                            Spacer()
                         }
                     }
                     .padding(.horizontal, 18)
@@ -442,8 +462,10 @@ extension ContentView {
                 }
             }
             .onAppear {
-                focusedWeightSheetField = .weight
                 didShowWeightSaveFeedback = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    focusedWeightSheetField = .weight
+                }
             }
             .animation(.spring(response: 0.28, dampingFraction: 0.88), value: focusedWeightSheetField)
             .animation(.spring(response: 0.3, dampingFraction: 0.85), value: didShowWeightSaveFeedback)
@@ -810,6 +832,178 @@ extension ContentView {
 
     var startTimeText: String {
         "开始 \(relativeTimeText(for: fastingStartDate))"
+    }
+
+    var startTimeSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    Text(isFasting
+                         ? "修改空腹的开始时间。比如昨晚 11 点吃完饭，就把开始时间设为昨晚 23:00，倒计时会据此重新计算。"
+                         : "修改进食阶段的开始时间，倒计时会据此重新计算。")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("开始时间")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+
+                        DatePicker(
+                            "开始时间",
+                            selection: $startTimeDraft,
+                            in: ...Date(),
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                        .datePickerStyle(.graphical)
+                        .labelsHidden()
+                        .environment(\.locale, Locale(identifier: "zh_CN"))
+                    }
+                    .padding(18)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+
+                    HStack(spacing: 10) {
+                        ForEach(startTimeQuickOptions, id: \.0) { option in
+                            Button {
+                                startTimeDraft = Date().addingTimeInterval(-option.1)
+                            } label: {
+                                Text(option.0)
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.blue)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.blue.opacity(0.10))
+                                    .clipShape(Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    Label("结束时间会根据当前计划自动顺延。", systemImage: "info.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(20)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("修改开始时间")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                startTimeDraft = fastingStartDate
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        isShowingStartTimeSheet = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        fastingStartTime = startTimeDraft.timeIntervalSince1970
+                        persistSettingsToICloud()
+                        isShowingStartTimeSheet = false
+                    }
+                    .font(.subheadline.weight(.semibold))
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    var planSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    Text("选择适合自己的断食 + 进食时长。16+8 适合大多数人入门，18+6、20+4 难度更高。")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    VStack(spacing: 12) {
+                        ForEach(planOptions, id: \.fasting) { option in
+                            let isSelected = fastingGoalHours == option.fasting
+
+                            Button {
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                                    planSelection.wrappedValue = option.fasting
+                                }
+                            } label: {
+                                HStack(spacing: 14) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("\(option.fasting) + \(option.eating)")
+                                            .font(.title3.bold())
+                                            .foregroundStyle(isSelected ? .white : .primary)
+                                        Text("断食 \(option.fasting) 小时 · 进食 \(option.eating) 小时")
+                                            .font(.caption)
+                                            .foregroundStyle(isSelected ? Color.white.opacity(0.85) : .secondary)
+                                    }
+
+                                    Spacer()
+
+                                    if isSelected {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.title3)
+                                            .foregroundStyle(.white)
+                                    }
+                                }
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 18)
+                                .background {
+                                    if isSelected {
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .fill(Color.blue.gradient)
+                                            .shadow(color: Color.blue.opacity(0.26), radius: 10, y: 4)
+                                    } else {
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .fill(Color(.secondarySystemGroupedBackground))
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    Label("切换计划只改变目标时长，不会重置当前正在进行的阶段。", systemImage: "info.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(20)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("断食计划")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        isShowingPlanSheet = false
+                    }
+                    .font(.subheadline.weight(.semibold))
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    var startTimeQuickOptions: [(String, TimeInterval)] {
+        [
+            ("现在", 0),
+            ("1 小时前", 3600),
+            ("8 小时前", 8 * 3600),
+            ("昨晚 11 点", lastNight11Interval)
+        ]
+    }
+
+    var lastNight11Interval: TimeInterval {
+        let calendar = Calendar.current
+        let now = Date()
+        var components = calendar.dateComponents([.year, .month, .day], from: now)
+        components.hour = 23
+        components.minute = 0
+        guard var target = calendar.date(from: components) else { return 0 }
+        if target > now {
+            target = calendar.date(byAdding: .day, value: -1, to: target) ?? target
+        }
+        return now.timeIntervalSince(target)
     }
 
     var endTimeText: String {

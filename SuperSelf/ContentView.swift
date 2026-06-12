@@ -83,6 +83,9 @@ struct ContentView: View {
     @State var isShowingBodySettings = false
     @State var isShowingFinanceAssetSheet = false
     @State var isShowingAnniversarySheet = false
+    @State var isShowingStartTimeSheet = false
+    @State var startTimeDraft = Date()
+    @State var isShowingPlanSheet = false
     @State var isShowingStockAddAlert = false
     @State var trendGranularity: WeightTrendGranularity = .day
     @State var visibleWeightHistoryDays = 10
@@ -147,6 +150,12 @@ struct ContentView: View {
         .sheet(isPresented: $isShowingAnniversarySheet) {
             anniversaryAddSheet
         }
+        .sheet(isPresented: $isShowingStartTimeSheet) {
+            startTimeSheet
+        }
+        .sheet(isPresented: $isShowingPlanSheet) {
+            planSheet
+        }
         .sheet(item: $editingFinanceAsset) { asset in
             FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newAmount in
                 updateFinanceAsset(asset, amount: newAmount)
@@ -156,7 +165,10 @@ struct ContentView: View {
             StockResearchEditorSheet(
                 item: item,
                 thesis: stockResearchThesisBinding(for: item),
-                updatedText: chineseDateTime(item.updatedAt)
+                updatedText: chineseDateTime(item.updatedAt),
+                onRename: { newName in
+                    renameStockResearchItem(item, name: newName)
+                }
             )
         }
         .alert("新增股票", isPresented: $isShowingStockAddAlert) {

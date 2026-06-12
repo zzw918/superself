@@ -171,6 +171,7 @@ struct AppSegmentedControl<Option: Identifiable & Hashable>: View {
                                     .shadow(color: Color.blue.opacity(0.26), radius: 10, x: 0, y: 4)
                             }
                         }
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -302,68 +303,92 @@ struct SearchInputBar: View {
     }
 }
 
+struct SwipePinAction {
+    let isPinned: Bool
+    let onToggle: () -> Void
+}
+
 struct SwipeToDeleteRow<Content: View>: View {
     let onDelete: () -> Void
     var confirmation: DeleteConfirmationContent?
+    var pinAction: SwipePinAction?
     @ViewBuilder let content: () -> Content
 
     @State private var offset: CGFloat = 0
     @State private var isShowingDeleteConfirmation = false
-    let actionWidth: CGFloat = 78
+    let singleActionWidth: CGFloat = 64
 
     init(
         onDelete: @escaping () -> Void,
         confirmation: DeleteConfirmationContent? = nil,
+        pinAction: SwipePinAction? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.onDelete = onDelete
         self.confirmation = confirmation
+        self.pinAction = pinAction
         self.content = content
+    }
+
+    var actionsWidth: CGFloat {
+        pinAction == nil ? singleActionWidth : singleActionWidth * 2
     }
 
     var body: some View {
         ZStack(alignment: .trailing) {
-            Color.red
-
             if offset < 0 {
-                Button {
-                    triggerDelete()
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: "trash")
-                            .font(.headline)
-                        Text("删除")
-                            .font(.caption.bold())
+                HStack(spacing: 0) {
+                    if let pinAction {
+                        Button {
+                            resetOffset()
+                            pinAction.onToggle()
+                        } label: {
+                            Image(systemName: pinAction.isPinned ? "pin.slash.fill" : "pin.fill")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: singleActionWidth)
+                                .frame(maxHeight: .infinity)
+                                .background(Color.orange)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .foregroundStyle(.white)
-                    .frame(width: -offset, alignment: .center)
-                    .frame(maxHeight: .infinity)
-                    .clipped()
+
+                    Button {
+                        triggerDelete()
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: singleActionWidth)
+                            .frame(maxHeight: .infinity)
+                            .background(Color.red)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color(.systemBackground))
                 .offset(x: offset)
-                .contentShape(Rectangle())
-                .gesture(
+                .highPriorityGesture(
                     DragGesture(minimumDistance: 18)
                         .onChanged { value in
                             guard abs(value.translation.width) > abs(value.translation.height) else { return }
 
                             if value.translation.width < 0 {
-                                offset = max(-actionWidth, value.translation.width)
+                                offset = max(-actionsWidth, value.translation.width)
                             } else if offset < 0 {
-                                offset = min(0, -actionWidth + value.translation.width)
+                                offset = min(0, -actionsWidth + value.translation.width)
                             }
                         }
                         .onEnded { value in
                             guard abs(value.translation.width) > abs(value.translation.height) else { return }
 
                             withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
-                                offset = value.translation.width < -actionWidth / 2 ? -actionWidth : 0
+                                offset = value.translation.width < -actionsWidth / 2 ? -actionsWidth : 0
                             }
                         }
                 )

@@ -195,4 +195,5 @@ struct StockResearchItem: Identifiable, Equatable, Codable {
     var thesis: String
     var createdAt: Date
     var updatedAt: Date
+    var isPinned: Bool = false
 }

@@ -173,6 +173,13 @@ extension ContentView {
 
     func profileTabCard(_ tab: MainAppTab) -> some View {
         HStack(spacing: 14) {
+            if isEditingTabs {
+                Image(systemName: "line.3.horizontal")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .transition(.opacity.combined(with: .move(edge: .leading)))
+            }
+
             profileIcon(tab.icon, tint: profileTabTint(tab))
 
             VStack(alignment: .leading, spacing: 3) {
@@ -185,14 +192,30 @@ extension ContentView {
 
             Spacer(minLength: 8)
 
-            Toggle("", isOn: mainTabVisibilityBinding(for: tab))
-                .labelsHidden()
-                .disabled(isOnlyVisibleMainTab(tab))
+            if isEditingTabs {
+                Text("拖动排序")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.blue)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.blue.opacity(0.12), in: Capsule())
+                    .transition(.opacity)
+            } else {
+                Toggle("", isOn: mainTabVisibilityBinding(for: tab))
+                    .labelsHidden()
+                    .disabled(isOnlyVisibleMainTab(tab))
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            if isEditingTabs {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(Color.blue.opacity(0.35), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+            }
+        }
     }
 
     var profileFixedTabCard: some View {
