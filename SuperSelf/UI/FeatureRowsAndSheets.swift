@@ -7,17 +7,17 @@ struct TodoTaskRow: View {
 
     var body: some View {
         SwipeToDeleteRow(onDelete: onDelete) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(spacing: 12) {
                 Button(action: onToggle) {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(.title3)
-                        .foregroundStyle(task.isCompleted ? .green : .secondary)
+                        .font(.title2)
+                        .foregroundStyle(task.isCompleted ? .green : Color(.systemGray3))
                 }
                 .buttonStyle(.borderless)
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(task.title)
-                        .font(.headline)
+                        .font(.subheadline.weight(.medium))
                         .strikethrough(task.isCompleted)
                         .foregroundStyle(task.isCompleted ? .secondary : .primary)
 
@@ -28,6 +28,12 @@ struct TodoTaskRow: View {
 
                 Spacer()
             }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
+            )
         }
     }
 
@@ -48,26 +54,26 @@ struct WishlistRow: View {
 
     var body: some View {
         SwipeToDeleteRow(onDelete: onDelete) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(spacing: 12) {
                 Button(action: onToggle) {
                     Image(systemName: item.isCompleted ? "checkmark.circle.fill" : item.category.icon)
-                        .font(.title3)
+                        .font(.title2)
                         .foregroundStyle(item.isCompleted ? .green : .purple)
-                        .frame(width: 24)
+                        .frame(width: 26)
                 }
                 .buttonStyle(.borderless)
 
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(item.title)
-                            .font(.headline)
+                            .font(.subheadline.weight(.medium))
                             .strikethrough(item.isCompleted)
                             .foregroundStyle(item.isCompleted ? .secondary : .primary)
 
                         Text(item.category.title)
-                            .font(.caption.bold())
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
+                            .font(.caption2.bold())
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
                             .background(Color.purple.opacity(0.14))
                             .foregroundStyle(.purple)
                             .clipShape(Capsule())
@@ -80,6 +86,12 @@ struct WishlistRow: View {
 
                 Spacer()
             }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
+            )
         }
     }
 
@@ -96,8 +108,12 @@ struct WishlistRow: View {
 struct AnniversaryRow: View {
     let item: AnniversaryItem
     let dateText: String
-    let nextText: String
+    let solarText: String?
+    let daysUntil: Int?
+    let elapsedText: String?
     let onDelete: () -> Void
+
+    private var isToday: Bool { (daysUntil ?? -1) == 0 }
 
     var body: some View {
         SwipeToDeleteRow(
@@ -108,38 +124,67 @@ struct AnniversaryRow: View {
                 confirmTitle: "删除纪念日"
             )
         ) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: item.kind.icon)
-                    .font(.title3)
-                    .foregroundStyle(.orange)
-                    .frame(width: 24)
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(item.title)
+                        .font(.headline)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Text(item.title)
-                            .font(.headline)
+                    Text(dateText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
 
-                        Text(item.kind.title)
-                            .font(.caption.bold())
+                    if let solarText {
+                        Text(solarText)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+
+                    if let elapsedText {
+                        Text(elapsedText)
+                            .font(.caption2.bold())
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
                             .background(Color.orange.opacity(0.14))
                             .foregroundStyle(.orange)
                             .clipShape(Capsule())
+                            .padding(.top, 2)
                     }
-
-                    HStack(spacing: 8) {
-                        Text(dateText)
-                        Text(nextText)
-                            .font(.caption.bold())
-                            .foregroundStyle(.orange)
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
+
+                countdownView
             }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var countdownView: some View {
+        if isToday {
+            VStack(spacing: 2) {
+                Image(systemName: "party.popper.fill")
+                    .font(.title3)
+                Text("就是今天")
+                    .font(.caption.bold())
+            }
+            .foregroundStyle(.orange)
+            .frame(minWidth: 64)
+        } else if let days = daysUntil, days > 0 {
+            VStack(spacing: 0) {
+                Text("\(days)")
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .foregroundStyle(.orange)
+                Text("天后")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(minWidth: 64)
         }
     }
 }
@@ -162,11 +207,13 @@ struct StockResearchRow: View {
             pinAction: SwipePinAction(isPinned: item.isPinned, onToggle: onTogglePin)
         ) {
             Button(action: onOpen) {
-                HStack(alignment: .center, spacing: 10) {
+                HStack(alignment: .center, spacing: 12) {
                     Image(systemName: "chart.line.text.clipboard")
-                        .font(.title3)
+                        .font(.headline)
                         .foregroundStyle(.blue)
-                        .frame(width: 24)
+                        .frame(width: 38, height: 38)
+                        .background(Color.blue.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
@@ -202,6 +249,12 @@ struct StockResearchRow: View {
                         .font(.caption.bold())
                         .foregroundStyle(.tertiary)
                 }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
             }
             .buttonStyle(.plain)
         }
@@ -215,6 +268,115 @@ struct StockResearchRow: View {
             .split(whereSeparator: \.isNewline)
             .prefix(2)
             .joined(separator: " ")
+    }
+}
+
+struct StockResearchAddSheet: View {
+    @Binding var name: String
+    let onAdd: () -> Void
+    let onCancel: () -> Void
+
+    @FocusState private var isNameFocused: Bool
+
+    private var canAdd: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            SheetHeader(
+                icon: "chart.line.text.clipboard",
+                title: "新增股票",
+                subtitle: "先用名称建档，之后再补充研究笔记"
+            )
+
+            ModernInputField(
+                placeholder: "股票名称，例如：贵州茅台",
+                text: $name,
+                icon: "magnifyingglass",
+                tint: .blue
+            )
+            .focused($isNameFocused)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("快速添加")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+
+                let suggestions = ["贵州茅台", "腾讯控股", "苹果", "英伟达", "宁德时代"]
+                FlexibleChips(items: suggestions) { suggestion in
+                    name = suggestion
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            Button(action: onAdd) {
+                Text("添加")
+            }
+            .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
+            .disabled(!canAdd)
+        }
+        .padding(20)
+        .presentationBackground(Color(.systemGroupedBackground))
+        .overlay(alignment: .topTrailing) {
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 30)
+                    .background(Color(.tertiarySystemFill), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .padding(16)
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                isNameFocused = true
+            }
+        }
+    }
+}
+
+struct FlexibleChips: View {
+    let items: [String]
+    let onTap: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(chunkedItems, id: \.self) { row in
+                HStack(spacing: 8) {
+                    ForEach(row, id: \.self) { item in
+                        Button {
+                            onTap(item)
+                        } label: {
+                            Text(item)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.blue)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color.blue.opacity(0.10), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+    }
+
+    private var chunkedItems: [[String]] {
+        var rows: [[String]] = []
+        var current: [String] = []
+        for item in items {
+            current.append(item)
+            if current.count == 3 {
+                rows.append(current)
+                current = []
+            }
+        }
+        if !current.isEmpty { rows.append(current) }
+        return rows
     }
 }
 
@@ -439,6 +601,12 @@ struct FinanceAssetRow: View {
                             .foregroundStyle(.tertiary)
                     }
                 }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
             }
             .buttonStyle(.plain)
         }
@@ -460,30 +628,41 @@ struct WeightLogRow: View {
                 confirmTitle: "删除记录"
             )
         ) {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(spacing: 14) {
                 Image(systemName: "scalemass")
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.blue)
-                    .frame(width: 24)
+                    .frame(width: 38, height: 38)
+                    .background(Color.blue.opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("\(weightText) kg")
-                            .font(.headline)
-
-                        Text(dateText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(dateText)
+                        .font(.subheadline.weight(.medium))
                     if !log.note.isEmpty {
                         Text(log.note)
-                            .font(.subheadline)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                 }
 
                 Spacer()
+
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(weightText)
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                    Text("kg")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                }
             }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
+            )
         }
     }
 }

@@ -60,9 +60,9 @@ struct ContentView: View {
     @State var wishlistInput = ""
     @State var wishlistCategory: WishlistCategory = .travel
     @State var anniversaryTitleInput = ""
-    @State var anniversaryKind: AnniversaryKind = .birthday
     @State var anniversaryCalendarKind: AnniversaryCalendarKind = .solar
     @State var anniversaryDate = Date()
+    @State var anniversaryShowsElapsedDays = false
     @State var financeAssets: [FinanceAsset] = []
     @State var financeSnapshots: [FinanceSnapshot] = []
     @State var financeAssetNameInput = ""
@@ -171,16 +171,15 @@ struct ContentView: View {
                 }
             )
         }
-        .alert("新增股票", isPresented: $isShowingStockAddAlert) {
-            TextField("例如：腾讯控股、贵州茅台", text: $stockNameInput)
-            Button("取消", role: .cancel) {
-                stockNameInput = ""
-            }
-            Button("添加") {
+        .sheet(isPresented: $isShowingStockAddAlert) {
+            StockResearchAddSheet(name: $stockNameInput) {
                 addStockResearchItem()
+            } onCancel: {
+                stockNameInput = ""
+                isShowingStockAddAlert = false
             }
-        } message: {
-            Text("先用股票名称建档，后面可以持续补充你的理解。")
+            .presentationDetents([.height(360)])
+            .presentationDragIndicator(.visible)
         }
     }
 

@@ -212,15 +212,17 @@ extension ContentView {
         anniversaryItems.insert(
             AnniversaryItem(
                 title: trimmedTitle,
-                kind: anniversaryKind,
+                kind: .other,
                 calendarKind: anniversaryCalendarKind,
                 date: anniversaryDate,
-                createdAt: Date()
+                createdAt: Date(),
+                showsElapsedDays: anniversaryShowsElapsedDays
             ),
             at: 0
         )
         anniversaryTitleInput = ""
         anniversaryDate = Date()
+        anniversaryShowsElapsedDays = false
         persistAnniversaryItems()
         isShowingAnniversarySheet = false
     }
@@ -327,6 +329,7 @@ extension ContentView {
         if stockResearchItems.contains(where: { $0.name.localizedCaseInsensitiveCompare(trimmedName) == .orderedSame }) {
             stockSearchText = trimmedName
             stockNameInput = ""
+            isShowingStockAddAlert = false
             return
         }
 
@@ -336,6 +339,7 @@ extension ContentView {
         )
         stockNameInput = ""
         stockSearchText = ""
+        isShowingStockAddAlert = false
         persistStockResearchItems()
     }
 

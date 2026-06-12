@@ -46,34 +46,61 @@ extension ContentView {
     }
 
     func anniversaryDateText(for item: AnniversaryItem) -> String {
-        let calendar = item.calendarKind == .lunar ? Calendar(identifier: .chinese) : Calendar.current
-        let components = calendar.dateComponents([.month, .day], from: item.date)
-        let prefix = item.calendarKind.title
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
 
-        return "\(prefix) \(components.month ?? 1)月\(components.day ?? 1)日"
+        if item.calendarKind == .lunar {
+            formatter.calendar = Calendar(identifier: .chinese)
+            formatter.setLocalizedDateFormatFromTemplate("MMMd")
+            return "农历\(formatter.string(from: item.date))"
+        } else {
+            formatter.dateFormat = "M月d日"
+            return "阳历\(formatter.string(from: item.date))"
+        }
     }
 
-    func nextAnniversaryText(for item: AnniversaryItem) -> String {
-        guard let nextDate = nextAnniversaryDate(for: item) else {
-            return "待计算"
+    func anniversarySolarText(for item: AnniversaryItem) -> String? {
+        guard item.calendarKind == .lunar,
+              let nextDate = nextAnniversaryDate(for: item) else {
+            return nil
         }
 
-        if Calendar.current.isDateInToday(nextDate) {
-            return "就是今天"
-        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年M月d日"
+        return "阳历 \(formatter.string(from: nextDate))"
+    }
 
-        let days = Calendar.current.dateComponents(
+    func elapsedDaysText(for item: AnniversaryItem) -> String {
+        let calendar = Calendar.current
+        let days = calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: item.date),
+            to: calendar.startOfDay(for: Date())
+        ).day ?? 0
+
+        if days < 0 {
+            return "还没开始"
+        }
+        return "已 \(days) 天"
+    }
+
+    func daysUntilAnniversary(for item: AnniversaryItem) -> Int? {
+        guard let nextDate = nextAnniversaryDate(for: item) else { return nil }
+        return Calendar.current.dateComponents(
             [.day],
             from: Calendar.current.startOfDay(for: Date()),
             to: Calendar.current.startOfDay(for: nextDate)
-        ).day ?? 0
-
-        return days == 0 ? "就是今天" : "还有 \(max(0, days)) 天"
+        ).day
     }
 
     func nextAnniversaryDate(for item: AnniversaryItem) -> Date? {
-        let sourceCalendar = item.calendarKind == .lunar ? Calendar(identifier: .chinese) : Calendar.current
-        let targetComponents = sourceCalendar.dateComponents([.month, .day], from: item.date)
+        nextAnniversaryDate(date: item.date, calendarKind: item.calendarKind)
+    }
+
+    func nextAnniversaryDate(date: Date, calendarKind: AnniversaryCalendarKind) -> Date? {
+        let sourceCalendar = calendarKind == .lunar ? Calendar(identifier: .chinese) : Calendar.current
+        let targetComponents = sourceCalendar.dateComponents([.month, .day], from: date)
         let today = Date()
 
         for yearOffset in 0...3 {
@@ -92,6 +119,18 @@ extension ContentView {
         }
 
         return nil
+    }
+
+    func anniversarySolarPreviewText(date: Date, calendarKind: AnniversaryCalendarKind) -> String? {
+        guard calendarKind == .lunar,
+              let nextDate = nextAnniversaryDate(date: date, calendarKind: calendarKind) else {
+            return nil
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年M月d日 EEEE"
+        return formatter.string(from: nextDate)
     }
 
     func relativeTimeText(for date: Date) -> String {

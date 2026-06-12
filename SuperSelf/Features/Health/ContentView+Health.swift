@@ -2,71 +2,118 @@ import SwiftUI
 
 extension ContentView {
     var statusCard: some View {
-        VStack(spacing: 18) {
-            VStack(spacing: 6) {
-                Text(isFasting ? "\(fastingGoalHours) 小时挑战" : "\(eatingGoalHours) 小时吃饭时间")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+        let accent: Color = isFasting ? .blue : .green
+        let gradientColors: [Color] = isFasting ? [.blue, .cyan] : [.green, .mint]
+        let percent = Int((progress * 100).rounded())
 
-                Text(isFasting ? "先忍住不吃" : "可以吃饭啦")
-                    .font(.largeTitle.bold())
+        return VStack(spacing: 22) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(accent)
+                    .frame(width: 8, height: 8)
+                Text(isFasting ? "断食中" : "进食中")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(accent)
+                Spacer()
+                Text("目标 \(isFasting ? fastingGoalHours : eatingGoalHours) 小时")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
             }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .background(accent.opacity(0.10))
+            .clipShape(Capsule())
 
             ZStack {
                 Circle()
-                    .stroke(Color(.systemGray5), lineWidth: 18)
+                    .stroke(Color(.systemGray5), lineWidth: 16)
 
                 Circle()
                     .trim(from: 0, to: progress)
                     .stroke(
-                        AngularGradient(
-                            colors: isFasting ? [.blue, .cyan] : [.green, .mint],
-                            center: .center
-                        ),
-                        style: StrokeStyle(lineWidth: 18, lineCap: .round)
+                        AngularGradient(colors: gradientColors, center: .center),
+                        style: StrokeStyle(lineWidth: 16, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
+                    .shadow(color: accent.opacity(0.35), radius: 6, x: 0, y: 0)
                     .animation(.spring(response: 0.5, dampingFraction: 0.9), value: progress)
 
-                VStack(spacing: 4) {
-                    Text(timeString(from: remaining))
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                    Text(isFasting ? "再坚持一下" : "吃饭时间还剩")
-                        .font(.subheadline)
+                VStack(spacing: 6) {
+                    Text(isFasting ? "再坚持一下" : "享受进食时间")
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
+
+                    Text(timeString(from: remaining))
+                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+
+                    Text("已完成 \(percent)%")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(accent)
                 }
             }
-            .frame(width: 220, height: 220)
+            .frame(width: 230, height: 230)
+            .padding(.vertical, 4)
 
-            HStack {
+            HStack(spacing: 0) {
                 Button {
                     isShowingStartTimeSheet = true
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "play.circle")
-                        Text(startTimeText)
-                        Image(systemName: "pencil")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(.blue)
-                    }
+                    timeStat(
+                        title: "开始",
+                        value: relativeTimeText(for: fastingStartDate),
+                        systemImage: "play.circle.fill",
+                        tint: accent,
+                        editable: true
+                    )
                 }
                 .buttonStyle(.plain)
 
-                Spacer()
+                Rectangle()
+                    .fill(Color(.systemGray5))
+                    .frame(width: 1, height: 36)
 
-                Label(endTimeText, systemImage: "flag.checkered")
+                timeStat(
+                    title: "结束",
+                    value: relativeTimeText(for: phaseEndDate),
+                    systemImage: "flag.checkered.circle.fill",
+                    tint: .secondary,
+                    editable: false
+                )
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
         .padding(24)
         .frame(maxWidth: .infinity)
         .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
+    }
+
+    func timeStat(title: String, value: String, systemImage: String, tint: Color, editable: Bool) -> some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 5) {
+                Image(systemName: systemImage)
+                    .font(.subheadline)
+                    .foregroundStyle(tint)
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                if editable {
+                    Image(systemName: "pencil")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(tint)
+                }
+            }
+            Text(value)
+                .font(.subheadline.bold())
+                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     var actionCard: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 16) {
             Button {
                 switchPhase()
             } label: {
@@ -74,19 +121,20 @@ extension ContentView {
             }
             .buttonStyle(AppPrimaryButtonStyle(tint: primaryActionTint))
 
-            HStack(spacing: 10) {
-                HStack(spacing: 8) {
-                    Image(systemName: "timer")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.blue)
+            HStack(spacing: 12) {
+                Image(systemName: "timer")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.blue)
+                    .frame(width: 40, height: 40)
+                    .background(Color.blue.opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("当前计划")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        Text("\(fastingGoalHours) + \(eatingGoalHours)（断食 + 进食）")
-                            .font(.subheadline.bold())
-                    }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("当前计划")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("\(fastingGoalHours) + \(eatingGoalHours) · 断食 + 进食")
+                        .font(.subheadline.bold())
                 }
 
                 Spacer()
@@ -94,41 +142,38 @@ extension ContentView {
                 Button {
                     isShowingPlanSheet = true
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "slider.horizontal.3")
-                        Text("调整")
-                    }
-                    .font(.caption.bold())
-                    .foregroundStyle(.blue)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.blue.opacity(0.10))
-                    .clipShape(Capsule())
+                    Text("调整")
+                        .font(.caption.bold())
+                        .foregroundStyle(.blue)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 9)
+                        .background(Color.blue.opacity(0.10))
+                        .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(14)
             .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
             Button {
                 resetCurrentPhase()
             } label: {
                 Label("重置当前阶段", systemImage: "arrow.counterclockwise")
-                    .font(.subheadline.bold())
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 9)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
                     .background(Color(.tertiarySystemFill))
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
         }
-        .padding()
+        .padding(18)
         .frame(maxWidth: .infinity)
         .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
     }
 
     var fastingHistoryCard: some View {
@@ -162,7 +207,8 @@ extension ContentView {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
     }
 
     var syncCard: some View {
@@ -189,25 +235,47 @@ extension ContentView {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
     }
 
     var weightCard: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 16) {
+            Image(systemName: "scalemass.fill")
+                .font(.title2)
+                .foregroundStyle(.blue)
+                .frame(width: 52, height: 52)
+                .background(Color.blue.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 6) {
                 Text("体重记录")
-                    .font(.title3.bold())
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
 
                 if let latestWeightLog {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text(weightText(latestWeightLog.weight))
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                         Text("kg")
                             .font(.headline)
                             .foregroundStyle(.secondary)
+
+                        if let badge = weightDeltaBadge {
+                            HStack(spacing: 2) {
+                                Image(systemName: badge.icon)
+                                Text(badge.text)
+                            }
+                            .font(.caption.bold())
+                            .foregroundStyle(badge.color)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(badge.color.opacity(0.14))
+                            .clipShape(Capsule())
+                        }
                     }
 
-                    Text("最近：\(chineseDateTime(latestWeightLog.date))")
+                    Text("最近 \(chineseDateTime(latestWeightLog.date))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
@@ -223,23 +291,39 @@ extension ContentView {
                 prepareWeightSheet()
                 isShowingWeightSheet = true
             } label: {
-                AppIconCircleButton(icon: "plus", tint: .blue, size: 40, iconFont: .subheadline.weight(.bold))
+                AppIconCircleButton(icon: "plus", tint: .blue, size: 44, iconFont: .headline.weight(.bold))
             }
             .buttonStyle(.plain)
         }
-        .padding()
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
+    }
+
+    var weightDeltaBadge: (icon: String, text: String, color: Color)? {
+        let logs = sortedWeightLogs
+        guard logs.count >= 2 else { return nil }
+        let delta = logs[0].weight - logs[1].weight
+        if abs(delta) < 0.05 {
+            return ("minus", "持平", .secondary)
+        }
+        let icon = delta < 0 ? "arrow.down.right" : "arrow.up.right"
+        let color: Color = delta < 0 ? .green : .orange
+        return (icon, "\(weightText(abs(delta))) kg", color)
     }
 
     var addWeightSheet: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    Text("记录当前体重，趋势和 BMI 会自动更新。")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    SheetHeader(
+                        icon: "scalemass.fill",
+                        title: "记录体重",
+                        subtitle: "趋势和 BMI 会自动更新",
+                        gradient: [.blue, .cyan]
+                    )
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("当前体重")
@@ -474,9 +558,20 @@ extension ContentView {
     }
 
     var trendCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("体重趋势")
-                .font(.title3.bold())
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(.headline)
+                    .foregroundStyle(.blue)
+                    .frame(width: 38, height: 38)
+                    .background(Color.blue.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                Text("体重趋势")
+                    .font(.title3.bold())
+
+                Spacer()
+            }
 
             AppSegmentedControl(
                 options: WeightTrendGranularity.allCases,
@@ -486,7 +581,7 @@ extension ContentView {
 
             if trendPoints.count >= 2 {
                 WeightTrendView(points: trendPoints, targetWeight: targetWeightValue)
-                    .frame(height: 170)
+                    .frame(height: 180)
             } else {
                 AppEmptyState(
                     title: "还没有趋势",
@@ -495,19 +590,12 @@ extension ContentView {
                 )
                 .frame(maxWidth: .infinity, minHeight: 120)
             }
-
-            Button {
-                seedMockWeightLogs()
-            } label: {
-                Label("生成 30 天示例体重", systemImage: "wand.and.stars")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(AppSecondaryButtonStyle(tint: .blue, isFullWidth: true))
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
     }
 
     var bmiCard: some View {
@@ -702,14 +790,25 @@ extension ContentView {
     }
 
     var historyCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.headline)
+                    .foregroundStyle(.blue)
+                    .frame(width: 38, height: 38)
+                    .background(Color.blue.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
                 Text("体重历史")
                     .font(.title3.bold())
                 Spacer()
                 Text("\(weightLogs.count) 条")
-                    .font(.caption)
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color(.tertiarySystemFill))
+                    .clipShape(Capsule())
             }
 
             if sortedWeightLogs.isEmpty {
@@ -723,10 +822,6 @@ extension ContentView {
                     ForEach(displayedWeightLogs) { log in
                         WeightLogRow(log: log, weightText: weightText(log.weight), dateText: chineseDateTime(log.date)) {
                             deleteWeightLog(log)
-                        }
-
-                        if log.id != displayedWeightLogs.last?.id {
-                            Divider()
                         }
                     }
                 }
@@ -745,7 +840,8 @@ extension ContentView {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
     }
 
     var planCard: some View {
@@ -827,20 +923,24 @@ extension ContentView {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-    }
-
-    var startTimeText: String {
-        "开始 \(relativeTimeText(for: fastingStartDate))"
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
     }
 
     var startTimeSheet: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    SheetHeader(
+                        icon: "clock.arrow.circlepath",
+                        title: "修改开始时间",
+                        subtitle: isFasting ? "把开始时间设成上次吃完饭的时刻" : "调整进食阶段的开始时刻",
+                        gradient: [.blue, .indigo]
+                    )
+
                     Text(isFasting
-                         ? "修改空腹的开始时间。比如昨晚 11 点吃完饭，就把开始时间设为昨晚 23:00，倒计时会据此重新计算。"
-                         : "修改进食阶段的开始时间，倒计时会据此重新计算。")
+                         ? "比如昨晚 11 点吃完饭，就把开始时间设为昨晚 23:00，倒计时会据此重新计算。"
+                         : "倒计时会根据新的开始时间重新计算。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
@@ -915,7 +1015,14 @@ extension ContentView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    Text("选择适合自己的断食 + 进食时长。16+8 适合大多数人入门，18+6、20+4 难度更高。")
+                    SheetHeader(
+                        icon: "timer",
+                        title: "断食计划",
+                        subtitle: "选择适合自己的断食 + 进食时长",
+                        gradient: [.blue, .cyan]
+                    )
+
+                    Text("16+8 适合大多数人入门，18+6、20+4 难度更高。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
@@ -1004,10 +1111,6 @@ extension ContentView {
             target = calendar.date(byAdding: .day, value: -1, to: target) ?? target
         }
         return now.timeIntervalSince(target)
-    }
-
-    var endTimeText: String {
-        "结束 \(relativeTimeText(for: phaseEndDate))"
     }
 
     var primaryActionTitle: String {
@@ -1165,25 +1268,5 @@ extension ContentView {
             noteInput = ""
             isShowingWeightSheet = false
         }
-    }
-
-    func seedMockWeightLogs() {
-        let calendar = Calendar.current
-
-        weightLogs = (0..<30).compactMap { dayOffset in
-            guard let day = calendar.date(byAdding: .day, value: -dayOffset, to: Date()),
-                  let date = calendar.date(bySettingHour: 21, minute: 0, second: 0, of: day) else {
-                return nil
-            }
-
-            let fluctuation = sin(Double(dayOffset) * 0.7) * 1.4 + sin(Double(dayOffset) * 0.23) * 0.8
-            let weight = min(70, max(65, 67.5 + fluctuation))
-
-            return FastingLog(date: date, weight: weight, note: "示例数据")
-        }
-
-        latestWeight = latestWeightLog.map { weightText($0.weight) } ?? ""
-        visibleWeightHistoryDays = 10
-        persistWeightLogs()
     }
 }

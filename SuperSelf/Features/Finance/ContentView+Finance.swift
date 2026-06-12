@@ -71,6 +71,13 @@ extension ContentView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    SheetHeader(
+                        icon: "wallet.pass.fill",
+                        title: "添加资产",
+                        subtitle: "选择类型，填写名称和金额",
+                        gradient: [.green, .teal]
+                    )
+
                     VStack(alignment: .leading, spacing: 10) {
                         financeFieldLabel("资产类型")
 
@@ -284,7 +291,7 @@ extension ContentView {
                 )
                 .frame(maxWidth: .infinity, minHeight: 130)
             } else {
-                VStack(spacing: 10) {
+                VStack(spacing: 8) {
                     ForEach(sortedFinanceAssets) { asset in
                         FinanceAssetRow(
                             asset: asset,
@@ -295,10 +302,6 @@ extension ContentView {
                             editingFinanceAsset = asset
                         } onDelete: {
                             deleteFinanceAsset(asset)
-                        }
-
-                        if asset.id != sortedFinanceAssets.last?.id {
-                            Divider()
                         }
                     }
                 }
@@ -349,7 +352,7 @@ extension ContentView {
                 )
                 .frame(maxWidth: .infinity, minHeight: 150)
             } else {
-                VStack(spacing: 12) {
+                VStack(spacing: 8) {
                     ForEach(filteredStockResearchItems) { item in
                         StockResearchRow(
                             item: item,
@@ -361,10 +364,6 @@ extension ContentView {
                         }, onTogglePin: {
                             toggleStockResearchPinned(item)
                         })
-
-                        if item.id != filteredStockResearchItems.last?.id {
-                            Divider()
-                        }
                     }
                 }
             }

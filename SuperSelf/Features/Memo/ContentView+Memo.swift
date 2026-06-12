@@ -7,7 +7,7 @@ extension ContentView {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("纪念日")
                         .font(.title3.bold())
-                    Text("生日、结婚纪念日或其他重要日子，阴历阳历都可以记录。")
+                    Text("记录重要的日子，阴历阳历都可以，可选显示已过去多少天。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -35,13 +35,11 @@ extension ContentView {
                         AnniversaryRow(
                             item: item,
                             dateText: anniversaryDateText(for: item),
-                            nextText: nextAnniversaryText(for: item)
+                            solarText: anniversarySolarText(for: item),
+                            daysUntil: daysUntilAnniversary(for: item),
+                            elapsedText: item.showsElapsedDays ? elapsedDaysText(for: item) : nil
                         ) {
                             deleteAnniversaryItem(item)
-                        }
-
-                        if item.id != sortedAnniversaryItems.last?.id {
-                            Divider()
                         }
                     }
                 }
@@ -57,15 +55,12 @@ extension ContentView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        anniversaryFieldLabel("类型")
-
-                        HStack(spacing: 10) {
-                            ForEach(AnniversaryKind.allCases) { kind in
-                                anniversaryKindChip(kind)
-                            }
-                        }
-                    }
+                    SheetHeader(
+                        icon: "calendar.badge.heart",
+                        title: "添加纪念日",
+                        subtitle: "记录重要的日子，支持阳历和农历",
+                        gradient: [.orange, .pink]
+                    )
 
                     VStack(alignment: .leading, spacing: 10) {
                         anniversaryFieldLabel("日期类型")
@@ -79,24 +74,61 @@ extension ContentView {
                     VStack(alignment: .leading, spacing: 10) {
                         anniversaryFieldLabel("名称")
                         ModernInputField(
-                            placeholder: anniversaryKind == .other ? "例如：第一次旅行" : "例如：妈妈生日",
+                            placeholder: "记录个重要的日子",
                             text: $anniversaryTitleInput,
-                            icon: anniversaryKind.icon,
+                            icon: "calendar.badge.heart",
                             tint: .orange
                         )
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
-                        anniversaryFieldLabel("日期")
+                        anniversaryFieldLabel(anniversaryCalendarKind == .lunar ? "日期（按农历选择）" : "日期")
                         DatePicker("", selection: $anniversaryDate, displayedComponents: .date)
                             .datePickerStyle(.graphical)
                             .tint(.orange)
                             .environment(\.locale, Locale(identifier: "zh_CN"))
+                            .environment(\.calendar, anniversaryCalendarKind == .lunar ? Calendar(identifier: .chinese) : Calendar.current)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                             .background(Color(.secondarySystemGroupedBackground))
                             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                        if anniversaryCalendarKind == .lunar,
+                           let solarPreview = anniversarySolarPreviewText(date: anniversaryDate, calendarKind: .lunar) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "calendar.badge.clock")
+                                    .foregroundStyle(.orange)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("今年对应阳历")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                    Text(solarPreview)
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(.orange)
+                                }
+                                Spacer()
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(Color.orange.opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
                     }
+
+                    Toggle(isOn: $anniversaryShowsElapsedDays) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("显示累计天数")
+                                .font(.subheadline.bold())
+                            Text("从这一天到今天一共多少天，会显示在卡片上。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(.orange)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
                 .padding()
             }
@@ -132,38 +164,6 @@ extension ContentView {
             .foregroundStyle(.secondary)
     }
 
-    func anniversaryKindChip(_ kind: AnniversaryKind) -> some View {
-        let isSelected = anniversaryKind == kind
-
-        return Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
-                anniversaryKind = kind
-            }
-        } label: {
-            VStack(spacing: 8) {
-                Image(systemName: kind.icon)
-                    .font(.title3)
-                    .foregroundStyle(isSelected ? .white : Color.orange)
-                    .frame(width: 40, height: 40)
-                    .background(isSelected ? AnyShapeStyle(Color.orange) : AnyShapeStyle(Color.orange.opacity(0.12)), in: Circle())
-
-                Text(kind.title)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(isSelected ? Color.orange : Color(.separator).opacity(0.18), lineWidth: isSelected ? 2 : 1)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
     var todoTasksCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -183,7 +183,7 @@ extension ContentView {
             }
 
             AddEntryBar(
-                placeholder: "例如：周末整理房间",
+                placeholder: "记录些什么",
                 text: $todoInput,
                 icon: "checklist",
                 tint: .blue,
@@ -199,35 +199,25 @@ extension ContentView {
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 if !activeTodoTasks.isEmpty {
-                    VStack(spacing: 10) {
+                    VStack(spacing: 8) {
                         ForEach(activeTodoTasks) { task in
                             TodoTaskRow(task: task) {
                                 toggleTodoTask(task)
                             } onDelete: {
                                 deleteTodoTask(task)
                             }
-
-                            if task.id != activeTodoTasks.last?.id {
-                                Divider()
-                            }
                         }
                     }
                 }
 
                 if !completedTodoTasks.isEmpty {
-                    Divider()
-
                     DisclosureGroup {
-                        VStack(spacing: 10) {
+                        VStack(spacing: 8) {
                             ForEach(completedTodoTasks.prefix(8)) { task in
                                 TodoTaskRow(task: task) {
                                     toggleTodoTask(task)
                                 } onDelete: {
                                     deleteTodoTask(task)
-                                }
-
-                                if task.id != completedTodoTasks.prefix(8).last?.id {
-                                    Divider()
                                 }
                             }
                         }
@@ -273,7 +263,7 @@ extension ContentView {
             .pickerStyle(.segmented)
 
             AddEntryBar(
-                placeholder: "例如：去海边看日落",
+                placeholder: "想要点什么",
                 text: $wishlistInput,
                 icon: wishlistCategory.icon,
                 tint: .purple,
@@ -289,35 +279,25 @@ extension ContentView {
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 if !openWishlistItems.isEmpty {
-                    VStack(spacing: 10) {
+                    VStack(spacing: 8) {
                         ForEach(openWishlistItems) { item in
                             WishlistRow(item: item) {
                                 toggleWishlistItem(item)
                             } onDelete: {
                                 deleteWishlistItem(item)
                             }
-
-                            if item.id != openWishlistItems.last?.id {
-                                Divider()
-                            }
                         }
                     }
                 }
 
                 if !completedWishlistItems.isEmpty {
-                    Divider()
-
                     DisclosureGroup("已经实现 \(completedWishlistItems.count) 个") {
-                        VStack(spacing: 10) {
+                        VStack(spacing: 8) {
                             ForEach(completedWishlistItems.prefix(8)) { item in
                                 WishlistRow(item: item) {
                                     toggleWishlistItem(item)
                                 } onDelete: {
                                     deleteWishlistItem(item)
-                                }
-
-                                if item.id != completedWishlistItems.prefix(8).last?.id {
-                                    Divider()
                                 }
                             }
                         }

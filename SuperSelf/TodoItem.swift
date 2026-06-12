@@ -127,6 +127,40 @@ struct AnniversaryItem: Identifiable, Equatable, Codable {
     var calendarKind: AnniversaryCalendarKind
     var date: Date
     var createdAt: Date
+    var showsElapsedDays: Bool = false
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, kind, calendarKind, date, createdAt, showsElapsedDays
+    }
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        kind: AnniversaryKind,
+        calendarKind: AnniversaryCalendarKind,
+        date: Date,
+        createdAt: Date,
+        showsElapsedDays: Bool = false
+    ) {
+        self.id = id
+        self.title = title
+        self.kind = kind
+        self.calendarKind = calendarKind
+        self.date = date
+        self.createdAt = createdAt
+        self.showsElapsedDays = showsElapsedDays
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        kind = try container.decode(AnniversaryKind.self, forKey: .kind)
+        calendarKind = try container.decode(AnniversaryCalendarKind.self, forKey: .calendarKind)
+        date = try container.decode(Date.self, forKey: .date)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        showsElapsedDays = try container.decodeIfPresent(Bool.self, forKey: .showsElapsedDays) ?? false
+    }
 }
 
 enum FinanceAssetKind: String, CaseIterable, Identifiable, Codable {

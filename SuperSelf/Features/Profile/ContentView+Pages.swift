@@ -38,8 +38,6 @@ extension ContentView {
         VStack(spacing: 20) {
             statusCard
             actionCard
-            fastingHistoryCard
-            planCard
         }
     }
 
@@ -113,8 +111,8 @@ extension ContentView {
     var financeAssetRecordSection: some View {
         VStack(spacing: 20) {
             financeSummaryCard
-            financeTrendCard
             financeDistributionCard
+            financeTrendCard
             financeAssetsCard
         }
     }
