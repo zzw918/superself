@@ -54,11 +54,11 @@ extension ContentView {
                     .animation(.spring(response: 0.5, dampingFraction: 0.9), value: progress)
 
                 VStack(spacing: 6) {
-                    Text(reached ? "已超时" : "剩余时间")
+                    Text(reached ? "已超时" : (isFasting ? "已断食时间" : "剩余时间"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
 
-                    Text(timeString(from: reached ? overtime : remaining))
+                    Text(timeString(from: reached ? overtime : (isFasting ? elapsed : remaining)))
                         .font(.system(size: 40, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .contentTransition(.numericText())
@@ -76,7 +76,7 @@ extension ContentView {
                     isShowingStartTimeSheet = true
                 } label: {
                     timeStat(
-                        title: "开始",
+                        title: isFasting ? "断食开始时间" : "吃饭开始时间",
                         value: relativeTimeText(for: fastingStartDate),
                         systemImage: "play.circle.fill",
                         tint: accent,
@@ -90,7 +90,7 @@ extension ContentView {
                     .frame(width: 1, height: 36)
 
                 timeStat(
-                    title: "结束",
+                    title: isFasting ? "断食结束时间" : "吃饭结束时间",
                     value: relativeTimeText(for: phaseEndDate),
                     systemImage: "flag.checkered.circle.fill",
                     tint: .secondary,
@@ -130,11 +130,23 @@ extension ContentView {
     var actionCard: some View {
         VStack(spacing: 16) {
             Button {
-                switchPhase()
+                if isFasting && !hasReachedCurrentGoal {
+                    isShowingEndFastingConfirm = true
+                } else {
+                    switchPhase()
+                }
             } label: {
                 Text(primaryActionTitle)
             }
             .buttonStyle(AppPrimaryButtonStyle(tint: primaryActionTint))
+            .alert("中断断食？", isPresented: $isShowingEndFastingConfirm) {
+                Button("再坚持一下", role: .cancel) {}
+                Button("结束断食", role: .destructive) {
+                    switchPhase()
+                }
+            } message: {
+                Text("目标尚未达成，确定要提前结束吗？")
+            }
 
             HStack(spacing: 12) {
                 Image(systemName: "timer")
@@ -379,15 +391,6 @@ extension ContentView {
                             Text("kg")
                                 .font(.headline)
                                 .foregroundStyle(.secondary)
-                        }
-
-                        HStack(spacing: 8) {
-                            if let latestWeightLog {
-                                Text("最近 \(chineseDateTime(latestWeightLog.date))")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
 
                             if let badge = weightDeltaBadge {
                                 HStack(spacing: 2) {
@@ -402,6 +405,13 @@ extension ContentView {
                                 .clipShape(Capsule())
                                 .fixedSize()
                             }
+                        }
+
+                        if let latestWeightLog {
+                            Text("最近 \(chineseDateTime(latestWeightLog.date))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
                         }
                     } else {
                         Text("还没有体重记录")
@@ -507,108 +517,56 @@ extension ContentView {
     var addWeightSheet: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    SheetHeader(
-                        icon: "scalemass.fill",
-                        title: "记录体重",
-                        subtitle: "趋势和 BMI 会自动更新",
-                        gradient: [.blue, .cyan]
-                    )
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("当前体重")
-                            .font(.caption.bold())
-                            .foregroundStyle(.secondary)
-
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 8) {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             ZStack(alignment: .leading) {
                                 if weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                     Text("0.0")
-                                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                                        .font(.system(size: 56, weight: .bold, design: .rounded))
                                         .foregroundStyle(.tertiary)
                                         .allowsHitTesting(false)
                                 }
 
                                 TextField("", text: $weightInput)
                                     .keyboardType(.decimalPad)
-                                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                                    .font(.system(size: 56, weight: .bold, design: .rounded))
                                     .foregroundStyle(.primary)
                                     .focused($focusedWeightSheetField, equals: .weight)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                focusedWeightSheetField = .weight
-                            }
+                            .fixedSize()
 
                             Text("kg")
-                                .font(.title3.bold())
+                                .font(.title2.bold())
                                 .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 18)
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(
-                                focusedWeightSheetField == .weight ? Color.blue.opacity(0.55) : Color(.separator).opacity(0.14),
-                                lineWidth: focusedWeightSheetField == .weight ? 1.5 : 1
-                            )
-                    }
-                    .shadow(
-                        color: focusedWeightSheetField == .weight ? Color.blue.opacity(0.12) : .clear,
-                        radius: 14,
-                        y: 6
-                    )
-
-                    if let latestWeightLog {
-                        HStack(spacing: 10) {
-                            Image(systemName: "clock.arrow.circlepath")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.blue)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("上次记录")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text("\(weightText(latestWeightLog.weight)) kg · \(chineseDateTime(latestWeightLog.date))")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.primary)
-                            }
 
                             Spacer()
-
-                            Button("填入上次") {
-                                weightInput = weightText(latestWeightLog.weight)
-                            }
-                            .font(.caption.bold())
-                            .foregroundStyle(.blue)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(Color.blue.opacity(0.10))
-                            .clipShape(Capsule())
-                            .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .background(Color.blue.opacity(0.06))
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                        if let latestWeightLog {
+                            HStack(spacing: 6) {
+                                Text("上次 \(weightText(latestWeightLog.weight)) kg · \(chineseDateTime(latestWeightLog.date))")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+
+                                Button("填入") {
+                                    weightInput = weightText(latestWeightLog.weight)
+                                }
+                                .font(.footnote.bold())
+                                .foregroundStyle(.blue)
+                                .buttonStyle(.plain)
+                            }
+                        }
                     }
 
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "text.bubble")
-                                .font(.caption.weight(.semibold))
-                            Text("备注")
-                                .font(.caption.bold())
-                        }
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("备注")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
 
                         ZStack(alignment: .topLeading) {
                             if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Text("可选，例如空腹、运动后、晚饭前")
+                                Text("可选，记一下胖了 / 瘦了的原因")
                                     .font(.subheadline)
                                     .foregroundStyle(.tertiary)
                                     .padding(.top, 14)
@@ -619,25 +577,13 @@ extension ContentView {
                                 .font(.subheadline)
                                 .foregroundStyle(.primary)
                                 .scrollContentBackground(.hidden)
-                                .frame(minHeight: 96)
+                                .frame(minHeight: 88)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
                                 .focused($focusedWeightSheetField, equals: .note)
                         }
                         .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(
-                                    focusedWeightSheetField == .note ? Color.blue.opacity(0.55) : Color(.separator).opacity(0.14),
-                                    lineWidth: focusedWeightSheetField == .note ? 1.5 : 1
-                                )
-                        }
-                        .shadow(
-                            color: focusedWeightSheetField == .note ? Color.blue.opacity(0.10) : .clear,
-                            radius: 12,
-                            y: 6
-                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
@@ -663,10 +609,6 @@ extension ContentView {
                             .padding(.vertical, 2)
                         }
                     }
-
-                    Label("体重会保存到本地历史记录，并在 iCloud 可用时尝试同步。", systemImage: "info.circle")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
                 }
                 .padding(20)
             }
@@ -737,14 +679,14 @@ extension ContentView {
             }
             .onAppear {
                 didShowWeightSaveFeedback = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                    focusedWeightSheetField = .weight
-                }
             }
-            .animation(.spring(response: 0.28, dampingFraction: 0.88), value: focusedWeightSheetField)
+            .task {
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                focusedWeightSheetField = .weight
+            }
             .animation(.spring(response: 0.3, dampingFraction: 0.85), value: didShowWeightSaveFeedback)
         }
-        .presentationDetents([.large])
+        .presentationDetents([.medium, .large])
     }
 
     var trendCard: some View {
@@ -1312,13 +1254,7 @@ extension ContentView {
             if hasReachedCurrentGoal {
                 return "已达标，开吃犒劳自己"
             }
-            switch fastingStage {
-            case 0: return "已开启断食，加油坚持"
-            case 1: return "保持节奏，感觉不错"
-            case 2: return "过半啦，再稳住一会儿"
-            case 3: return "胜利在望，马上就好"
-            default: return "最后一程，快到了"
-            }
+            return "结束断食"
         }
 
         return "吃完了，开始 \(fastingGoalHours) 小时计划"
@@ -1326,7 +1262,7 @@ extension ContentView {
 
     var primaryActionTint: Color {
         if isFasting {
-            return hasReachedCurrentGoal ? .green : .orange
+            return hasReachedCurrentGoal ? .green : Color(.systemGray)
         }
 
         return .blue

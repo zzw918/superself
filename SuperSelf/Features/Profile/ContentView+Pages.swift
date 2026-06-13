@@ -152,19 +152,19 @@ extension ContentView {
                 appearanceRow
                     .profileCardRow()
 
-                profileSectionTitleRow("数据同步")
-
-                syncCard
-                    .profileCardRow()
-
-                profileSectionNoteRow("健康、备忘录、理财、股票研究、功能设置和个人目标都会保存到本地，并在 iCloud 可用时同步。")
-
                 profileSectionTitleRow("通知")
 
                 notificationSettingsRow
                     .profileCardRow()
 
                 profileSectionNoteRow("在关键节点收到本地通知。需要在系统「设置-通知」中允许通知权限。")
+
+                profileSectionTitleRow("数据同步")
+
+                syncCard
+                    .profileCardRow()
+
+                profileSectionNoteRow("健康、备忘录、理财、股票研究、功能设置和个人目标都会保存到本地，并在 iCloud 可用时同步。")
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
@@ -479,7 +479,7 @@ extension ContentView {
 
             trailing()
         }
-        .listRowInsets(EdgeInsets(top: 18, leading: 20, bottom: 8, trailing: 20))
+        .listRowInsets(EdgeInsets(top: 32, leading: 20, bottom: 6, trailing: 20))
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
@@ -489,7 +489,7 @@ extension ContentView {
             .font(.footnote)
             .foregroundStyle(.secondary)
             .lineSpacing(2)
-            .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 4, trailing: 20))
+            .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 2, trailing: 20))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
     }

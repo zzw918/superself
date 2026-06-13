@@ -68,6 +68,7 @@ struct ContentView: View {
     @State var wishlistCategoryID = WishlistCategory.defaultCategories[0].id
     @State var wishlistFilter: WishlistFilter = .all
     @State var isShowingWishlistCategorySheet = false
+    @State var isShowingWishlistCategoryPicker = false
     @State var anniversaryTitleInput = ""
     @State var anniversaryCalendarKind: AnniversaryCalendarKind = .solar
     @State var anniversaryDate = Date()
@@ -107,6 +108,7 @@ struct ContentView: View {
     @State var trendGranularity: WeightTrendGranularity = .day
     @State var visibleWeightHistoryDays = 10
     @State var didShowWeightSaveFeedback = false
+    @State var isShowingEndFastingConfirm = false
     @FocusState var focusedWeightSheetField: WeightSheetField?
 
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -194,13 +196,13 @@ struct ContentView: View {
             )
         }
         .sheet(isPresented: $isShowingStockAddAlert) {
-            StockResearchAddSheet(name: $stockNameInput) {
+            StockResearchAddSheet(name: $stockNameInput, showsSuggestions: stockResearchItems.isEmpty) {
                 addStockResearchItem()
             } onCancel: {
                 stockNameInput = ""
                 isShowingStockAddAlert = false
             }
-            .presentationDetents([.height(360)])
+            .presentationDetents([.height(stockResearchItems.isEmpty ? 360 : 220)])
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingTodoTask) { task in
@@ -232,6 +234,16 @@ struct ContentView: View {
             )
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+        }
+        .confirmationDialog("选择分类", isPresented: $isShowingWishlistCategoryPicker, titleVisibility: .visible) {
+            ForEach(sortedWishlistCategories) { category in
+                Button(category.title) {
+                    insertWishlistItem(title: wishlistInput, categoryID: category.id)
+                }
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("把「\(wishlistInput.trimmingCharacters(in: .whitespacesAndNewlines))」归到哪个分类？")
         }
         .sheet(item: $editingAnniversaryItem) { item in
             AnniversaryEditorSheet(

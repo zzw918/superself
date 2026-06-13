@@ -37,6 +37,7 @@ struct WishlistCategory: Identifiable, Equatable, Hashable, Codable {
         WishlistCategory(id: "food", title: "美食", icon: "fork.knife"),
         WishlistCategory(id: "reading", title: "阅读", icon: "book.closed"),
         WishlistCategory(id: "movie", title: "电影", icon: "film"),
+        WishlistCategory(id: "music", title: "音乐", icon: "music.note"),
         WishlistCategory(id: "experience", title: "新体验", icon: "sparkles")
     ]
 

@@ -185,6 +185,12 @@ extension ContentView {
         if let decodedCategories = try? JSONDecoder().decode([WishlistCategory].self, from: wishlistCategoriesData),
            !decodedCategories.isEmpty {
             wishlistCategories = decodedCategories
+            if !wishlistCategories.contains(where: { $0.id == "music" }),
+               let musicCategory = WishlistCategory.defaultCategories.first(where: { $0.id == "music" }) {
+                let insertIndex = wishlistCategories.firstIndex(where: { $0.id == "experience" }) ?? wishlistCategories.endIndex
+                wishlistCategories.insert(musicCategory, at: insertIndex)
+                persistWishlistCategories()
+            }
             if !wishlistCategories.contains(where: { $0.id == wishlistCategoryID }) {
                 wishlistCategoryID = wishlistCategories.first?.id ?? WishlistCategory.fallback.id
             }
@@ -195,7 +201,17 @@ extension ContentView {
         let trimmedTitle = wishlistInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { return }
 
-        let categoryID = wishlistFilter.categoryID ?? wishlistCategoryID
+        if let categoryID = wishlistFilter.categoryID {
+            insertWishlistItem(title: trimmedTitle, categoryID: categoryID)
+        } else {
+            isShowingWishlistCategoryPicker = true
+        }
+    }
+
+    func insertWishlistItem(title: String, categoryID: String) {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+
         wishlistItems.insert(
             WishlistItem(title: trimmedTitle, categoryID: categoryID, createdAt: Date()),
             at: 0

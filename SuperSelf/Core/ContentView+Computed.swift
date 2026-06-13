@@ -120,6 +120,18 @@ extension ContentView {
         }.count
     }
 
+    var sortedWishlistCategories: [WishlistCategory] {
+        wishlistCategories.enumerated().sorted { lhs, rhs in
+            let lhsCount = wishlistCount(for: WishlistFilter(category: lhs.element))
+            let rhsCount = wishlistCount(for: WishlistFilter(category: rhs.element))
+            if lhsCount != rhsCount {
+                return lhsCount > rhsCount
+            }
+            return lhs.offset < rhs.offset
+        }
+        .map(\.element)
+    }
+
     func wishlistCategory(for item: WishlistItem) -> WishlistCategory {
         wishlistCategories.first { $0.id == item.categoryID } ?? WishlistCategory.fallback
     }

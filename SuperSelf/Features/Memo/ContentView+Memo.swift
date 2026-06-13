@@ -313,7 +313,7 @@ extension ContentView {
     var wishlistFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach([WishlistFilter.all] + wishlistCategories.map(WishlistFilter.init(category:))) { filter in
+                ForEach([WishlistFilter.all] + sortedWishlistCategories.map(WishlistFilter.init(category:))) { filter in
                     Button {
                         withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
                             wishlistFilter = filter

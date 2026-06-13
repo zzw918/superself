@@ -321,6 +321,7 @@ struct StockResearchRow: View {
 
 struct StockResearchAddSheet: View {
     @Binding var name: String
+    var showsSuggestions: Bool = true
     let onAdd: () -> Void
     let onCancel: () -> Void
 
@@ -339,21 +340,23 @@ struct StockResearchAddSheet: View {
             )
 
             ModernInputField(
-                placeholder: "股票名称，例如：贵州茅台",
+                placeholder: "股票名称",
                 text: $name,
                 icon: "magnifyingglass",
                 tint: .blue
             )
             .focused($isNameFocused)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("快速添加")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
+            if showsSuggestions {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("快速添加")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
 
-                let suggestions = ["贵州茅台", "腾讯控股", "苹果", "英伟达", "宁德时代"]
-                FlexibleChips(items: suggestions) { suggestion in
-                    name = suggestion
+                    let suggestions = ["贵州茅台", "腾讯控股", "苹果", "英伟达", "宁德时代"]
+                    FlexibleChips(items: suggestions) { suggestion in
+                        name = suggestion
+                    }
                 }
             }
 
@@ -440,6 +443,9 @@ struct StockResearchEditorSheet: View {
     @State private var certainty: StockRating?
     @State private var growth: StockRating?
     @State private var attention: StockRating?
+    @FocusState private var isThesisFocused: Bool
+
+    private let thesisAnchor = "thesisEditor"
 
     init(
         item: StockResearchItem,
@@ -461,53 +467,68 @@ struct StockResearchEditorSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("股票名称")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("股票名称")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
 
-                    TextField("股票名称", text: $nameInput)
-                        .font(.title3.bold())
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
+                            TextField("股票名称", text: $nameInput)
+                                .font(.title3.bold())
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                            Text("更新于 \(updatedText)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal)
+                        .padding(.top)
+
+                        VStack(spacing: 10) {
+                            StockRatingPicker(title: "确定性", hint: "未来大概率不会亏", tint: .green, selection: $certainty)
+                            StockRatingPicker(title: "成长性", hint: "营收利润大涨的可能", tint: .orange, selection: $growth)
+                            StockRatingPicker(title: "关注度", hint: "要不要多花精力跟踪", tint: .blue, selection: $attention)
+                        }
+                        .padding(14)
                         .background(Color(.secondarySystemGroupedBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .padding(.horizontal)
 
-                    Text("更新于 \(updatedText)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        TextEditor(text: $thesis)
+                            .focused($isThesisFocused)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 260)
+                            .padding(8)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .overlay(alignment: .topLeading) {
+                                if thesis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text("写下你对这只股票的理解：商业模式、护城河、估值、风险、跟踪点……")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 16)
+                                        .allowsHitTesting(false)
+                                }
+                            }
+                            .padding(.horizontal)
+                            .padding(.bottom)
+                            .id(thesisAnchor)
+                    }
                 }
-                .padding(.horizontal)
-                .padding(.top)
-
-                VStack(spacing: 10) {
-                    StockRatingPicker(title: "确定性", hint: "未来大概率不会亏", tint: .green, selection: $certainty)
-                    StockRatingPicker(title: "成长性", hint: "营收利润大涨的可能", tint: .orange, selection: $growth)
-                    StockRatingPicker(title: "关注度", hint: "要不要多花精力跟踪", tint: .blue, selection: $attention)
-                }
-                .padding(14)
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .padding(.horizontal)
-
-                TextEditor(text: $thesis)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(8)
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(alignment: .topLeading) {
-                        if thesis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("写下你对这只股票的理解：商业模式、护城河、估值、风险、跟踪点……")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 16)
-                                .allowsHitTesting(false)
+                .scrollDismissesKeyboard(.interactively)
+                .onChange(of: isThesisFocused) { _, focused in
+                    if focused {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo(thesisAnchor, anchor: .top)
                         }
                     }
-                    .padding(.horizontal)
-                    .padding(.bottom)
+                }
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("股票研究")
@@ -524,6 +545,14 @@ struct StockResearchEditorSheet: View {
                     }
                     .font(.subheadline.bold())
                     .foregroundStyle(.blue)
+                }
+
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("收起键盘") {
+                        isThesisFocused = false
+                    }
+                    .font(.subheadline.bold())
                 }
             }
         }
