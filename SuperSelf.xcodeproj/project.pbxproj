@@ -22,6 +22,7 @@
 		A1B2C3D41A2B3C4D00000018 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000018 /* SharedComponents.swift */; };
 		A1B2C3D41A2B3C4D00000019 /* FeatureRowsAndSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000019 /* FeatureRowsAndSheets.swift */; };
 		A1B2C3D41A2B3C4D00000020 /* Charts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000020 /* Charts.swift */; };
+		A1B2C3D41A2B3C4D00000021 /* ContentView+Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000021 /* ContentView+Notifications.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +43,7 @@
 		A1B2C3D31A2B3C4D00000018 /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000019 /* FeatureRowsAndSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureRowsAndSheets.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000020 /* Charts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Charts.swift; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000021 /* ContentView+Notifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Notifications.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,6 +146,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D31A2B3C4D00000016 /* ContentView+Persistence.swift */,
+				A1B2C3D31A2B3C4D00000021 /* ContentView+Notifications.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -246,6 +249,7 @@
 				A1B2C3D41A2B3C4D00000018 /* SharedComponents.swift in Sources */,
 				A1B2C3D41A2B3C4D00000019 /* FeatureRowsAndSheets.swift in Sources */,
 				A1B2C3D41A2B3C4D00000020 /* Charts.swift in Sources */,
+				A1B2C3D41A2B3C4D00000021 /* ContentView+Notifications.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

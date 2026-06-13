@@ -145,14 +145,12 @@ extension ContentView {
                 profileFixedTabCard
                     .profileCardRow()
 
-                profileSectionNoteRow("拖动可调整健康、备忘录、理财的顺序；关闭开关可隐藏不常用功能。“我的”固定在最右侧，不参与排序和隐藏。")
+                profileSectionNoteRow("拖动排序，开关控制显示。")
 
                 profileSectionTitleRow("外观")
 
-                appearanceCard
+                appearanceRow
                     .profileCardRow()
-
-                profileSectionNoteRow("选择“浅色”或“深色”可固定使用某种外观；选择“跟随系统”则随系统设置自动切换。")
 
                 profileSectionTitleRow("数据同步")
 
@@ -160,6 +158,13 @@ extension ContentView {
                     .profileCardRow()
 
                 profileSectionNoteRow("健康、备忘录、理财、股票研究、功能设置和个人目标都会保存到本地，并在 iCloud 可用时同步。")
+
+                profileSectionTitleRow("通知")
+
+                notificationSettingsRow
+                    .profileCardRow()
+
+                profileSectionNoteRow("在关键节点收到本地通知。需要在系统「设置-通知」中允许通知权限。")
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
@@ -240,6 +245,180 @@ extension ContentView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var notificationSettingsRow: some View {
+        HStack(spacing: 14) {
+            profileIcon("bell.badge", tint: .red)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("通知设置")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("管理各类提醒通知")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(anyFastingNotificationEnabled ? "已开启" : "未开启")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            NavigationLink {
+                notificationSettingsPage
+            } label: {
+                EmptyView()
+            }
+            .opacity(0)
+        }
+    }
+
+    var notificationSettingsPage: some View {
+        List {
+            profileSectionTitleRow("16 + 8 断食")
+
+            notificationCard
+                .profileCardRow()
+
+            profileSectionNoteRow("在关键节点收到本地通知。需要在系统「设置-通知」中允许通知权限。")
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("通知设置")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    var notificationCard: some View {
+        VStack(spacing: 0) {
+            notificationToggleRow(
+                icon: "fork.knife",
+                tint: .green,
+                title: "进食前 1 小时",
+                subtitle: "断食快结束时提醒",
+                isOn: $notifyEatingSoon
+            )
+
+            Divider().padding(.leading, 64)
+
+            notificationToggleRow(
+                icon: "fork.knife.circle.fill",
+                tint: .green,
+                title: "进食时间到",
+                subtitle: "断食达标可以开吃",
+                isOn: $notifyEatingStart
+            )
+
+            Divider().padding(.leading, 64)
+
+            notificationToggleRow(
+                icon: "timer",
+                tint: .blue,
+                title: "断食前 1 小时",
+                subtitle: "进食窗口快结束时提醒",
+                isOn: $notifyFastingSoon
+            )
+
+            Divider().padding(.leading, 64)
+
+            notificationToggleRow(
+                icon: "moon.stars.fill",
+                tint: .blue,
+                title: "断食时间到",
+                subtitle: "开始新一轮断食",
+                isOn: $notifyFastingStart
+            )
+        }
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    func notificationToggleRow(icon: String, tint: Color, title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+        HStack(spacing: 14) {
+            profileIcon(icon, tint: tint)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .onChange(of: isOn.wrappedValue) {
+                    handleNotificationToggleChange()
+                }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    var appearanceRow: some View {
+        HStack(spacing: 14) {
+            profileIcon("circle.lefthalf.filled", tint: .indigo)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("外观")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("浅色、深色或跟随系统")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(appearanceMode.wrappedValue.title)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            NavigationLink {
+                appearanceSettingsPage
+            } label: {
+                EmptyView()
+            }
+            .opacity(0)
+        }
+    }
+
+    var appearanceSettingsPage: some View {
+        List {
+            appearanceCard
+                .profileCardRow()
+
+            profileSectionNoteRow("选择“浅色”或“深色”可固定使用某种外观；选择“跟随系统”则随系统设置自动切换。")
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("外观")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     var appearanceCard: some View {

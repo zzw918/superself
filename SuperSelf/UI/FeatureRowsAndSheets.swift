@@ -1233,15 +1233,19 @@ struct AnniversaryEditorSheet: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         fieldLabel(calendarKind == .lunar ? "日期（按农历选择）" : "日期")
-                        DatePicker("", selection: $date, displayedComponents: .date)
-                            .datePickerStyle(.graphical)
-                            .tint(.orange)
-                            .environment(\.locale, Locale(identifier: "zh_CN"))
-                            .environment(\.calendar, calendarKind == .lunar ? Calendar(identifier: .chinese) : Calendar.current)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color(.secondarySystemGroupedBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        if calendarKind == .lunar {
+                            DatePicker("", selection: $date, displayedComponents: .date)
+                                .datePickerStyle(.wheel)
+                                .labelsHidden()
+                                .tint(.orange)
+                                .environment(\.locale, Locale(identifier: "zh_CN"))
+                                .environment(\.calendar, Calendar(identifier: .chinese))
+                                .frame(maxWidth: .infinity)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        } else {
+                            AnniversaryDatePicker(date: $date, tint: .orange)
+                        }
 
                         if calendarKind == .lunar,
                            let preview = solarPreview(date, .lunar) {
@@ -1313,5 +1317,157 @@ struct AnniversaryEditorSheet: View {
         Text(text)
             .font(.caption.bold())
             .foregroundStyle(.secondary)
+    }
+}
+
+struct AnniversaryDatePicker: View {
+    @Binding var date: Date
+    var tint: Color = .orange
+
+    @State private var visibleMonth = Date()
+
+    private let calendar: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.locale = Locale(identifier: "zh_CN")
+        c.firstWeekday = 1
+        return c
+    }()
+
+    private let weekdaySymbols = ["日", "一", "二", "三", "四", "五", "六"]
+
+    var body: some View {
+        VStack(spacing: 16) {
+            header
+            weekHeader
+            dayGrid
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .onAppear { visibleMonth = startOfMonth(date) }
+    }
+
+    private var header: some View {
+        HStack {
+            Menu {
+                ForEach(yearOptions, id: \.self) { year in
+                    Button {
+                        setYear(year)
+                    } label: {
+                        if year == currentYear {
+                            Label("\(year)年", systemImage: "checkmark")
+                        } else {
+                            Text("\(year)年")
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text("\(currentYear)年")
+                        .font(.headline)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.bold))
+                }
+                .foregroundStyle(tint)
+            }
+
+            Spacer()
+
+            HStack(spacing: 16) {
+                Button { shiftMonth(-1) } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.subheadline.weight(.bold))
+                        .frame(width: 28, height: 28)
+                }
+                Text("\(currentMonth)月")
+                    .font(.headline)
+                    .frame(minWidth: 40)
+                Button { shiftMonth(1) } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.bold))
+                        .frame(width: 28, height: 28)
+                }
+            }
+            .foregroundStyle(tint)
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var weekHeader: some View {
+        HStack(spacing: 0) {
+            ForEach(weekdaySymbols, id: \.self) { symbol in
+                Text(symbol)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    private var dayGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 6) {
+            ForEach(Array(monthDays.enumerated()), id: \.offset) { _, day in
+                if let day {
+                    let selected = calendar.isDate(day, inSameDayAs: date)
+                    Button {
+                        date = day
+                    } label: {
+                        Text("\(calendar.component(.day, from: day))")
+                            .font(.subheadline.weight(selected ? .bold : .regular))
+                            .foregroundStyle(selected ? .white : .primary)
+                            .frame(maxWidth: .infinity, minHeight: 38)
+                            .background {
+                                if selected {
+                                    Circle().fill(tint)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Color.clear.frame(minHeight: 38)
+                }
+            }
+        }
+    }
+
+    private var currentYear: Int { calendar.component(.year, from: visibleMonth) }
+    private var currentMonth: Int { calendar.component(.month, from: visibleMonth) }
+
+    private var yearOptions: [Int] {
+        let base = calendar.component(.year, from: Date())
+        return Array((base - 100)...(base + 10)).reversed()
+    }
+
+    private func startOfMonth(_ date: Date) -> Date {
+        calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
+    }
+
+    private func shiftMonth(_ delta: Int) {
+        if let shifted = calendar.date(byAdding: .month, value: delta, to: visibleMonth) {
+            visibleMonth = startOfMonth(shifted)
+        }
+    }
+
+    private func setYear(_ year: Int) {
+        var comps = calendar.dateComponents([.year, .month], from: visibleMonth)
+        comps.year = year
+        if let updated = calendar.date(from: comps) {
+            visibleMonth = updated
+        }
+    }
+
+    private var monthDays: [Date?] {
+        guard let range = calendar.range(of: .day, in: .month, for: visibleMonth) else { return [] }
+        let first = startOfMonth(visibleMonth)
+        let firstWeekday = calendar.component(.weekday, from: first)
+        let leading = (firstWeekday - calendar.firstWeekday + 7) % 7
+        var result: [Date?] = Array(repeating: nil, count: leading)
+        for day in range {
+            result.append(calendar.date(byAdding: .day, value: day - 1, to: first))
+        }
+        while result.count % 7 != 0 {
+            result.append(nil)
+        }
+        return result
     }
 }

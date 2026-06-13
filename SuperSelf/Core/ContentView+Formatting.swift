@@ -171,6 +171,20 @@ extension ContentView {
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 
+    func compactDurationText(from interval: TimeInterval) -> String {
+        let totalMinutes = max(0, Int(interval / 60))
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+
+        if hours == 0 {
+            return "\(minutes) 分钟"
+        }
+        if minutes == 0 {
+            return "\(hours) 小时"
+        }
+        return "\(hours) 小时 \(minutes) 分钟"
+    }
+
     func weightText(_ weight: Double) -> String {
         String(format: "%.1f", weight)
     }

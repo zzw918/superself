@@ -25,6 +25,11 @@ extension ContentView {
         elapsed >= phaseDuration
     }
 
+    /// 超过当前阶段目标的时长（达标后才大于 0）。
+    var overtime: TimeInterval {
+        max(0, elapsed - phaseDuration)
+    }
+
     /// 断食进度阶段：0 刚开始 → 3 临近，4 表示进入最后冲刺（剩余很短）。
     var fastingStage: Int {
         if remaining <= 30 * 60 { return 4 }
@@ -38,15 +43,19 @@ extension ContentView {
 
     /// 倒计时环中央的标题：进食阶段固定，断食阶段随进度变化。
     var fastingPhaseHeadline: String {
-        guard isFasting else { return "享受进食时间" }
+        if isFasting {
+            if hasReachedCurrentGoal { return "已达标，可以开吃" }
 
-        switch fastingStage {
-        case 0: return "刚刚开始，状态正好"
-        case 1: return "渐入佳境"
-        case 2: return "已经过半，稳住"
-        case 3: return "胜利在望"
-        default: return "最后冲刺"
+            switch fastingStage {
+            case 0: return "刚刚开始，状态正好"
+            case 1: return "渐入佳境"
+            case 2: return "已经过半，稳住"
+            case 3: return "胜利在望"
+            default: return "最后冲刺"
+            }
         }
+
+        return hasReachedCurrentGoal ? "进食超时，该断食了" : "享受进食时间"
     }
 
     var phaseEndDate: Date {

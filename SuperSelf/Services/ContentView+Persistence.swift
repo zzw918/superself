@@ -84,6 +84,7 @@ extension ContentView {
         loadStockResearchItems()
         pullFromICloud()
         pushAllToICloud()
+        rescheduleFastingNotifications()
     }
 
     func loadWeightLogs() {
@@ -671,7 +672,49 @@ extension ContentView {
             cloudStore.set(encodedMainTabPreferences, forKey: mainTabPreferencesCloudKey)
         }
 
-        syncStatus = cloudStore.synchronize() ? "已请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+        let didSync = cloudStore.synchronize()
+        if didSync && isICloudAvailable {
+            lastICloudSyncAt = Date().timeIntervalSince1970
+        }
+        syncStatus = didSync ? "已请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+    }
+
+    /// iCloud 键值存储是否可用：用户已登录 iCloud 才有效。
+    var isICloudAvailable: Bool {
+        FileManager.default.ubiquityIdentityToken != nil
+    }
+
+    var syncStatusText: String {
+        if !isICloudAvailable {
+            return "未登录 iCloud，仅保存在本机"
+        }
+        if isSyncing {
+            return "正在同步…"
+        }
+        if lastICloudSyncAt > 0 {
+            let date = Date(timeIntervalSince1970: lastICloudSyncAt)
+            return "上次同步 \(relativeTimeText(for: date))"
+        }
+        return "已开启，等待首次同步"
+    }
+
+    /// 用户手动点击「立即同步」：先推送本地数据，再回拉云端，并更新可见状态。
+    func syncNow() {
+        guard isICloudAvailable else {
+            syncStatus = "未登录 iCloud，无法同步"
+            return
+        }
+
+        isSyncing = true
+        pushAllToICloud()
+        pullFromICloud()
+
+        let succeeded = cloudStore.synchronize()
+        if succeeded {
+            lastICloudSyncAt = Date().timeIntervalSince1970
+        }
+        syncStatus = succeeded ? "同步完成" : "同步未完成，请稍后重试"
+        isSyncing = false
     }
 
     func persistSettingsToICloud() {

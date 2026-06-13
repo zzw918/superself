@@ -5,24 +5,25 @@ extension ContentView {
         let accent: Color = isFasting ? .blue : .green
         let gradientColors: [Color] = isFasting ? [.blue, .cyan] : [.green, .mint]
         let percent = Int((progress * 100).rounded())
+        let overtimeAccent: Color = isFasting ? .green : .orange
 
         return VStack(spacing: 22) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Circle()
                     .fill(accent)
-                    .frame(width: 8, height: 8)
+                    .frame(width: 12, height: 12)
                 Text(isFasting ? "断食中" : "进食中")
-                    .font(.subheadline.bold())
+                    .font(.title.bold())
                     .foregroundStyle(accent)
                 Spacer()
                 Text("目标 \(isFasting ? fastingGoalHours : eatingGoalHours) 小时")
-                    .font(.caption.weight(.medium))
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .background(accent.opacity(0.10))
-            .clipShape(Capsule())
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(accent.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
             ZStack {
                 Circle()
@@ -43,16 +44,16 @@ extension ContentView {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
 
-                    Text(timeString(from: remaining))
+                    Text(timeString(from: hasReachedCurrentGoal ? overtime : remaining))
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .minimumScaleFactor(0.8)
                         .lineLimit(1)
 
-                    Text("已完成 \(percent)%")
+                    Text(hasReachedCurrentGoal ? "已超过目标" : "已完成 \(percent)%")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(accent)
+                        .foregroundStyle(hasReachedCurrentGoal ? overtimeAccent : accent)
                 }
                 .padding(.horizontal, 36)
             }
@@ -216,24 +217,29 @@ extension ContentView {
 
     var syncCard: some View {
         HStack(spacing: 10) {
-            Image(systemName: "icloud")
-                .foregroundStyle(.blue)
+            Image(systemName: isICloudAvailable ? "icloud" : "icloud.slash")
+                .foregroundStyle(isICloudAvailable ? .blue : .secondary)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("iCloud 同步")
                     .font(.headline)
-                Text(syncStatus)
+                Text(syncStatusText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            Button("立即同步") {
-                pushAllToICloud()
+            if isSyncing {
+                ProgressView()
+            } else {
+                Button("立即同步") {
+                    syncNow()
+                }
+                .buttonStyle(AppSecondaryButtonStyle(tint: .blue))
+                .disabled(!isICloudAvailable)
             }
-            .buttonStyle(AppSecondaryButtonStyle(tint: .blue))
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1185,7 +1191,7 @@ extension ContentView {
                         gradient: [.blue, .cyan]
                     )
 
-                    Text("16+8 适合大多数人入门，18+6、20+4 难度更高。")
+                    Text("14+10 最容易上手，16+8 适合大多数人，18+6、20+4 难度更高。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
@@ -1387,11 +1393,13 @@ extension ContentView {
         isFasting.toggle()
         fastingStartTime = Date().timeIntervalSince1970
         persistSettingsToICloud()
+        rescheduleFastingNotifications()
     }
 
     func resetCurrentPhase() {
         fastingStartTime = Date().timeIntervalSince1970
         persistSettingsToICloud()
+        rescheduleFastingNotifications()
     }
 
     func prepareWeightSheet() {

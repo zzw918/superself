@@ -85,15 +85,19 @@ extension ContentView {
 
                     VStack(alignment: .leading, spacing: 10) {
                         anniversaryFieldLabel(anniversaryCalendarKind == .lunar ? "日期（按农历选择）" : "日期")
-                        DatePicker("", selection: $anniversaryDate, displayedComponents: .date)
-                            .datePickerStyle(.graphical)
-                            .tint(.orange)
-                            .environment(\.locale, Locale(identifier: "zh_CN"))
-                            .environment(\.calendar, anniversaryCalendarKind == .lunar ? Calendar(identifier: .chinese) : Calendar.current)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color(.secondarySystemGroupedBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        if anniversaryCalendarKind == .lunar {
+                            DatePicker("", selection: $anniversaryDate, displayedComponents: .date)
+                                .datePickerStyle(.wheel)
+                                .labelsHidden()
+                                .tint(.orange)
+                                .environment(\.locale, Locale(identifier: "zh_CN"))
+                                .environment(\.calendar, Calendar(identifier: .chinese))
+                                .frame(maxWidth: .infinity)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        } else {
+                            AnniversaryDatePicker(date: $anniversaryDate, tint: .orange)
+                        }
 
                         if anniversaryCalendarKind == .lunar,
                            let solarPreview = anniversarySolarPreviewText(date: anniversaryDate, calendarKind: .lunar) {

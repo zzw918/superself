@@ -27,7 +27,7 @@ struct ContentView: View {
     let mainTabPreferencesCloudKey = "mainTabPreferences"
     let heightCmCloudKey = "heightCm"
     let targetWeightCloudKey = "targetWeight"
-    let planOptions = [(fasting: 16, eating: 8), (fasting: 18, eating: 6), (fasting: 20, eating: 4)]
+    let planOptions = [(fasting: 14, eating: 10), (fasting: 16, eating: 8), (fasting: 18, eating: 6), (fasting: 20, eating: 4)]
     let isoCalendar = Calendar(identifier: .iso8601)
 
     @AppStorage("fastingStartTime") var fastingStartTime: Double = Date().timeIntervalSince1970
@@ -49,6 +49,10 @@ struct ContentView: View {
     @AppStorage("heightCm") var heightCm = ""
     @AppStorage("targetWeight") var targetWeight = ""
     @AppStorage("appearanceMode") var appearanceModeRaw = AppearanceMode.system.rawValue
+    @AppStorage("notifyEatingSoon") var notifyEatingSoon = false
+    @AppStorage("notifyEatingStart") var notifyEatingStart = false
+    @AppStorage("notifyFastingSoon") var notifyFastingSoon = false
+    @AppStorage("notifyFastingStart") var notifyFastingStart = false
 
     @State var now = Date()
     @State var weightInput = ""
@@ -87,6 +91,8 @@ struct ContentView: View {
     @State var mainTabOrder = MainAppTab.allCases
     @State var visibleMainTabSet = Set(MainAppTab.allCases)
     @State var syncStatus = "iCloud 同步准备中"
+    @State var isSyncing = false
+    @AppStorage("lastICloudSyncAt") var lastICloudSyncAt: Double = 0
     @State var isShowingWeightSheet = false
     @State var isShowingBodySettings = false
     @State var isShowingFinanceAssetSheet = false
@@ -136,9 +142,11 @@ struct ContentView: View {
         }
         .onChange(of: fastingGoalHours) {
             persistSettingsToICloud()
+            rescheduleFastingNotifications()
         }
         .onChange(of: eatingGoalHours) {
             persistSettingsToICloud()
+            rescheduleFastingNotifications()
         }
         .onChange(of: heightCm) {
             persistSettingsToICloud()
