@@ -19,6 +19,7 @@ struct ContentView: View {
     let dailyGoalCloudKey = "dailyGoal"
     let todoTasksCloudKey = "todoTasks"
     let wishlistItemsCloudKey = "wishlistItems"
+    let wishlistCategoriesCloudKey = "wishlistCategories"
     let anniversaryItemsCloudKey = "anniversaryItems"
     let financeAssetsCloudKey = "financeAssets"
     let financeSnapshotsCloudKey = "financeSnapshots"
@@ -38,6 +39,7 @@ struct ContentView: View {
     @AppStorage("fastingSessions") var fastingSessionsData = Data()
     @AppStorage("todoTasks") var todoTasksData = Data()
     @AppStorage("wishlistItems") var wishlistItemsData = Data()
+    @AppStorage("wishlistCategories") var wishlistCategoriesData = Data()
     @AppStorage("anniversaryItems") var anniversaryItemsData = Data()
     @AppStorage("financeAssets") var financeAssetsData = Data()
     @AppStorage("financeSnapshots") var financeSnapshotsData = Data()
@@ -55,10 +57,13 @@ struct ContentView: View {
     @State var fastingSessions: [FastingSession] = []
     @State var todoTasks: [TodoTask] = []
     @State var wishlistItems: [WishlistItem] = []
+    @State var wishlistCategories: [WishlistCategory] = WishlistCategory.defaultCategories
     @State var anniversaryItems: [AnniversaryItem] = []
     @State var todoInput = ""
     @State var wishlistInput = ""
-    @State var wishlistCategory: WishlistCategory = .travel
+    @State var wishlistCategoryID = WishlistCategory.defaultCategories[0].id
+    @State var wishlistFilter: WishlistFilter = .all
+    @State var isShowingWishlistCategorySheet = false
     @State var anniversaryTitleInput = ""
     @State var anniversaryCalendarKind: AnniversaryCalendarKind = .solar
     @State var anniversaryDate = Date()
@@ -76,6 +81,9 @@ struct ContentView: View {
     @State var stockSearchText = ""
     @State var editingFinanceAsset: FinanceAsset?
     @State var editingStockResearchItem: StockResearchItem?
+    @State var editingTodoTask: TodoTask?
+    @State var editingWishlistItem: WishlistItem?
+    @State var editingAnniversaryItem: AnniversaryItem?
     @State var mainTabOrder = MainAppTab.allCases
     @State var visibleMainTabSet = Set(MainAppTab.allCases)
     @State var syncStatus = "iCloud 同步准备中"
@@ -180,6 +188,53 @@ struct ContentView: View {
             }
             .presentationDetents([.height(360)])
             .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $editingTodoTask) { task in
+            TodoEditorSheet(task: task) { newTitle in
+                updateTodoTask(task, title: newTitle)
+            }
+            .presentationDetents([.height(280)])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $editingWishlistItem) { item in
+            WishlistEditorSheet(item: item, categories: wishlistCategories) { newTitle, newCategoryID in
+                updateWishlistItem(item, title: newTitle, categoryID: newCategoryID)
+            }
+            .presentationDetents([.height(420)])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $isShowingWishlistCategorySheet) {
+            WishlistCategoryManagerSheet(
+                categories: wishlistCategories,
+                onAdd: { title, icon in
+                    addWishlistCategory(title: title, icon: icon)
+                },
+                onUpdate: { category, title, icon in
+                    updateWishlistCategory(category, title: title, icon: icon)
+                },
+                onDelete: { category in
+                    deleteWishlistCategory(category)
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $editingAnniversaryItem) { item in
+            AnniversaryEditorSheet(
+                item: item,
+                solarPreview: { date, kind in
+                    anniversarySolarPreviewText(date: date, calendarKind: kind)
+                },
+                onSave: { title, kind, date, showsElapsed in
+                    updateAnniversaryItem(
+                        item,
+                        title: title,
+                        calendarKind: kind,
+                        date: date,
+                        showsElapsedDays: showsElapsed
+                    )
+                }
+            )
         }
     }
 

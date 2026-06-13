@@ -177,8 +177,13 @@ struct AppSegmentedControl<Option: Identifiable & Hashable>: View {
     let options: [Option]
     @Binding var selection: Option
     let title: (Option) -> String
+    var compact: Bool = false
 
     @Namespace private var selectionNamespace
+
+    private var controlHeight: CGFloat { compact ? 34 : 46 }
+    private var corner: CGFloat { compact ? 12 : 16 }
+    private var outerCorner: CGFloat { compact ? 15 : 20 }
 
     var body: some View {
         HStack(spacing: 4) {
@@ -189,16 +194,16 @@ struct AppSegmentedControl<Option: Identifiable & Hashable>: View {
                     }
                 } label: {
                     Text(title(option))
-                        .font(selection == option ? .headline.bold() : .subheadline.bold())
+                        .font(segmentFont(isSelected: selection == option))
                         .foregroundStyle(selection == option ? .white : .secondary)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 46)
+                        .frame(height: controlHeight)
                         .background {
                             if selection == option {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                RoundedRectangle(cornerRadius: corner, style: .continuous)
                                     .fill(Color.blue.gradient)
                                     .matchedGeometryEffect(id: "selection", in: selectionNamespace)
-                                    .shadow(color: Color.blue.opacity(0.26), radius: 10, x: 0, y: 4)
+                                    .shadow(color: Color.blue.opacity(0.26), radius: compact ? 6 : 10, x: 0, y: compact ? 2 : 4)
                             }
                         }
                         .contentShape(Rectangle())
@@ -208,11 +213,18 @@ struct AppSegmentedControl<Option: Identifiable & Hashable>: View {
         }
         .padding(4)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: outerCorner, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: outerCorner, style: .continuous)
                 .stroke(Color(.separator).opacity(0.16), lineWidth: 1)
         }
+    }
+
+    private func segmentFont(isSelected: Bool) -> Font {
+        if compact {
+            return isSelected ? .subheadline.bold() : .subheadline.weight(.medium)
+        }
+        return isSelected ? .headline.bold() : .subheadline.bold()
     }
 }
 

@@ -39,19 +39,22 @@ extension ContentView {
                     .animation(.spring(response: 0.5, dampingFraction: 0.9), value: progress)
 
                 VStack(spacing: 6) {
-                    Text(isFasting ? "再坚持一下" : "享受进食时间")
+                    Text(fastingPhaseHeadline)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
 
                     Text(timeString(from: remaining))
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .contentTransition(.numericText())
+                        .minimumScaleFactor(0.8)
+                        .lineLimit(1)
 
                     Text("已完成 \(percent)%")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(accent)
                 }
+                .padding(.horizontal, 36)
             }
             .frame(width: 230, height: 230)
             .padding(.vertical, 4)
@@ -240,11 +243,11 @@ extension ContentView {
     }
 
     var weightCard: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             Image(systemName: "scalemass.fill")
-                .font(.title2)
+                .font(.title3)
                 .foregroundStyle(.blue)
-                .frame(width: 52, height: 52)
+                .frame(width: 48, height: 48)
                 .background(Color.blue.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
@@ -256,36 +259,42 @@ extension ContentView {
                 if let latestWeightLog {
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text(weightText(latestWeightLog.weight))
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .font(.system(size: 34, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                         Text("kg")
                             .font(.headline)
                             .foregroundStyle(.secondary)
+                    }
+
+                    HStack(spacing: 8) {
+                        Text("最近 \(chineseDateTime(latestWeightLog.date))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
 
                         if let badge = weightDeltaBadge {
                             HStack(spacing: 2) {
                                 Image(systemName: badge.icon)
                                 Text(badge.text)
                             }
-                            .font(.caption.bold())
+                            .font(.caption2.bold())
                             .foregroundStyle(badge.color)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
                             .background(badge.color.opacity(0.14))
                             .clipShape(Capsule())
+                            .fixedSize()
                         }
                     }
-
-                    Text("最近 \(chineseDateTime(latestWeightLog.date))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 } else {
                     Text("还没有体重记录")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Button {
                 prepareWeightSheet()
@@ -312,6 +321,156 @@ extension ContentView {
         let icon = delta < 0 ? "arrow.down.right" : "arrow.up.right"
         let color: Color = delta < 0 ? .green : .orange
         return (icon, "\(weightText(abs(delta))) kg", color)
+    }
+
+    var weightOverviewCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "scalemass.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.blue)
+                            .frame(width: 34, height: 34)
+                            .background(Color.blue.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+
+                        Text("体重概览")
+                            .font(.title3.bold())
+                    }
+
+                    if let currentWeight = currentWeightValue {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(weightText(currentWeight))
+                                .font(.system(size: 38, weight: .bold, design: .rounded))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                            Text("kg")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        HStack(spacing: 8) {
+                            if let latestWeightLog {
+                                Text("最近 \(chineseDateTime(latestWeightLog.date))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+
+                            if let badge = weightDeltaBadge {
+                                HStack(spacing: 2) {
+                                    Image(systemName: badge.icon)
+                                    Text(badge.text)
+                                }
+                                .font(.caption2.bold())
+                                .foregroundStyle(badge.color)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(badge.color.opacity(0.14))
+                                .clipShape(Capsule())
+                                .fixedSize()
+                            }
+                        }
+                    } else {
+                        Text("还没有体重记录")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button {
+                    prepareWeightSheet()
+                    isShowingWeightSheet = true
+                } label: {
+                    AppIconCircleButton(icon: "plus", tint: .blue, size: 38, iconFont: .subheadline.weight(.bold))
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack(spacing: 10) {
+                weightOverviewMetric(
+                    title: "目标",
+                    value: targetWeightValue.map { "\(weightText($0)) kg" } ?? "未设置",
+                    tint: .blue,
+                    isPlaceholder: targetWeightValue == nil,
+                    trailingIcon: "gearshape"
+                ) {
+                    isShowingBodySettings = true
+                }
+
+                weightOverviewMetric(
+                    title: targetWeightValue == nil ? "进度" : "还差",
+                    value: targetProgressHeadline.replacingOccurrences(of: "还差 ", with: ""),
+                    tint: targetProgressColor,
+                    isPlaceholder: currentWeightValue == nil || targetWeightValue == nil
+                )
+
+                weightOverviewMetric(
+                    title: "BMI",
+                    value: bmiValue.map { "\(bmiStatusText) \(String(format: "%.1f", $0))" } ?? "未生成",
+                    tint: bmiValue.map { bmiColor(for: $0) } ?? .secondary,
+                    isPlaceholder: bmiValue == nil
+                )
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity)
+        }
+
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
+    }
+
+    @ViewBuilder
+    func weightOverviewMetric(
+        title: String,
+        value: String,
+        tint: Color,
+        isPlaceholder: Bool = false,
+        trailingIcon: String? = nil,
+        action: (() -> Void)? = nil
+    ) -> some View {
+        let content = VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 4) {
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer(minLength: 2)
+
+                if let trailingIcon {
+                    Image(systemName: trailingIcon)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(tint)
+                        .frame(width: 18, height: 18)
+                        .background(tint.opacity(0.12))
+                        .clipShape(Circle())
+                }
+            }
+
+            Text(value)
+                .font(.subheadline.bold())
+                .foregroundStyle(isPlaceholder ? .secondary : .primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
+        .background(tint.opacity(isPlaceholder ? 0.07 : 0.10))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+        if let action {
+            Button(action: action) {
+                content
+            }
+        } else {
+            content
+        }
     }
 
     var addWeightSheet: some View {
@@ -576,17 +735,18 @@ extension ContentView {
             AppSegmentedControl(
                 options: WeightTrendGranularity.allCases,
                 selection: $trendGranularity,
-                title: \.title
+                title: \.title,
+                compact: true
             )
 
-            if trendPoints.count >= 2 {
+            if !trendPoints.isEmpty {
                 WeightTrendView(points: trendPoints, targetWeight: targetWeightValue)
                     .frame(height: 180)
             } else {
                 AppEmptyState(
                     title: "还没有趋势",
                     systemImage: "chart.line.uptrend.xyaxis",
-                    description: "至少保存 2 个\(trendGranularity.title)粒度记录后会显示趋势。"
+                    description: "记录体重后会自动生成趋势。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 120)
             }
@@ -605,7 +765,7 @@ extension ContentView {
                     Text("体重目标")
                         .font(.title3.bold())
 
-                    Text("填写身高、目标体重，并记录一次当前体重后，这里会自动显示进度和 BMI。")
+                    Text("记录体重后自动显示进度和 BMI。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -629,7 +789,7 @@ extension ContentView {
                 healthSummaryTile(
                     title: "目标体重",
                     value: targetWeightValue.map { "\(weightText($0)) kg" } ?? "未设置",
-                    detail: targetWeightValue == nil ? "建议先定一个舒服、能坚持的目标。" : "修改后会自动刷新首页进度。",
+                    detail: targetWeightValue == nil ? "先定一个能坚持的目标。" : nil,
                     tint: .blue,
                     isPlaceholder: targetWeightValue == nil
                 )
@@ -637,7 +797,7 @@ extension ContentView {
                 healthSummaryTile(
                     title: targetWeightValue == nil ? "下一步" : "目标进度",
                     value: targetProgressHeadline,
-                    detail: targetProgressText,
+                    detail: (currentWeightValue == nil || targetWeightValue == nil) ? targetProgressText : nil,
                     tint: targetProgressColor,
                     isPlaceholder: currentWeightValue == nil || targetWeightValue == nil
                 )
@@ -709,31 +869,33 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 24))
     }
 
-    func healthSummaryTile(title: String, value: String, detail: String, tint: Color, isPlaceholder: Bool = false) -> some View {
+    func healthSummaryTile(title: String, value: String, detail: String? = nil, tint: Color, isPlaceholder: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             Text(value)
-                .font(isPlaceholder ? .title3.weight(.semibold) : .headline)
+                .font(isPlaceholder ? .title3.weight(.semibold) : .title2.bold())
                 .foregroundStyle(isPlaceholder ? .secondary : .primary)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
 
-            HStack(alignment: .top, spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.caption2)
-                    .foregroundStyle(tint)
-                    .padding(.top, 1)
+            if let detail {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.caption2)
+                        .foregroundStyle(tint)
+                        .padding(.top, 1)
 
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
         .padding(14)
         .background(tint.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 18))
@@ -955,8 +1117,9 @@ extension ContentView {
                             in: ...Date(),
                             displayedComponents: [.date, .hourAndMinute]
                         )
-                        .datePickerStyle(.graphical)
+                        .datePickerStyle(.wheel)
                         .labelsHidden()
+                        .frame(maxWidth: .infinity)
                         .environment(\.locale, Locale(identifier: "zh_CN"))
                     }
                     .padding(18)
@@ -1115,7 +1278,16 @@ extension ContentView {
 
     var primaryActionTitle: String {
         if isFasting {
-            return hasReachedCurrentGoal ? "已达标，可以吃饭了" : "还没到点，先忍一忍"
+            if hasReachedCurrentGoal {
+                return "已达标，开吃犒劳自己"
+            }
+            switch fastingStage {
+            case 0: return "已开启断食，加油坚持"
+            case 1: return "保持节奏，感觉不错"
+            case 2: return "过半啦，再稳住一会儿"
+            case 3: return "胜利在望，马上就好"
+            default: return "最后一程，快到了"
+            }
         }
 
         return "吃完了，开始 \(fastingGoalHours) 小时计划"
@@ -1177,7 +1349,7 @@ extension ContentView {
         groupedBy keyForLog: (FastingLog) -> Date,
         labelFor: (Date) -> (String, String)
     ) -> [WeightTrendPoint] {
-        let groupedLogs = Dictionary(grouping: weightLogs, by: keyForLog)
+        let groupedLogs = Dictionary(grouping: dailyTrendLogs, by: keyForLog)
 
         let points = groupedLogs.map { date, logs in
             let averageWeight = logs.map(\.weight).reduce(0, +) / Double(logs.count)

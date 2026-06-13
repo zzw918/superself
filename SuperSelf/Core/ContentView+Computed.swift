@@ -25,6 +25,30 @@ extension ContentView {
         elapsed >= phaseDuration
     }
 
+    /// 断食进度阶段：0 刚开始 → 3 临近，4 表示进入最后冲刺（剩余很短）。
+    var fastingStage: Int {
+        if remaining <= 30 * 60 { return 4 }
+        switch progress {
+        case ..<0.25: return 0
+        case ..<0.5: return 1
+        case ..<0.75: return 2
+        default: return 3
+        }
+    }
+
+    /// 倒计时环中央的标题：进食阶段固定，断食阶段随进度变化。
+    var fastingPhaseHeadline: String {
+        guard isFasting else { return "享受进食时间" }
+
+        switch fastingStage {
+        case 0: return "刚刚开始，状态正好"
+        case 1: return "渐入佳境"
+        case 2: return "已经过半，稳住"
+        case 3: return "胜利在望"
+        default: return "最后冲刺"
+        }
+    }
+
     var phaseEndDate: Date {
         fastingStartDate.addingTimeInterval(phaseDuration)
     }
@@ -67,6 +91,28 @@ extension ContentView {
         wishlistItems
             .filter(\.isCompleted)
             .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
+    }
+
+    var filteredOpenWishlistItems: [WishlistItem] {
+        openWishlistItems.filter { item in
+            wishlistFilter.categoryID.map { item.categoryID == $0 } ?? true
+        }
+    }
+
+    var filteredCompletedWishlistItems: [WishlistItem] {
+        completedWishlistItems.filter { item in
+            wishlistFilter.categoryID.map { item.categoryID == $0 } ?? true
+        }
+    }
+
+    func wishlistCount(for filter: WishlistFilter) -> Int {
+        wishlistItems.filter { item in
+            filter.categoryID.map { item.categoryID == $0 } ?? true
+        }.count
+    }
+
+    func wishlistCategory(for item: WishlistItem) -> WishlistCategory {
+        wishlistCategories.first { $0.id == item.categoryID } ?? WishlistCategory.fallback
     }
 
     var sortedAnniversaryItems: [AnniversaryItem] {

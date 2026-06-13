@@ -7,7 +7,7 @@ extension ContentView {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("纪念日")
                         .font(.title3.bold())
-                    Text("记录重要的日子，阴历阳历都可以，可选显示已过去多少天。")
+                    Text("记录重要的日子，阴历阳历都可以。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -39,6 +39,8 @@ extension ContentView {
                             daysUntil: daysUntilAnniversary(for: item),
                             elapsedText: item.showsElapsedDays ? elapsedDaysText(for: item) : nil
                         ) {
+                            editingAnniversaryItem = item
+                        } onDelete: {
                             deleteAnniversaryItem(item)
                         }
                     }
@@ -203,6 +205,8 @@ extension ContentView {
                         ForEach(activeTodoTasks) { task in
                             TodoTaskRow(task: task) {
                                 toggleTodoTask(task)
+                            } onEdit: {
+                                editingTodoTask = task
                             } onDelete: {
                                 deleteTodoTask(task)
                             }
@@ -216,6 +220,8 @@ extension ContentView {
                             ForEach(completedTodoTasks.prefix(8)) { task in
                                 TodoTaskRow(task: task) {
                                     toggleTodoTask(task)
+                                } onEdit: {
+                                    editingTodoTask = task
                                 } onDelete: {
                                     deleteTodoTask(task)
                                 }
@@ -249,38 +255,36 @@ extension ContentView {
             VStack(alignment: .leading, spacing: 4) {
                 Text("愿望清单")
                     .font(.title3.bold())
-                Text("想去哪玩、吃什么、喝什么，先收集起来，后面一个个去实现。")
+                Text("旅行、美食、阅读、电影和新体验，先收集起来，后面一个个去实现。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            AppSegmentedControl(
-                options: WishlistCategory.allCases,
-                selection: $wishlistCategory,
-                title: \.title
-            )
+            wishlistFilterBar
 
             AddEntryBar(
                 placeholder: "想要点什么",
                 text: $wishlistInput,
-                icon: wishlistCategory.icon,
-                tint: .purple,
+                icon: wishlistCategories.first { $0.id == (wishlistFilter.categoryID ?? wishlistCategoryID) }?.icon ?? "sparkles",
+                tint: .blue,
                 action: addWishlistItem
             )
 
-            if openWishlistItems.isEmpty && completedWishlistItems.isEmpty {
+            if filteredOpenWishlistItems.isEmpty && filteredCompletedWishlistItems.isEmpty {
                 AppEmptyState(
-                    title: "还没有愿望",
+                    title: wishlistFilter == .all ? "还没有愿望" : "这里还没有愿望",
                     systemImage: "sparkles",
-                    description: "把想玩的、想吃的、想喝的都放进来。"
+                    description: wishlistFilter == .all ? "把想读的书、想看的电影、想尝试的新鲜事都放进来。" : "可以直接在当前分类下新增一条。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else {
-                if !openWishlistItems.isEmpty {
+                if !filteredOpenWishlistItems.isEmpty {
                     VStack(spacing: 8) {
-                        ForEach(openWishlistItems) { item in
-                            WishlistRow(item: item) {
+                        ForEach(filteredOpenWishlistItems) { item in
+                            WishlistRow(item: item, category: wishlistCategory(for: item)) {
                                 toggleWishlistItem(item)
+                            } onEdit: {
+                                editingWishlistItem = item
                             } onDelete: {
                                 deleteWishlistItem(item)
                             }
@@ -288,12 +292,14 @@ extension ContentView {
                     }
                 }
 
-                if !completedWishlistItems.isEmpty {
+                if !filteredCompletedWishlistItems.isEmpty {
                     DisclosureGroup {
                         VStack(spacing: 8) {
-                            ForEach(completedWishlistItems.prefix(8)) { item in
-                                WishlistRow(item: item) {
+                            ForEach(filteredCompletedWishlistItems.prefix(8)) { item in
+                                WishlistRow(item: item, category: wishlistCategory(for: item)) {
                                     toggleWishlistItem(item)
+                                } onEdit: {
+                                    editingWishlistItem = item
                                 } onDelete: {
                                     deleteWishlistItem(item)
                                 }
@@ -303,7 +309,7 @@ extension ContentView {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle")
-                            Text("已经实现 \(completedWishlistItems.count) 个")
+                            Text("已经实现 \(filteredCompletedWishlistItems.count) 个")
                         }
                         .font(.caption.bold())
                         .foregroundStyle(.secondary)
@@ -320,5 +326,64 @@ extension ContentView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var wishlistFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach([WishlistFilter.all] + wishlistCategories.map(WishlistFilter.init(category:))) { filter in
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                            wishlistFilter = filter
+                            if let categoryID = filter.categoryID {
+                                wishlistCategoryID = categoryID
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: filter.icon)
+                                .font(.caption.weight(.bold))
+
+                            Text(filter.title)
+
+                            let count = wishlistCount(for: filter)
+                            if count > 0 {
+                                Text("\(count)")
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background((wishlistFilter == filter ? Color.white.opacity(0.22) : Color.blue.opacity(0.12)), in: Capsule())
+                            }
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(wishlistFilter == filter ? .white : .blue)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background {
+                            if wishlistFilter == filter {
+                                Capsule()
+                                    .fill(Color.blue.gradient)
+                            } else {
+                                Capsule()
+                                    .fill(Color.blue.opacity(0.08))
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button {
+                    isShowingWishlistCategorySheet = true
+                } label: {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.caption.bold())
+                        .foregroundStyle(.blue)
+                        .frame(width: 34, height: 34)
+                        .background(Color.blue.opacity(0.10), in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.vertical, 2)
+        }
     }
 }

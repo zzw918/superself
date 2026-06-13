@@ -43,8 +43,7 @@ extension ContentView {
 
     var weightSection: some View {
         VStack(spacing: 20) {
-            weightCard
-            bmiCard
+            weightOverviewCard
             trendCard
             historyCard
         }

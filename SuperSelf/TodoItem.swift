@@ -27,50 +27,106 @@ struct TodoTask: Identifiable, Equatable, Codable {
     }
 }
 
-enum WishlistCategory: String, CaseIterable, Identifiable, Codable {
-    case travel
-    case food
-    case drink
-    case other
+struct WishlistCategory: Identifiable, Equatable, Hashable, Codable {
+    var id: String
+    var title: String
+    var icon: String
 
-    var id: String { rawValue }
+    static let defaultCategories: [WishlistCategory] = [
+        WishlistCategory(id: "travel", title: "旅行", icon: "airplane"),
+        WishlistCategory(id: "food", title: "美食", icon: "fork.knife"),
+        WishlistCategory(id: "reading", title: "阅读", icon: "book.closed"),
+        WishlistCategory(id: "movie", title: "电影", icon: "film"),
+        WishlistCategory(id: "experience", title: "新体验", icon: "sparkles")
+    ]
 
-    var title: String {
-        switch self {
-        case .travel:
-            return "去哪玩"
-        case .food:
-            return "吃什么"
-        case .drink:
-            return "喝什么"
-        case .other:
-            return "其他"
+    static let fallback = WishlistCategory(id: "experience", title: "新体验", icon: "sparkles")
+
+    static func migratedID(from legacyID: String) -> String {
+        switch legacyID {
+        case "travel":
+            return "travel"
+        case "food", "drink":
+            return "food"
+        default:
+            return "experience"
         }
     }
+}
 
-    var icon: String {
-        switch self {
-        case .travel:
-            return "airplane"
-        case .food:
-            return "fork.knife"
-        case .drink:
-            return "cup.and.saucer"
-        case .other:
-            return "sparkles"
-        }
+struct WishlistFilter: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let icon: String
+    let categoryID: String?
+
+    static let all = WishlistFilter(id: "all", title: "全部", icon: "square.grid.2x2", categoryID: nil)
+
+    init(id: String, title: String, icon: String, categoryID: String?) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.categoryID = categoryID
+    }
+
+    init(category: WishlistCategory) {
+        id = category.id
+        title = category.title
+        icon = category.icon
+        categoryID = category.id
     }
 }
 
 struct WishlistItem: Identifiable, Equatable, Codable {
     var id = UUID()
     var title: String
-    var category: WishlistCategory
+    var categoryID: String
     var createdAt: Date
     var completedAt: Date?
 
     var isCompleted: Bool {
         completedAt != nil
+    }
+
+    init(id: UUID = UUID(), title: String, categoryID: String, createdAt: Date, completedAt: Date? = nil) {
+        self.id = id
+        self.title = title
+        self.categoryID = categoryID
+        self.createdAt = createdAt
+        self.completedAt = completedAt
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case categoryID
+        case category
+        case createdAt
+        case completedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        title = try container.decode(String.self, forKey: .title)
+        if let categoryID = try container.decodeIfPresent(String.self, forKey: .categoryID) {
+            self.categoryID = categoryID
+        } else if let legacyCategory = try container.decodeIfPresent(String.self, forKey: .category) {
+            self.categoryID = WishlistCategory.migratedID(from: legacyCategory)
+        } else {
+            categoryID = WishlistCategory.fallback.id
+        }
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(categoryID, forKey: .categoryID)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(completedAt, forKey: .completedAt)
     }
 }
 

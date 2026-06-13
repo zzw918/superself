@@ -3,6 +3,7 @@ import SwiftUI
 struct TodoTaskRow: View {
     let task: TodoTask
     let onToggle: () -> Void
+    let onEdit: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
@@ -15,18 +16,22 @@ struct TodoTaskRow: View {
                 }
                 .buttonStyle(.borderless)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(task.title)
-                        .font(.subheadline.weight(.medium))
-                        .strikethrough(task.isCompleted)
-                        .foregroundStyle(task.isCompleted ? .secondary : .primary)
+                Button(action: onEdit) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(task.title)
+                            .font(.subheadline.weight(.medium))
+                            .strikethrough(task.isCompleted)
+                            .foregroundStyle(task.isCompleted ? .secondary : .primary)
+                            .multilineTextAlignment(.leading)
 
-                    Text(task.isCompleted ? "完成于 \(dateText(task.completedAt ?? task.createdAt))" : "创建于 \(dateText(task.createdAt))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        Text(task.isCompleted ? "完成于 \(dateText(task.completedAt ?? task.createdAt))" : "创建于 \(dateText(task.createdAt))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-
-                Spacer()
+                .buttonStyle(.plain)
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
@@ -49,42 +54,48 @@ struct TodoTaskRow: View {
 
 struct WishlistRow: View {
     let item: WishlistItem
+    let category: WishlistCategory
     let onToggle: () -> Void
+    let onEdit: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
         SwipeToDeleteRow(onDelete: onDelete) {
             HStack(spacing: 12) {
                 Button(action: onToggle) {
-                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : item.category.icon)
+                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : category.icon)
                         .font(.title2)
-                        .foregroundStyle(item.isCompleted ? .green : .purple)
+                        .foregroundStyle(item.isCompleted ? .green : .blue)
                         .frame(width: 26)
                 }
                 .buttonStyle(.borderless)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text(item.title)
-                            .font(.subheadline.weight(.medium))
-                            .strikethrough(item.isCompleted)
-                            .foregroundStyle(item.isCompleted ? .secondary : .primary)
+                Button(action: onEdit) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text(item.title)
+                                .font(.subheadline.weight(.medium))
+                                .strikethrough(item.isCompleted)
+                                .foregroundStyle(item.isCompleted ? .secondary : .primary)
+                                .multilineTextAlignment(.leading)
 
-                        Text(item.category.title)
-                            .font(.caption2.bold())
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background(Color.purple.opacity(0.14))
-                            .foregroundStyle(.purple)
-                            .clipShape(Capsule())
+                            Text(category.title)
+                                .font(.caption2.bold())
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(Color.blue.opacity(0.14))
+                                .foregroundStyle(.blue)
+                                .clipShape(Capsule())
+                        }
+
+                        Text(item.isCompleted ? "实现于 \(dateText(item.completedAt ?? item.createdAt))" : "记录于 \(dateText(item.createdAt))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-
-                    Text(item.isCompleted ? "实现于 \(dateText(item.completedAt ?? item.createdAt))" : "记录于 \(dateText(item.createdAt))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-
-                Spacer()
+                .buttonStyle(.plain)
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
@@ -111,6 +122,7 @@ struct AnniversaryRow: View {
     let solarText: String?
     let daysUntil: Int?
     let elapsedText: String?
+    let onEdit: () -> Void
     let onDelete: () -> Void
 
     private var isToday: Bool { (daysUntil ?? -1) == 0 }
@@ -124,43 +136,49 @@ struct AnniversaryRow: View {
                 confirmTitle: "删除纪念日"
             )
         ) {
-            HStack(alignment: .center, spacing: 14) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(item.title)
-                        .font(.headline)
+            Button(action: onEdit) {
+                HStack(alignment: .center, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(item.title)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
 
-                    Text(dateText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        Text(dateText)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
 
-                    if let solarText {
-                        Text(solarText)
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
+                        if let solarText {
+                            Text(solarText)
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+
+                        if let elapsedText {
+                            Text(elapsedText)
+                                .font(.caption2.bold())
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Color.orange.opacity(0.14))
+                                .foregroundStyle(.orange)
+                                .clipShape(Capsule())
+                                .padding(.top, 2)
+                        }
                     }
 
-                    if let elapsedText {
-                        Text(elapsedText)
-                            .font(.caption2.bold())
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.orange.opacity(0.14))
-                            .foregroundStyle(.orange)
-                            .clipShape(Capsule())
-                            .padding(.top, 2)
-                    }
+                    Spacer(minLength: 8)
+
+                    countdownView
                 }
-
-                Spacer(minLength: 8)
-
-                countdownView
+                .padding(.vertical, 14)
+                .padding(.horizontal, 16)
+                .contentShape(Rectangle())
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color(.tertiarySystemGroupedBackground))
+                )
             }
-            .padding(.vertical, 14)
-            .padding(.horizontal, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color(.tertiarySystemGroupedBackground))
-            )
+            .buttonStyle(.plain)
         }
     }
 
@@ -792,5 +810,508 @@ struct MeasurementField: View {
                 )
         }
         .animation(.spring(response: 0.25, dampingFraction: 0.88), value: isFocused)
+    }
+}
+
+struct TodoEditorSheet: View {
+    let task: TodoTask
+    let onSave: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var titleInput: String
+    @FocusState private var isFocused: Bool
+
+    init(task: TodoTask, onSave: @escaping (String) -> Void) {
+        self.task = task
+        self.onSave = onSave
+        _titleInput = State(initialValue: task.title)
+    }
+
+    private var canSave: Bool {
+        !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                SheetHeader(
+                    icon: "checklist",
+                    title: "编辑待办",
+                    subtitle: "改完点完成即可保存"
+                )
+
+                ModernInputField(
+                    placeholder: "记录些什么",
+                    text: $titleInput,
+                    icon: "checklist",
+                    tint: .blue
+                )
+                .focused($isFocused)
+
+                Spacer(minLength: 0)
+            }
+            .padding(20)
+            .background(Color(.systemGroupedBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        onSave(titleInput)
+                        dismiss()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                    .disabled(!canSave)
+                }
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                isFocused = true
+            }
+        }
+    }
+}
+
+struct WishlistEditorSheet: View {
+    let item: WishlistItem
+    let categories: [WishlistCategory]
+    let onSave: (String, String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var titleInput: String
+    @State private var categoryID: String
+    @FocusState private var isFocused: Bool
+
+    init(item: WishlistItem, categories: [WishlistCategory], onSave: @escaping (String, String) -> Void) {
+        self.item = item
+        self.categories = categories
+        self.onSave = onSave
+        _titleInput = State(initialValue: item.title)
+        _categoryID = State(initialValue: item.categoryID)
+    }
+
+    private var canSave: Bool {
+        !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                SheetHeader(
+                    icon: "sparkles",
+                    title: "编辑愿望",
+                    subtitle: "改个名字或换个分类",
+                    gradient: [.blue, .indigo]
+                )
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("分类")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(categories) { category in
+                                Button {
+                                    categoryID = category.id
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: category.icon)
+                                        Text(category.title)
+                                    }
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(categoryID == category.id ? .white : .blue)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background {
+                                        Capsule()
+                                            .fill(categoryID == category.id ? Color.blue : Color.blue.opacity(0.10))
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+
+                ModernInputField(
+                    placeholder: "想要点什么",
+                    text: $titleInput,
+                    icon: categories.first(where: { $0.id == categoryID })?.icon ?? "sparkles",
+                    tint: .blue
+                )
+                .focused($isFocused)
+
+                Spacer(minLength: 0)
+            }
+            .padding(20)
+            .background(Color(.systemGroupedBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        onSave(titleInput, categoryID)
+                        dismiss()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                    .disabled(!canSave)
+                }
+            }
+        }
+    }
+}
+
+struct WishlistCategoryManagerSheet: View {
+    let categories: [WishlistCategory]
+    let onAdd: (String, String) -> Void
+    let onUpdate: (WishlistCategory, String, String) -> Void
+    let onDelete: (WishlistCategory) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var editingTarget: CategoryEditTarget?
+
+    enum CategoryEditTarget: Identifiable {
+        case new
+        case existing(WishlistCategory)
+
+        var id: String {
+            switch self {
+            case .new: return "new"
+            case .existing(let category): return category.id
+            }
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(categories) { category in
+                        Button {
+                            editingTarget = .existing(category)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: category.icon)
+                                    .font(.headline)
+                                    .foregroundStyle(.blue)
+                                    .frame(width: 34, height: 34)
+                                    .background(Color.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                                Text(category.title)
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+
+                                Spacer(minLength: 0)
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } footer: {
+                    Text("点按可编辑或删除分类。")
+                }
+            }
+            .navigationTitle("管理分类")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("完成") { dismiss() }
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.blue)
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        editingTarget = .new
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .foregroundStyle(.blue)
+                }
+            }
+            .sheet(item: $editingTarget) { target in
+                switch target {
+                case .new:
+                    WishlistCategoryEditorSheet(category: nil) { title, icon in
+                        onAdd(title, icon)
+                    }
+                    .presentationDetents([.height(360)])
+                    .presentationDragIndicator(.visible)
+                case .existing(let category):
+                    WishlistCategoryEditorSheet(category: category) { title, icon in
+                        onUpdate(category, title, icon)
+                    } onDelete: {
+                        onDelete(category)
+                    }
+                    .presentationDetents([.height(360)])
+                    .presentationDragIndicator(.visible)
+                }
+            }
+        }
+    }
+}
+
+struct WishlistCategoryEditorSheet: View {
+    let category: WishlistCategory?
+    let onSave: (String, String) -> Void
+    var onDelete: (() -> Void)?
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var titleInput: String
+    @State private var icon: String
+    @FocusState private var isFocused: Bool
+
+    private let iconOptions = ["airplane", "fork.knife", "book.closed", "film", "sparkles", "music.note", "bag", "heart"]
+
+    init(category: WishlistCategory?, onSave: @escaping (String, String) -> Void, onDelete: (() -> Void)? = nil) {
+        self.category = category
+        self.onSave = onSave
+        self.onDelete = onDelete
+        _titleInput = State(initialValue: category?.title ?? "")
+        _icon = State(initialValue: category?.icon ?? "sparkles")
+    }
+
+    private var canSave: Bool {
+        !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                SheetHeader(
+                    icon: "tag.fill",
+                    title: category == nil ? "新增分类" : "编辑分类",
+                    subtitle: "分类会用于筛选和新增愿望",
+                    gradient: [.blue, .indigo]
+                )
+
+                ModernInputField(
+                    placeholder: "分类名称",
+                    text: $titleInput,
+                    icon: "textformat",
+                    tint: .blue
+                )
+                .focused($isFocused)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("图标")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
+                        ForEach(iconOptions, id: \.self) { option in
+                            Button {
+                                icon = option
+                            } label: {
+                                Image(systemName: option)
+                                    .font(.headline)
+                                    .foregroundStyle(icon == option ? .white : .blue)
+                                    .frame(height: 42)
+                                    .frame(maxWidth: .infinity)
+                                    .background(icon == option ? Color.blue : Color.blue.opacity(0.10))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                if category != nil, let onDelete {
+                    Button(role: .destructive) {
+                        onDelete()
+                        dismiss()
+                    } label: {
+                        Label("删除分类", systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(AppSecondaryButtonStyle(tint: .red))
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(20)
+            .background(Color(.systemGroupedBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        onSave(titleInput, icon)
+                        dismiss()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                    .disabled(!canSave)
+                }
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                isFocused = true
+            }
+        }
+    }
+}
+
+struct AnniversaryEditorSheet: View {
+    let item: AnniversaryItem
+    let solarPreview: (Date, AnniversaryCalendarKind) -> String?
+    let onSave: (String, AnniversaryCalendarKind, Date, Bool) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var titleInput: String
+    @State private var calendarKind: AnniversaryCalendarKind
+    @State private var date: Date
+    @State private var showsElapsedDays: Bool
+
+    init(
+        item: AnniversaryItem,
+        solarPreview: @escaping (Date, AnniversaryCalendarKind) -> String?,
+        onSave: @escaping (String, AnniversaryCalendarKind, Date, Bool) -> Void
+    ) {
+        self.item = item
+        self.solarPreview = solarPreview
+        self.onSave = onSave
+        _titleInput = State(initialValue: item.title)
+        _calendarKind = State(initialValue: item.calendarKind)
+        _date = State(initialValue: item.date)
+        _showsElapsedDays = State(initialValue: item.showsElapsedDays)
+    }
+
+    private var canSave: Bool {
+        !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    SheetHeader(
+                        icon: "calendar.badge.heart",
+                        title: "编辑纪念日",
+                        subtitle: "修改名称、日期或显示方式",
+                        gradient: [.orange, .pink]
+                    )
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        fieldLabel("日期类型")
+                        AppSegmentedControl(
+                            options: AnniversaryCalendarKind.allCases,
+                            selection: $calendarKind,
+                            title: \.title
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        fieldLabel("名称")
+                        ModernInputField(
+                            placeholder: "记录个重要的日子",
+                            text: $titleInput,
+                            icon: "calendar.badge.heart",
+                            tint: .orange
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        fieldLabel(calendarKind == .lunar ? "日期（按农历选择）" : "日期")
+                        DatePicker("", selection: $date, displayedComponents: .date)
+                            .datePickerStyle(.graphical)
+                            .tint(.orange)
+                            .environment(\.locale, Locale(identifier: "zh_CN"))
+                            .environment(\.calendar, calendarKind == .lunar ? Calendar(identifier: .chinese) : Calendar.current)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                        if calendarKind == .lunar,
+                           let preview = solarPreview(date, .lunar) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "calendar.badge.clock")
+                                    .foregroundStyle(.orange)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("今年对应阳历")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                    Text(preview)
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(.orange)
+                                }
+                                Spacer()
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(Color.orange.opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        }
+                    }
+
+                    Toggle(isOn: $showsElapsedDays) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("显示累计天数")
+                                .font(.subheadline.bold())
+                            Text("从这一天到今天一共多少天，会显示在卡片上。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .tint(.orange)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    onSave(titleInput, calendarKind, date, showsElapsedDays)
+                    dismiss()
+                } label: {
+                    Text("保存修改")
+                }
+                .buttonStyle(AppPrimaryButtonStyle(tint: .orange))
+                .disabled(!canSave)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+                .background(.bar)
+            }
+            .navigationTitle("编辑纪念日")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    private func fieldLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.bold())
+            .foregroundStyle(.secondary)
     }
 }

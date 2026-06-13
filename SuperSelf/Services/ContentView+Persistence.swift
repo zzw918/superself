@@ -76,6 +76,7 @@ extension ContentView {
         loadWeightLogs()
         loadFastingSessions()
         loadTodoTasks()
+        loadWishlistCategories()
         loadWishlistItems()
         loadAnniversaryItems()
         loadFinanceAssets()
@@ -149,6 +150,15 @@ extension ContentView {
         persistTodoTasks()
     }
 
+    func updateTodoTask(_ task: TodoTask, title: String) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let index = todoTasks.firstIndex(where: { $0.id == task.id }) else { return }
+
+        todoTasks[index].title = trimmed
+        persistTodoTasks()
+    }
+
     func persistTodoTasks() {
         if let encodedTasks = try? JSONEncoder().encode(todoTasks) {
             todoTasksData = encodedTasks
@@ -165,14 +175,31 @@ extension ContentView {
         }
     }
 
+    func loadWishlistCategories() {
+        guard !wishlistCategoriesData.isEmpty else {
+            wishlistCategories = WishlistCategory.defaultCategories
+            return
+        }
+
+        if let decodedCategories = try? JSONDecoder().decode([WishlistCategory].self, from: wishlistCategoriesData),
+           !decodedCategories.isEmpty {
+            wishlistCategories = decodedCategories
+            if !wishlistCategories.contains(where: { $0.id == wishlistCategoryID }) {
+                wishlistCategoryID = wishlistCategories.first?.id ?? WishlistCategory.fallback.id
+            }
+        }
+    }
+
     func addWishlistItem() {
         let trimmedTitle = wishlistInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { return }
 
+        let categoryID = wishlistFilter.categoryID ?? wishlistCategoryID
         wishlistItems.insert(
-            WishlistItem(title: trimmedTitle, category: wishlistCategory, createdAt: Date()),
+            WishlistItem(title: trimmedTitle, categoryID: categoryID, createdAt: Date()),
             at: 0
         )
+        wishlistCategoryID = categoryID
         wishlistInput = ""
         persistWishlistItems()
     }
@@ -187,6 +214,76 @@ extension ContentView {
     func deleteWishlistItem(_ item: WishlistItem) {
         wishlistItems.removeAll { $0.id == item.id }
         persistWishlistItems()
+    }
+
+    func updateWishlistItem(_ item: WishlistItem, title: String, categoryID: String) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let index = wishlistItems.firstIndex(where: { $0.id == item.id }) else { return }
+
+        wishlistItems[index].title = trimmed
+        wishlistItems[index].categoryID = categoryID
+        persistWishlistItems()
+    }
+
+    func addWishlistCategory(title: String, icon: String) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let baseID = trimmed.lowercased()
+        var id = baseID.isEmpty ? UUID().uuidString : baseID
+        var suffix = 2
+        while wishlistCategories.contains(where: { $0.id == id }) {
+            id = "\(baseID)-\(suffix)"
+            suffix += 1
+        }
+
+        let category = WishlistCategory(id: id, title: trimmed, icon: icon)
+        wishlistCategories.append(category)
+        wishlistCategoryID = category.id
+        wishlistFilter = WishlistFilter(category: category)
+        persistWishlistCategories()
+    }
+
+    func updateWishlistCategory(_ category: WishlistCategory, title: String, icon: String) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let index = wishlistCategories.firstIndex(where: { $0.id == category.id }) else { return }
+
+        wishlistCategories[index].title = trimmed
+        wishlistCategories[index].icon = icon
+        if wishlistFilter.categoryID == category.id {
+            wishlistFilter = WishlistFilter(category: wishlistCategories[index])
+        }
+        persistWishlistCategories()
+    }
+
+    func deleteWishlistCategory(_ category: WishlistCategory) {
+        guard wishlistCategories.count > 1 else { return }
+
+        let fallbackID = wishlistCategories.first(where: { $0.id != category.id })?.id ?? WishlistCategory.fallback.id
+        wishlistCategories.removeAll { $0.id == category.id }
+        for index in wishlistItems.indices where wishlistItems[index].categoryID == category.id {
+            wishlistItems[index].categoryID = fallbackID
+        }
+
+        if wishlistCategoryID == category.id {
+            wishlistCategoryID = fallbackID
+        }
+        if wishlistFilter.categoryID == category.id {
+            wishlistFilter = .all
+        }
+
+        persistWishlistCategories()
+        persistWishlistItems()
+    }
+
+    func persistWishlistCategories() {
+        if let encodedCategories = try? JSONEncoder().encode(wishlistCategories) {
+            wishlistCategoriesData = encodedCategories
+            cloudStore.set(encodedCategories, forKey: wishlistCategoriesCloudKey)
+            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+        }
     }
 
     func persistWishlistItems() {
@@ -229,6 +326,24 @@ extension ContentView {
 
     func deleteAnniversaryItem(_ item: AnniversaryItem) {
         anniversaryItems.removeAll { $0.id == item.id }
+        persistAnniversaryItems()
+    }
+
+    func updateAnniversaryItem(
+        _ item: AnniversaryItem,
+        title: String,
+        calendarKind: AnniversaryCalendarKind,
+        date: Date,
+        showsElapsedDays: Bool
+    ) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let index = anniversaryItems.firstIndex(where: { $0.id == item.id }) else { return }
+
+        anniversaryItems[index].title = trimmed
+        anniversaryItems[index].calendarKind = calendarKind
+        anniversaryItems[index].date = date
+        anniversaryItems[index].showsElapsedDays = showsElapsedDays
         persistAnniversaryItems()
     }
 
@@ -445,6 +560,11 @@ extension ContentView {
             mergeWishlistItems(cloudWishlistItems)
         }
 
+        if let cloudWishlistCategoriesData = cloudStore.data(forKey: wishlistCategoriesCloudKey),
+           let cloudWishlistCategories = try? JSONDecoder().decode([WishlistCategory].self, from: cloudWishlistCategoriesData) {
+            mergeWishlistCategories(cloudWishlistCategories)
+        }
+
         if let cloudAnniversaryItemsData = cloudStore.data(forKey: anniversaryItemsCloudKey),
            let cloudAnniversaryItems = try? JSONDecoder().decode([AnniversaryItem].self, from: cloudAnniversaryItemsData) {
             mergeAnniversaryItems(cloudAnniversaryItems)
@@ -522,6 +642,10 @@ extension ContentView {
 
         if let encodedWishlistItems = try? JSONEncoder().encode(wishlistItems) {
             cloudStore.set(encodedWishlistItems, forKey: wishlistItemsCloudKey)
+        }
+
+        if let encodedWishlistCategories = try? JSONEncoder().encode(wishlistCategories) {
+            cloudStore.set(encodedWishlistCategories, forKey: wishlistCategoriesCloudKey)
         }
 
         if let encodedAnniversaryItems = try? JSONEncoder().encode(anniversaryItems) {
@@ -616,6 +740,20 @@ extension ContentView {
 
         if let encodedItems = try? JSONEncoder().encode(wishlistItems) {
             wishlistItemsData = encodedItems
+        }
+    }
+
+    func mergeWishlistCategories(_ cloudCategories: [WishlistCategory]) {
+        var mergedCategoriesByID = Dictionary(uniqueKeysWithValues: wishlistCategories.map { ($0.id, $0) })
+
+        for category in cloudCategories {
+            mergedCategoriesByID[category.id] = category
+        }
+
+        wishlistCategories = mergedCategoriesByID.values.sorted { $0.title < $1.title }
+
+        if let encodedCategories = try? JSONEncoder().encode(wishlistCategories) {
+            wishlistCategoriesData = encodedCategories
         }
     }
 

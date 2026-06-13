@@ -260,29 +260,68 @@ struct WeightTrendView: View {
         return (minWeight - padding)...(maxWeight + padding)
     }
 
+    var xDomain: ClosedRange<Date> {
+        let dates = points.map(\.date).sorted()
+        guard let first = dates.first, let last = dates.last else {
+            let now = Date()
+            return now...now.addingTimeInterval(1)
+        }
+        let span = last.timeIntervalSince(first)
+        let pad = max(span * 0.12, 12 * 3600)
+        return first.addingTimeInterval(-pad)...last.addingTimeInterval(pad)
+    }
+
+    /// 用真实数据点的日期做刻度，均匀采样最多 4 个，去重后保证不会全是同一天。
+    var axisDates: [Date] {
+        let sorted = points.map(\.date).sorted()
+        guard sorted.count > 1 else { return sorted }
+
+        let desired = min(4, sorted.count)
+        var picked: [Date] = []
+        for i in 0..<desired {
+            let idx = Int((Double(i) / Double(desired - 1)) * Double(sorted.count - 1).rounded())
+            picked.append(sorted[min(idx, sorted.count - 1)])
+        }
+        // 去重，避免数据点过少时取到相同日期
+        var seen = Set<Date>()
+        return picked.filter { seen.insert($0).inserted }
+    }
+
+    func label(for date: Date) -> String {
+        if let match = points.min(by: { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }) {
+            return match.bottomLabel
+        }
+        return ""
+    }
+
+    private let lineColor = Color.blue
+    private let tooltipColor = Color.blue
+    private let targetColor = Color.orange
+
+    var monthLabel: String {
+        guard let first = points.map(\.date).min() else { return "" }
+        return points.first(where: { $0.date == first })?.topLabel ?? ""
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let point = selectedPoint {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("\(point.topLabel)\(point.bottomLabel)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("\(String(format: "%.1f", point.weight)) kg")
-                        .font(.title3.bold())
-                        .foregroundStyle(.blue)
-                        .contentTransition(.numericText())
-                }
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(monthLabel)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
 
             Chart {
                 if let targetWeight {
                     RuleMark(y: .value("目标", targetWeight))
-                        .foregroundStyle(.orange)
-                        .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                        .annotation(position: .top, alignment: .trailing, spacing: 2) {
+                        .foregroundStyle(targetColor.opacity(0.9))
+                        .lineStyle(StrokeStyle(lineWidth: 2, dash: [6, 5]))
+                        .annotation(position: .top, alignment: .leading, spacing: 2) {
                             Text("目标 \(String(format: "%.1f", targetWeight))")
                                 .font(.caption2.bold())
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 3)
+                                .background(targetColor, in: Capsule())
                         }
                 }
 
@@ -294,19 +333,25 @@ struct WeightTrendView: View {
                     .interpolationMethod(.catmullRom)
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [Color.blue.opacity(0.25), Color.blue.opacity(0.02)],
+                            stops: [
+                                .init(color: lineColor.opacity(0.42), location: 0.0),
+                                .init(color: lineColor.opacity(0.24), location: 0.32),
+                                .init(color: lineColor.opacity(0.08), location: 0.66),
+                                .init(color: lineColor.opacity(0.0), location: 1.0)
+                            ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     )
+                    .alignsMarkStylesWithPlotArea()
 
                     LineMark(
                         x: .value("日期", point.date),
                         y: .value("体重", point.weight)
                     )
                     .interpolationMethod(.catmullRom)
-                    .foregroundStyle(Color.blue.gradient)
-                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .foregroundStyle(lineColor)
+                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
                 }
 
                 if let point = selectedPoint {
@@ -314,14 +359,27 @@ struct WeightTrendView: View {
                         x: .value("日期", point.date),
                         y: .value("体重", point.weight)
                     )
-                    .foregroundStyle(Color.blue)
-                    .symbolSize(80)
+                    .foregroundStyle(lineColor)
+                    .symbolSize(160)
+                    .annotation(position: .top, alignment: .center, spacing: 6, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                        WeightCallout(
+                            text: "\(String(format: "%.1f", point.weight)) kg",
+                            background: tooltipColor
+                        )
+                    }
+
+                    PointMark(
+                        x: .value("日期", point.date),
+                        y: .value("体重", point.weight)
+                    )
+                    .foregroundStyle(.white)
+                    .symbolSize(56)
                 }
             }
             .chartYScale(domain: yDomain)
             .chartYAxis {
-                AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
-                    AxisGridLine().foregroundStyle(Color(.separator).opacity(0.4))
+                AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { value in
+                    AxisGridLine().foregroundStyle(Color(.separator).opacity(0.3))
                     AxisValueLabel {
                         if let weight = value.as(Double.self) {
                             Text(String(format: "%.0f", weight))
@@ -331,11 +389,16 @@ struct WeightTrendView: View {
                     }
                 }
             }
+            .chartXScale(domain: xDomain)
             .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 4)) { value in
-                    AxisValueLabel(format: .dateTime.month(.defaultDigits).day(.defaultDigits))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                AxisMarks(values: axisDates) { value in
+                    if let date = value.as(Date.self) {
+                        AxisValueLabel {
+                            Text(label(for: date))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
             .chartOverlay { proxy in
@@ -357,5 +420,37 @@ struct WeightTrendView: View {
 
     func nearestPoint(to date: Date) -> WeightTrendPoint? {
         points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
+    }
+}
+
+private struct WeightCallout: View {
+    let text: String
+    let background: Color
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(text)
+                .font(.subheadline.bold())
+                .foregroundStyle(.white)
+                .padding(.horizontal, 13)
+                .padding(.vertical, 7)
+                .background(background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            CalloutArrow()
+                .fill(background)
+                .frame(width: 14, height: 7)
+        }
+        .shadow(color: background.opacity(0.3), radius: 6, x: 0, y: 3)
+    }
+}
+
+private struct CalloutArrow: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
