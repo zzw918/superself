@@ -3,19 +3,20 @@ import SwiftUI
 extension ContentView {
     var anniversaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("纪念日")
-                    .font(.title3.bold())
-
-                Spacer()
-
-                Button {
-                    isShowingAnniversarySheet = true
-                } label: {
-                    AppIconCircleButton(icon: "plus", tint: .orange)
+            Button {
+                isShowingAnniversarySheet = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                    Text("添加纪念日")
                 }
-                .buttonStyle(.plain)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.orange)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
+            .buttonStyle(.plain)
 
             if anniversaryItems.isEmpty {
                 AppEmptyState(
@@ -160,17 +161,6 @@ extension ContentView {
 
     var todoTasksCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("TODO")
-                    .font(.title3.bold())
-
-                Spacer()
-
-                Text("\(activeTodoTasks.count) 件待做")
-                    .font(.caption.bold())
-                    .foregroundStyle(.blue)
-            }
-
             AddEntryBar(
                 placeholder: "记录些什么",
                 text: $todoInput,
@@ -239,9 +229,6 @@ extension ContentView {
 
     var wishlistCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("愿望清单")
-                .font(.title3.bold())
-
             wishlistFilterBar
 
             AddEntryBar(

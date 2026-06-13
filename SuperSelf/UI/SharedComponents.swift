@@ -228,6 +228,50 @@ struct AppSegmentedControl<Option: Identifiable & Hashable>: View {
     }
 }
 
+struct AppUnderlineTabs<Option: Identifiable & Hashable>: View {
+    let options: [Option]
+    @Binding var selection: Option
+    let title: (Option) -> String
+
+    @Namespace private var underlineNamespace
+
+    var body: some View {
+        HStack(spacing: 24) {
+            ForEach(options) { option in
+                let isSelected = selection == option
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                        selection = option
+                    }
+                } label: {
+                    VStack(spacing: 6) {
+                        Text(title(option))
+                            .font(isSelected ? .title3.bold() : .title3.weight(.medium))
+                            .foregroundStyle(isSelected ? .primary : .secondary)
+
+                        ZStack {
+                            Capsule()
+                                .fill(Color.clear)
+                                .frame(height: 3)
+                            if isSelected {
+                                Capsule()
+                                    .fill(Color.blue)
+                                    .frame(width: 22, height: 3)
+                                    .matchedGeometryEffect(id: "underline", in: underlineNamespace)
+                            }
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+
 struct ModernInputField: View {
     let placeholder: String
     @Binding var text: String

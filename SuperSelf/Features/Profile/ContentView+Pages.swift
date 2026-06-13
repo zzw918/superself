@@ -3,21 +3,25 @@ import SwiftUI
 extension ContentView {
     var healthPage: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    healthSectionPicker
+            VStack(spacing: 0) {
+                healthSectionPicker
+                    .padding(.horizontal)
+                    .padding(.top)
+                    .padding(.bottom, 14)
 
-                    switch healthSection {
-                    case .fasting:
-                        fastingSection
-                    case .weight:
-                        weightSection
-                    }
+                TabView(selection: $healthSection) {
+                    sectionScroll { fastingSection }
+                        .tag(HealthSection.fasting)
+
+                    sectionScroll { weightSection }
+                        .tag(HealthSection.weight)
                 }
-                .padding()
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("健康")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .onChange(of: healthSection) { _, newSection in
                 if newSection != .weight {
                     visibleWeightHistoryDays = 10
@@ -26,8 +30,17 @@ extension ContentView {
         }
     }
 
+    @ViewBuilder
+    func sectionScroll<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        ScrollView {
+            content()
+                .padding(.horizontal)
+                .padding(.bottom)
+        }
+    }
+
     var healthSectionPicker: some View {
-        AppSegmentedControl(
+        AppUnderlineTabs(
             options: HealthSection.allCases,
             selection: $healthSection,
             title: \.title
@@ -51,28 +64,33 @@ extension ContentView {
 
     var memoPage: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    memoSectionPicker
+            VStack(spacing: 0) {
+                memoSectionPicker
+                    .padding(.horizontal)
+                    .padding(.top)
+                    .padding(.bottom, 14)
 
-                    switch memoSection {
-                    case .todo:
-                        todoTasksCard
-                    case .wishlist:
-                        wishlistCard
-                    case .anniversary:
-                        anniversaryCard
-                    }
+                TabView(selection: $memoSection) {
+                    sectionScroll { todoTasksCard }
+                        .tag(MemoSection.todo)
+
+                    sectionScroll { wishlistCard }
+                        .tag(MemoSection.wishlist)
+
+                    sectionScroll { anniversaryCard }
+                        .tag(MemoSection.anniversary)
                 }
-                .padding()
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("备忘录")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
     var memoSectionPicker: some View {
-        AppSegmentedControl(
+        AppUnderlineTabs(
             options: MemoSection.allCases,
             selection: $memoSection,
             title: \.title
@@ -81,26 +99,30 @@ extension ContentView {
 
     var financePage: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    financeSectionPicker
+            VStack(spacing: 0) {
+                financeSectionPicker
+                    .padding(.horizontal)
+                    .padding(.top)
+                    .padding(.bottom, 14)
 
-                    switch financeSection {
-                    case .assetRecord:
-                        financeAssetRecordSection
-                    case .stockResearch:
-                        stockResearchSection
-                    }
+                TabView(selection: $financeSection) {
+                    sectionScroll { financeAssetRecordSection }
+                        .tag(FinanceSection.assetRecord)
+
+                    sectionScroll { stockResearchSection }
+                        .tag(FinanceSection.stockResearch)
                 }
-                .padding()
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("理财")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
     var financeSectionPicker: some View {
-        AppSegmentedControl(
+        AppUnderlineTabs(
             options: FinanceSection.allCases,
             selection: $financeSection,
             title: \.title
@@ -145,8 +167,6 @@ extension ContentView {
                 profileFixedTabCard
                     .profileCardRow()
 
-                profileSectionNoteRow("拖动排序，开关控制显示。")
-
                 profileSectionTitleRow("外观")
 
                 appearanceRow
@@ -170,6 +190,8 @@ extension ContentView {
             .scrollContentBackground(.hidden)
             .background(Color(.systemGroupedBackground))
             .navigationTitle("我的")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 
