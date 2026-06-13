@@ -83,6 +83,9 @@ struct ContentView: View {
     @State var stockResearchItems: [StockResearchItem] = []
     @State var stockNameInput = ""
     @State var stockSearchText = ""
+    @State var stockCertaintyFilter: StockRating?
+    @State var stockGrowthFilter: StockRating?
+    @State var stockAttentionFilter: StockRating?
     @State var editingFinanceAsset: FinanceAsset?
     @State var editingStockResearchItem: StockResearchItem?
     @State var editingTodoTask: TodoTask?
@@ -184,6 +187,9 @@ struct ContentView: View {
                 updatedText: chineseDateTime(item.updatedAt),
                 onRename: { newName in
                     renameStockResearchItem(item, name: newName)
+                },
+                onSaveRatings: { certainty, growth, attention in
+                    updateStockResearchRatings(item, certainty: certainty, growth: growth, attention: attention)
                 }
             )
         }

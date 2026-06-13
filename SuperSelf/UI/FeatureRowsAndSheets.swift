@@ -259,6 +259,15 @@ struct StockResearchRow: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+
+                        if hasRatings {
+                            HStack(spacing: 6) {
+                                ratingBadge("确定", item.certainty, tint: .green)
+                                ratingBadge("成长", item.growth, tint: .orange)
+                                ratingBadge("关注", item.attention, tint: .blue)
+                            }
+                            .padding(.top, 2)
+                        }
                     }
 
                     Spacer()
@@ -286,6 +295,27 @@ struct StockResearchRow: View {
             .split(whereSeparator: \.isNewline)
             .prefix(2)
             .joined(separator: " ")
+    }
+
+    var hasRatings: Bool {
+        item.certainty != nil || item.growth != nil || item.attention != nil
+    }
+
+    @ViewBuilder
+    func ratingBadge(_ label: String, _ rating: StockRating?, tint: Color) -> some View {
+        if let rating {
+            HStack(spacing: 3) {
+                Text(label)
+                    .foregroundStyle(.secondary)
+                Text(rating.title)
+                    .fontWeight(.bold)
+                    .foregroundStyle(tint)
+            }
+            .font(.caption2)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(tint.opacity(0.12), in: Capsule())
+        }
     }
 }
 
@@ -403,21 +433,30 @@ struct StockResearchEditorSheet: View {
     @Binding var thesis: String
     let updatedText: String
     let onRename: (String) -> Void
+    let onSaveRatings: (StockRating?, StockRating?, StockRating?) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var nameInput: String
+    @State private var certainty: StockRating?
+    @State private var growth: StockRating?
+    @State private var attention: StockRating?
 
     init(
         item: StockResearchItem,
         thesis: Binding<String>,
         updatedText: String,
-        onRename: @escaping (String) -> Void
+        onRename: @escaping (String) -> Void,
+        onSaveRatings: @escaping (StockRating?, StockRating?, StockRating?) -> Void
     ) {
         self.item = item
         _thesis = thesis
         self.updatedText = updatedText
         self.onRename = onRename
+        self.onSaveRatings = onSaveRatings
         _nameInput = State(initialValue: item.name)
+        _certainty = State(initialValue: item.certainty)
+        _growth = State(initialValue: item.growth)
+        _attention = State(initialValue: item.attention)
     }
 
     var body: some View {
@@ -441,6 +480,16 @@ struct StockResearchEditorSheet: View {
                 }
                 .padding(.horizontal)
                 .padding(.top)
+
+                VStack(spacing: 10) {
+                    StockRatingPicker(title: "确定性", hint: "未来大概率不会亏", tint: .green, selection: $certainty)
+                    StockRatingPicker(title: "成长性", hint: "营收利润大涨的可能", tint: .orange, selection: $growth)
+                    StockRatingPicker(title: "关注度", hint: "要不要多花精力跟踪", tint: .blue, selection: $attention)
+                }
+                .padding(14)
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .padding(.horizontal)
 
                 TextEditor(text: $thesis)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -470,10 +519,50 @@ struct StockResearchEditorSheet: View {
                         if !trimmedName.isEmpty, trimmedName != item.name {
                             onRename(trimmedName)
                         }
+                        onSaveRatings(certainty, growth, attention)
                         dismiss()
                     }
                     .font(.subheadline.bold())
                     .foregroundStyle(.blue)
+                }
+            }
+        }
+    }
+}
+
+struct StockRatingPicker: View {
+    let title: String
+    let hint: String
+    let tint: Color
+    @Binding var selection: StockRating?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(hint)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 6) {
+                ForEach(StockRating.allCases) { rating in
+                    let isSelected = selection == rating
+                    Button {
+                        selection = isSelected ? nil : rating
+                    } label: {
+                        Text(rating.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(isSelected ? .white : tint)
+                            .frame(width: 38, height: 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .fill(isSelected ? tint : tint.opacity(0.12))
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -1233,19 +1322,12 @@ struct AnniversaryEditorSheet: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         fieldLabel(calendarKind == .lunar ? "日期（按农历选择）" : "日期")
-                        if calendarKind == .lunar {
-                            DatePicker("", selection: $date, displayedComponents: .date)
-                                .datePickerStyle(.wheel)
-                                .labelsHidden()
-                                .tint(.orange)
-                                .environment(\.locale, Locale(identifier: "zh_CN"))
-                                .environment(\.calendar, Calendar(identifier: .chinese))
-                                .frame(maxWidth: .infinity)
-                                .background(Color(.secondarySystemGroupedBackground))
-                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                        } else {
-                            AnniversaryDatePicker(date: $date, tint: .orange)
-                        }
+                        WheelDatePicker(
+                            date: $date,
+                            calendarKind: calendarKind,
+                            tint: .orange
+                        )
+                        .id(calendarKind)
 
                         if calendarKind == .lunar,
                            let preview = solarPreview(date, .lunar) {
@@ -1320,154 +1402,163 @@ struct AnniversaryEditorSheet: View {
     }
 }
 
-struct AnniversaryDatePicker: View {
+struct WheelDatePicker: View {
     @Binding var date: Date
+    var calendarKind: AnniversaryCalendarKind = .solar
     var tint: Color = .orange
 
-    @State private var visibleMonth = Date()
+    @State private var yearIndex = 0
+    @State private var monthIndex = 0
+    @State private var dayIndex = 0
+    @State private var didInit = false
 
-    private let calendar: Calendar = {
-        var c = Calendar(identifier: .gregorian)
+    private var cal: Calendar {
+        var c = Calendar(identifier: calendarKind == .lunar ? .chinese : .gregorian)
         c.locale = Locale(identifier: "zh_CN")
-        c.firstWeekday = 1
         return c
-    }()
-
-    private let weekdaySymbols = ["日", "一", "二", "三", "四", "五", "六"]
+    }
 
     var body: some View {
-        VStack(spacing: 16) {
-            header
-            weekHeader
-            dayGrid
+        HStack(spacing: 0) {
+            Picker("", selection: $yearIndex) {
+                ForEach(Array(yearStarts.enumerated()), id: \.offset) { index, start in
+                    Text(yearLabel(start)).tag(index)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(maxWidth: .infinity)
+            .clipped()
+
+            Picker("", selection: $monthIndex) {
+                ForEach(Array(monthStartsForSelection.enumerated()), id: \.offset) { index, start in
+                    Text(monthLabel(start)).tag(index)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(maxWidth: .infinity)
+            .clipped()
+
+            Picker("", selection: $dayIndex) {
+                ForEach(Array(0..<dayCountForSelection), id: \.self) { index in
+                    Text("\(index + 1)日").tag(index)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(maxWidth: .infinity)
+            .clipped()
         }
-        .padding(16)
+        .frame(height: 180)
+        .tint(tint)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .onAppear { visibleMonth = startOfMonth(date) }
+        .onAppear(perform: initIndicesIfNeeded)
+        .onChange(of: yearIndex) { commit() }
+        .onChange(of: monthIndex) { commit() }
+        .onChange(of: dayIndex) { commit() }
     }
 
-    private var header: some View {
-        HStack {
-            Menu {
-                ForEach(yearOptions, id: \.self) { year in
-                    Button {
-                        setYear(year)
-                    } label: {
-                        if year == currentYear {
-                            Label("\(year)年", systemImage: "checkmark")
-                        } else {
-                            Text("\(year)年")
-                        }
-                    }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Text("\(currentYear)年")
-                        .font(.headline)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption2.weight(.bold))
-                }
-                .foregroundStyle(tint)
+    private var yearStarts: [Date] {
+        if calendarKind == .lunar {
+            guard let currentStart = cal.dateInterval(of: .year, for: Date())?.start else { return [] }
+            return stride(from: 100, through: 0, by: -1).compactMap {
+                cal.date(byAdding: .year, value: -$0, to: currentStart)
             }
-
-            Spacer()
-
-            HStack(spacing: 16) {
-                Button { shiftMonth(-1) } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.subheadline.weight(.bold))
-                        .frame(width: 28, height: 28)
-                }
-                Text("\(currentMonth)月")
-                    .font(.headline)
-                    .frame(minWidth: 40)
-                Button { shiftMonth(1) } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.subheadline.weight(.bold))
-                        .frame(width: 28, height: 28)
-                }
-            }
-            .foregroundStyle(tint)
-            .buttonStyle(.plain)
-        }
-    }
-
-    private var weekHeader: some View {
-        HStack(spacing: 0) {
-            ForEach(weekdaySymbols, id: \.self) { symbol in
-                Text(symbol)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
+        } else {
+            let base = Calendar(identifier: .gregorian).component(.year, from: Date())
+            return ((base - 100)...base).compactMap {
+                cal.date(from: DateComponents(year: $0, month: 1, day: 1))
             }
         }
     }
 
-    private var dayGrid: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 6) {
-            ForEach(Array(monthDays.enumerated()), id: \.offset) { _, day in
-                if let day {
-                    let selected = calendar.isDate(day, inSameDayAs: date)
-                    Button {
-                        date = day
-                    } label: {
-                        Text("\(calendar.component(.day, from: day))")
-                            .font(.subheadline.weight(selected ? .bold : .regular))
-                            .foregroundStyle(selected ? .white : .primary)
-                            .frame(maxWidth: .infinity, minHeight: 38)
-                            .background {
-                                if selected {
-                                    Circle().fill(tint)
-                                }
-                            }
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    Color.clear.frame(minHeight: 38)
-                }
-            }
+    private func monthStarts(_ yearStart: Date) -> [Date] {
+        let count = cal.range(of: .month, in: .year, for: yearStart)?.count ?? 12
+        return (0..<count).compactMap { cal.date(byAdding: .month, value: $0, to: yearStart) }
+    }
+
+    private var monthStartsForSelection: [Date] {
+        let starts = yearStarts
+        guard starts.indices.contains(yearIndex) else {
+            return starts.last.map(monthStarts) ?? []
+        }
+        return monthStarts(starts[yearIndex])
+    }
+
+    private var dayCountForSelection: Int {
+        let months = monthStartsForSelection
+        let target = months.indices.contains(monthIndex) ? months[monthIndex] : months.last
+        guard let target else { return 30 }
+        return cal.range(of: .day, in: .month, for: target)?.count ?? 30
+    }
+
+    private func yearLabel(_ start: Date) -> String {
+        if calendarKind == .lunar {
+            let gregYear = Calendar(identifier: .gregorian).component(.year, from: start)
+            return "\(String(gregYear))年 \(ganzhi(start))"
+        } else {
+            return "\(String(cal.component(.year, from: start)))年"
         }
     }
 
-    private var currentYear: Int { calendar.component(.year, from: visibleMonth) }
-    private var currentMonth: Int { calendar.component(.month, from: visibleMonth) }
-
-    private var yearOptions: [Int] {
-        let base = calendar.component(.year, from: Date())
-        return Array((base - 100)...(base + 10)).reversed()
-    }
-
-    private func startOfMonth(_ date: Date) -> Date {
-        calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
-    }
-
-    private func shiftMonth(_ delta: Int) {
-        if let shifted = calendar.date(byAdding: .month, value: delta, to: visibleMonth) {
-            visibleMonth = startOfMonth(shifted)
+    private func monthLabel(_ start: Date) -> String {
+        if calendarKind == .lunar {
+            let comps = cal.dateComponents([.year, .month, .day], from: start)
+            let prefix = (comps.isLeapMonth ?? false) ? "闰" : ""
+            return prefix + lunarMonthName(comps.month ?? 1)
+        } else {
+            return "\(cal.component(.month, from: start))月"
         }
     }
 
-    private func setYear(_ year: Int) {
-        var comps = calendar.dateComponents([.year, .month], from: visibleMonth)
-        comps.year = year
-        if let updated = calendar.date(from: comps) {
-            visibleMonth = updated
-        }
+    private func lunarMonthName(_ month: Int) -> String {
+        let names = ["正", "二", "三", "四", "五", "六", "七", "八", "九", "十", "冬", "腊"]
+        guard month >= 1, month <= 12 else { return "\(month)月" }
+        return names[month - 1] + "月"
     }
 
-    private var monthDays: [Date?] {
-        guard let range = calendar.range(of: .day, in: .month, for: visibleMonth) else { return [] }
-        let first = startOfMonth(visibleMonth)
-        let firstWeekday = calendar.component(.weekday, from: first)
-        let leading = (firstWeekday - calendar.firstWeekday + 7) % 7
-        var result: [Date?] = Array(repeating: nil, count: leading)
-        for day in range {
-            result.append(calendar.date(byAdding: .day, value: day - 1, to: first))
+    private func ganzhi(_ start: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .chinese)
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "U"
+        return formatter.string(from: start)
+    }
+
+    private func initIndicesIfNeeded() {
+        guard !didInit else { return }
+        let starts = yearStarts
+        let yearStartOfDate = cal.dateInterval(of: .year, for: date)?.start ?? date
+        yearIndex = starts.firstIndex(where: { cal.isDate($0, inSameDayAs: yearStartOfDate) }) ?? max(0, starts.count - 1)
+
+        let months = starts.indices.contains(yearIndex) ? monthStarts(starts[yearIndex]) : []
+        let monthStartOfDate = cal.dateInterval(of: .month, for: date)?.start ?? date
+        monthIndex = months.firstIndex(where: { cal.isDate($0, inSameDayAs: monthStartOfDate) }) ?? 0
+
+        dayIndex = max(0, cal.component(.day, from: date) - 1)
+        didInit = true
+    }
+
+    private func commit() {
+        guard didInit else { return }
+        let starts = yearStarts
+        guard !starts.isEmpty else { return }
+
+        let yi = min(max(0, yearIndex), starts.count - 1)
+        let months = monthStarts(starts[yi])
+        guard !months.isEmpty else { return }
+
+        let mi = min(max(0, monthIndex), months.count - 1)
+        if mi != monthIndex { monthIndex = mi }
+
+        let monthStart = months[mi]
+        let dayCount = cal.range(of: .day, in: .month, for: monthStart)?.count ?? 30
+        let di = min(max(0, dayIndex), dayCount - 1)
+        if di != dayIndex { dayIndex = di }
+
+        if let newDate = cal.date(byAdding: .day, value: di, to: monthStart) {
+            date = newDate
         }
-        while result.count % 7 != 0 {
-            result.append(nil)
-        }
-        return result
     }
 }

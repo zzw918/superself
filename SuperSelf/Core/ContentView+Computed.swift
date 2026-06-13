@@ -221,13 +221,29 @@ extension ContentView {
         }
     }
 
-    var filteredStockResearchItems: [StockResearchItem] {
-        let trimmedSearchText = stockSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedSearchText.isEmpty else { return sortedStockResearchItems }
+    var hasActiveStockFilters: Bool {
+        stockCertaintyFilter != nil || stockGrowthFilter != nil || stockAttentionFilter != nil
+    }
 
-        return sortedStockResearchItems.filter {
-            $0.name.localizedCaseInsensitiveContains(trimmedSearchText)
+    var filteredStockResearchItems: [StockResearchItem] {
+        var items = sortedStockResearchItems
+
+        let trimmedSearchText = stockSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedSearchText.isEmpty {
+            items = items.filter { $0.name.localizedCaseInsensitiveContains(trimmedSearchText) }
         }
+
+        if let certainty = stockCertaintyFilter {
+            items = items.filter { $0.certainty == certainty }
+        }
+        if let growth = stockGrowthFilter {
+            items = items.filter { $0.growth == growth }
+        }
+        if let attention = stockAttentionFilter {
+            items = items.filter { $0.attention == attention }
+        }
+
+        return items
     }
 
     var dailyTrendLogs: [FastingLog] {

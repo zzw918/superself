@@ -488,6 +488,21 @@ extension ContentView {
         persistStockResearchItems()
     }
 
+    func updateStockResearchRatings(
+        _ item: StockResearchItem,
+        certainty: StockRating?,
+        growth: StockRating?,
+        attention: StockRating?
+    ) {
+        guard let index = stockResearchItems.firstIndex(where: { $0.id == item.id }) else { return }
+
+        stockResearchItems[index].certainty = certainty
+        stockResearchItems[index].growth = growth
+        stockResearchItems[index].attention = attention
+        stockResearchItems[index].updatedAt = Date()
+        persistStockResearchItems()
+    }
+
     func toggleStockResearchPinned(_ item: StockResearchItem) {
         guard let index = stockResearchItems.firstIndex(where: { $0.id == item.id }) else { return }
 

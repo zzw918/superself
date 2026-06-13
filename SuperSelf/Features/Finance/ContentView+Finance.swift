@@ -327,6 +327,10 @@ extension ContentView {
 
             SearchInputBar(placeholder: "搜索股票名称", text: $stockSearchText)
 
+            if !stockResearchItems.isEmpty {
+                stockResearchFilterBar
+            }
+
             if stockResearchItems.isEmpty {
                 AppEmptyState(
                     title: "还没有股票研究",
@@ -338,7 +342,7 @@ extension ContentView {
                 AppEmptyState(
                     title: "没有匹配结果",
                     systemImage: "magnifyingglass",
-                    description: "换个股票名称试试看。"
+                    description: "换个关键词或调整筛选条件试试看。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 150)
             } else {
@@ -362,5 +366,79 @@ extension ContentView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var stockResearchFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                StockRatingFilterMenu(title: "确定性", tint: .green, selection: $stockCertaintyFilter)
+                StockRatingFilterMenu(title: "成长性", tint: .orange, selection: $stockGrowthFilter)
+                StockRatingFilterMenu(title: "关注度", tint: .blue, selection: $stockAttentionFilter)
+
+                if hasActiveStockFilters {
+                    Button {
+                        stockCertaintyFilter = nil
+                        stockGrowthFilter = nil
+                        stockAttentionFilter = nil
+                    } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "xmark.circle.fill")
+                            Text("清除")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Color(.tertiarySystemFill), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 2)
+        }
+    }
+}
+
+struct StockRatingFilterMenu: View {
+    let title: String
+    let tint: Color
+    @Binding var selection: StockRating?
+
+    var body: some View {
+        Menu {
+            Button {
+                selection = nil
+            } label: {
+                if selection == nil {
+                    Label("全部", systemImage: "checkmark")
+                } else {
+                    Text("全部")
+                }
+            }
+            ForEach(StockRating.allCases) { rating in
+                Button {
+                    selection = rating
+                } label: {
+                    if selection == rating {
+                        Label(rating.title, systemImage: "checkmark")
+                    } else {
+                        Text(rating.title)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(selection == nil ? title : "\(title) \(selection!.title)")
+                    .font(.caption.weight(.semibold))
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+            }
+            .foregroundStyle(selection == nil ? Color.secondary : tint)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                Capsule().fill(selection == nil ? Color(.tertiarySystemFill) : tint.opacity(0.14))
+            )
+        }
     }
 }

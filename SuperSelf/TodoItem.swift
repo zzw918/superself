@@ -279,6 +279,22 @@ struct FinanceSnapshot: Identifiable, Equatable, Codable {
     var assets: [FinanceAsset]
 }
 
+enum StockRating: String, Codable, CaseIterable, Identifiable {
+    case low
+    case medium
+    case high
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .low: return "低"
+        case .medium: return "中"
+        case .high: return "高"
+        }
+    }
+}
+
 struct StockResearchItem: Identifiable, Equatable, Codable {
     var id = UUID()
     var name: String
@@ -286,4 +302,7 @@ struct StockResearchItem: Identifiable, Equatable, Codable {
     var createdAt: Date
     var updatedAt: Date
     var isPinned: Bool = false
+    var certainty: StockRating?
+    var growth: StockRating?
+    var attention: StockRating?
 }
