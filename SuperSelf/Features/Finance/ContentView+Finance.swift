@@ -234,13 +234,8 @@ extension ContentView {
 
     var financeDistributionCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("资产分布")
-                    .font(.title3.bold())
-                Text("按资产类型汇总，快速看出钱主要放在哪里。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text("资产分布")
+                .font(.title3.bold())
 
             if financeDistributionPoints.isEmpty {
                 AppEmptyState(
@@ -316,13 +311,8 @@ extension ContentView {
     var stockResearchListCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("股票研究")
-                        .font(.title3.bold())
-                    Text("搜索股票名称，点开后编辑长文本研究笔记。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text("股票研究")
+                    .font(.title3.bold())
 
                 Spacer()
 

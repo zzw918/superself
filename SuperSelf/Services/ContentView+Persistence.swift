@@ -686,7 +686,7 @@ extension ContentView {
 
     var syncStatusText: String {
         if !isICloudAvailable {
-            return "未登录 iCloud，仅保存在本机"
+            return "未连接，无法同步"
         }
         if isSyncing {
             return "正在同步…"
@@ -695,7 +695,7 @@ extension ContentView {
             let date = Date(timeIntervalSince1970: lastICloudSyncAt)
             return "上次同步 \(relativeTimeText(for: date))"
         }
-        return "已开启，等待首次同步"
+        return "等待首次同步"
     }
 
     /// 用户手动点击「立即同步」：先推送本地数据，再回拉云端，并更新可见状态。

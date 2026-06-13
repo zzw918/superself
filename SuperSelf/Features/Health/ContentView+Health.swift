@@ -4,25 +4,39 @@ extension ContentView {
     var statusCard: some View {
         let accent: Color = isFasting ? .blue : .green
         let gradientColors: [Color] = isFasting ? [.blue, .cyan] : [.green, .mint]
-        let percent = Int((progress * 100).rounded())
         let overtimeAccent: Color = isFasting ? .green : .orange
+        let reached = hasReachedCurrentGoal
+
+        let conclusion: String = isFasting ? "可以开吃了" : "该开始断食了"
+        let subtitle: String = reached
+            ? "已超过目标 \(compactDurationText(from: overtime)) · 目标 \(isFasting ? fastingGoalHours : eatingGoalHours) 小时"
+            : "目标 \(isFasting ? fastingGoalHours : eatingGoalHours) 小时"
 
         return VStack(spacing: 22) {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(accent)
-                    .frame(width: 12, height: 12)
-                Text(isFasting ? "断食中" : "进食中")
-                    .font(.title.bold())
-                    .foregroundStyle(accent)
-                Spacer()
-                Text("目标 \(isFasting ? fastingGoalHours : eatingGoalHours) 小时")
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    Text(isFasting ? "断食中" : "进食中")
+                        .font(.title.bold())
+                        .foregroundStyle(reached ? overtimeAccent : accent)
+                    Spacer()
+                    if reached {
+                        Text(conclusion)
+                            .font(.headline)
+                            .foregroundStyle(overtimeAccent)
+                    } else {
+                        Image(systemName: isFasting ? "hourglass" : "fork.knife")
+                            .font(.title2)
+                            .foregroundStyle(accent)
+                    }
+                }
+                Text(subtitle)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .background(accent.opacity(0.12))
+            .padding(.vertical, 16)
+            .background((reached ? overtimeAccent : accent).opacity(0.12))
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
             ZStack {
@@ -40,20 +54,17 @@ extension ContentView {
                     .animation(.spring(response: 0.5, dampingFraction: 0.9), value: progress)
 
                 VStack(spacing: 6) {
-                    Text(fastingPhaseHeadline)
+                    Text(reached ? "已超时" : "剩余时间")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
 
-                    Text(timeString(from: hasReachedCurrentGoal ? overtime : remaining))
-                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                    Text(timeString(from: reached ? overtime : remaining))
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .minimumScaleFactor(0.8)
                         .lineLimit(1)
-
-                    Text(hasReachedCurrentGoal ? "已超过目标" : "已完成 \(percent)%")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(hasReachedCurrentGoal ? overtimeAccent : accent)
+                        .foregroundStyle(reached ? overtimeAccent : .primary)
                 }
                 .padding(.horizontal, 36)
             }
@@ -216,29 +227,43 @@ extension ContentView {
     }
 
     var syncCard: some View {
-        HStack(spacing: 10) {
-            Image(systemName: isICloudAvailable ? "icloud" : "icloud.slash")
-                .foregroundStyle(isICloudAvailable ? .blue : .secondary)
-                .frame(width: 24)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                Image(systemName: isICloudAvailable ? "checkmark.icloud.fill" : "icloud.slash")
+                    .font(.title2)
+                    .foregroundStyle(isICloudAvailable ? .blue : .secondary)
+                    .frame(width: 28)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("iCloud 同步")
-                    .font(.headline)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(isICloudAvailable ? "iCloud 已连接" : "未连接 iCloud")
+                        .font(.headline)
+                    Text(isICloudAvailable ? "数据会自动同步到你的 iCloud" : "请在系统「设置」登录 iCloud 后自动同步")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Text(syncStatusText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            }
 
-            Spacer()
+                Spacer()
 
-            if isSyncing {
-                ProgressView()
-            } else {
-                Button("立即同步") {
-                    syncNow()
+                if isSyncing {
+                    ProgressView()
+                } else {
+                    Button("立即同步") {
+                        syncNow()
+                    }
+                    .buttonStyle(AppSecondaryButtonStyle(tint: .blue))
+                    .disabled(!isICloudAvailable)
                 }
-                .buttonStyle(AppSecondaryButtonStyle(tint: .blue))
-                .disabled(!isICloudAvailable)
             }
         }
         .padding()

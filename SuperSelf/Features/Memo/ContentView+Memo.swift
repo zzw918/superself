@@ -4,13 +4,8 @@ extension ContentView {
     var anniversaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("纪念日")
-                        .font(.title3.bold())
-                    Text("记录重要的日子，阴历阳历都可以。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text("纪念日")
+                    .font(.title3.bold())
 
                 Spacer()
 
@@ -173,13 +168,8 @@ extension ContentView {
     var todoTasksCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("TODO")
-                        .font(.title3.bold())
-                    Text("想到什么先记下来，做完就打勾。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text("TODO")
+                    .font(.title3.bold())
 
                 Spacer()
 
@@ -256,13 +246,8 @@ extension ContentView {
 
     var wishlistCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("愿望清单")
-                    .font(.title3.bold())
-                Text("旅行、美食、阅读、电影和新体验，先收集起来，后面一个个去实现。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text("愿望清单")
+                .font(.title3.bold())
 
             wishlistFilterBar
 
