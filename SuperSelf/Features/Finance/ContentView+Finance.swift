@@ -295,8 +295,6 @@ extension ContentView {
                             tint: financeKindTint(asset.kind)
                         ) {
                             editingFinanceAsset = asset
-                        } onDelete: {
-                            deleteFinanceAsset(asset)
                         }
                     }
                 }
@@ -352,12 +350,9 @@ extension ContentView {
                             item: item,
                             updatedText: chineseDateTime(item.updatedAt),
                             onOpen: {
-                            editingStockResearchItem = item
-                        }, onDelete: {
-                            deleteStockResearchItem(item)
-                        }, onTogglePin: {
-                            toggleStockResearchPinned(item)
-                        })
+                                editingStockResearchItem = item
+                            }
+                        )
                     }
                 }
             }

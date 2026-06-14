@@ -7,6 +7,7 @@ enum WeightSheetField: Hashable {
 
 struct ContentView: View {
     @Environment(\.editMode) var editMode
+    @Environment(\.scenePhase) var scenePhase
 
     let cloudStore = NSUbiquitousKeyValueStore.default
     let fastingStartTimeCloudKey = "fastingStartTime"
@@ -54,6 +55,9 @@ struct ContentView: View {
     @AppStorage("notifyFastingSoon") var notifyFastingSoon = false
     @AppStorage("notifyFastingStart") var notifyFastingStart = false
 
+    @StateObject var weatherStore = WeatherStore()
+    @ObservedObject var notificationRouter = NotificationRouter.shared
+    @State var selectedTabID = MainAppTab.health.rawValue
     @State var now = Date()
     @State var weightInput = ""
     @State var noteInput = ""
@@ -121,20 +125,25 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTabID) {
             ForEach(visibleMainTabs) { tab in
                 mainTabContent(for: tab)
+                    .tag(tab.rawValue)
                     .tabItem {
                         Label(tab.title, systemImage: tab.icon)
                     }
             }
 
             profilePage
+                .tag("profile")
                 .tabItem {
                     Label("我的", systemImage: "person.crop.circle")
                 }
         }
         .preferredColorScheme(appearanceMode.wrappedValue.colorScheme)
+        .onReceive(notificationRouter.$route.compactMap { $0 }) { route in
+            handleAppRoute(route)
+        }
         .onReceive(timer) { currentTime in
             now = currentTime
         }
@@ -142,6 +151,16 @@ struct ContentView: View {
             pullFromICloud()
         }
         .onAppear(perform: loadAppData)
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .active:
+                pullFromICloud()
+            case .background, .inactive:
+                pushAllToICloud()
+            @unknown default:
+                break
+            }
+        }
         .onChange(of: dailyGoal) {
             persistSettingsToICloud()
         }
@@ -180,6 +199,8 @@ struct ContentView: View {
         .sheet(item: $editingFinanceAsset) { asset in
             FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newAmount in
                 updateFinanceAsset(asset, amount: newAmount)
+            } onDelete: {
+                deleteFinanceAsset(asset)
             }
         }
         .sheet(item: $editingStockResearchItem) { item in
@@ -192,6 +213,12 @@ struct ContentView: View {
                 },
                 onSaveRatings: { certainty, growth, attention in
                     updateStockResearchRatings(item, certainty: certainty, growth: growth, attention: attention)
+                },
+                onTogglePin: {
+                    toggleStockResearchPinned(item)
+                },
+                onDelete: {
+                    deleteStockResearchItem(item)
                 }
             )
         }
@@ -208,15 +235,19 @@ struct ContentView: View {
         .sheet(item: $editingTodoTask) { task in
             TodoEditorSheet(task: task) { newTitle in
                 updateTodoTask(task, title: newTitle)
+            } onDelete: {
+                deleteTodoTask(task)
             }
-            .presentationDetents([.height(280)])
+            .presentationDetents([.height(340)])
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingWishlistItem) { item in
             WishlistEditorSheet(item: item, categories: wishlistCategories) { newTitle, newCategoryID in
                 updateWishlistItem(item, title: newTitle, categoryID: newCategoryID)
+            } onDelete: {
+                deleteWishlistItem(item)
             }
-            .presentationDetents([.height(420)])
+            .presentationDetents([.height(480)])
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingWishlistCategorySheet) {
@@ -259,6 +290,9 @@ struct ContentView: View {
                         date: date,
                         showsElapsedDays: showsElapsed
                     )
+                },
+                onDelete: {
+                    deleteAnniversaryItem(item)
                 }
             )
         }

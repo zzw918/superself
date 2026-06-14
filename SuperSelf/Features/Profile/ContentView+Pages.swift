@@ -147,6 +147,11 @@ extension ContentView {
     var profilePage: some View {
         NavigationStack {
             List {
+                profileSectionTitleRow("天气")
+
+                weatherCard
+                    .profileCardRow()
+
                 profileSectionTitleRow("功能管理") {
                     Button {
                         toggleTabEditMode()
@@ -184,7 +189,7 @@ extension ContentView {
                 syncCard
                     .profileCardRow()
 
-                profileSectionNoteRow("健康、备忘录、理财、股票研究、功能设置和个人目标都会保存到本地，并在 iCloud 可用时同步。")
+                profileSectionNoteRow("数据保存在本地，并在 iCloud 可用时同步。")
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
@@ -192,6 +197,86 @@ extension ContentView {
             .navigationTitle("我的")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
+            .onAppear {
+                if case .idle = weatherStore.state {
+                    weatherStore.refresh()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    var weatherCard: some View {
+        HStack(spacing: 16) {
+            switch weatherStore.state {
+            case .loaded(let info):
+                Image(systemName: info.symbolName)
+                    .font(.system(size: 34))
+                    .symbolRenderingMode(.multicolor)
+                    .frame(width: 48)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(info.cityName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(info.temperatureText)
+                            .font(.system(size: 34, weight: .bold))
+                        Text(info.conditionText)
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(info.apparentText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("湿度 \(info.humidity)%")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+            case .loading, .idle:
+                ProgressView()
+                    .frame(width: 48)
+                Text("正在获取本地天气…")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+
+            case .denied:
+                profileIcon("location.slash", tint: .gray)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("未开启定位")
+                        .font(.headline)
+                    Text("在系统「设置」允许定位后可查看本地天气")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+
+            case .failed:
+                profileIcon("arrow.clockwise", tint: .blue)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("天气获取失败")
+                        .font(.headline)
+                    Text("点击重试")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            weatherStore.refresh()
         }
     }
 

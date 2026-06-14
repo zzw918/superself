@@ -288,7 +288,7 @@ struct ModernInputField: View {
                 .frame(width: 20)
 
             TextField(placeholder, text: $text, axis: axis)
-                .lineLimit(axis == .vertical ? 1...3 : 1...1)
+                .lineLimit(axis == .vertical ? 1...6 : 1...1)
                 .keyboardType(keyboardType)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -389,106 +389,35 @@ struct SearchInputBar: View {
     }
 }
 
-struct SwipePinAction {
-    let isPinned: Bool
-    let onToggle: () -> Void
-}
-
-struct SwipeToDeleteRow<Content: View>: View {
-    let onDelete: () -> Void
+struct SheetDeleteButton: View {
+    let title: String
     var confirmation: DeleteConfirmationContent?
-    var pinAction: SwipePinAction?
-    var cornerRadius: CGFloat = 16
-    @ViewBuilder let content: () -> Content
+    let onDelete: () -> Void
 
-    @State private var offset: CGFloat = 0
-    @State private var isShowingDeleteConfirmation = false
-    let singleActionWidth: CGFloat = 64
-
-    init(
-        onDelete: @escaping () -> Void,
-        confirmation: DeleteConfirmationContent? = nil,
-        pinAction: SwipePinAction? = nil,
-        cornerRadius: CGFloat = 16,
-        @ViewBuilder content: @escaping () -> Content
-    ) {
-        self.onDelete = onDelete
-        self.confirmation = confirmation
-        self.pinAction = pinAction
-        self.cornerRadius = cornerRadius
-        self.content = content
-    }
-
-    var actionsWidth: CGFloat {
-        pinAction == nil ? singleActionWidth : singleActionWidth * 2
-    }
+    @State private var isShowingConfirmation = false
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            if offset < 0 {
-                HStack(spacing: 0) {
-                    if let pinAction {
-                        Button {
-                            resetOffset()
-                            pinAction.onToggle()
-                        } label: {
-                            Image(systemName: pinAction.isPinned ? "pin.slash.fill" : "pin.fill")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: singleActionWidth)
-                                .frame(maxHeight: .infinity)
-                                .background(Color.orange)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    Button {
-                        triggerDelete()
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: singleActionWidth)
-                            .frame(maxHeight: .infinity)
-                            .background(Color.red)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
+        Button(role: .destructive) {
+            if confirmation != nil {
+                isShowingConfirmation = true
+            } else {
+                onDelete()
             }
-
-            content()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.tertiarySystemGroupedBackground))
-                .offset(x: offset)
-                .highPriorityGesture(
-                    DragGesture(minimumDistance: 18)
-                        .onChanged { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
-
-                            if value.translation.width < 0 {
-                                offset = max(-actionsWidth, value.translation.width)
-                            } else if offset < 0 {
-                                offset = min(0, -actionsWidth + value.translation.width)
-                            }
-                        }
-                        .onEnded { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
-
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
-                                offset = value.translation.width < -actionsWidth / 2 ? -actionsWidth : 0
-                            }
-                        }
-                )
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "trash")
+                Text(title)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.red)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 13)
+            .background(Color.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .alert(confirmation?.title ?? "确认删除", isPresented: $isShowingDeleteConfirmation) {
-            Button("取消", role: .cancel) {
-                resetOffset()
-            }
+        .buttonStyle(.plain)
+        .alert(confirmation?.title ?? "确认删除", isPresented: $isShowingConfirmation) {
+            Button("取消", role: .cancel) {}
             Button(confirmation?.confirmTitle ?? "删除", role: .destructive) {
-                resetOffset()
                 onDelete()
             }
         } message: {
@@ -497,19 +426,24 @@ struct SwipeToDeleteRow<Content: View>: View {
             }
         }
     }
+}
 
-    func triggerDelete() {
-        if confirmation != nil {
-            isShowingDeleteConfirmation = true
-        } else {
-            resetOffset()
-            onDelete()
-        }
-    }
+struct SheetPinButton: View {
+    let isPinned: Bool
+    let onToggle: () -> Void
 
-    func resetOffset() {
-        withAnimation(.spring(response: 0.25, dampingFraction: 0.86)) {
-            offset = 0
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 8) {
+                Image(systemName: isPinned ? "pin.slash.fill" : "pin.fill")
+                Text(isPinned ? "取消置顶" : "置顶")
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.orange)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 13)
+            .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+        .buttonStyle(.plain)
     }
 }

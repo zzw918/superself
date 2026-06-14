@@ -1,6 +1,43 @@
 import SwiftUI
 import UserNotifications
 
+enum AppRoute: Equatable {
+    case fasting
+}
+
+@MainActor
+final class NotificationRouter: ObservableObject {
+    static let shared = NotificationRouter()
+    @Published var route: AppRoute?
+    private init() {}
+}
+
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationDelegate()
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let identifier = response.notification.request.identifier
+        if identifier.hasPrefix("fasting.") {
+            Task { @MainActor in
+                NotificationRouter.shared.route = .fasting
+            }
+        }
+        completionHandler()
+    }
+}
+
 extension ContentView {
     enum FastingNotification: String, CaseIterable {
         case eatingSoon
@@ -31,6 +68,18 @@ extension ContentView {
 
     var anyFastingNotificationEnabled: Bool {
         notifyEatingSoon || notifyEatingStart || notifyFastingSoon || notifyFastingStart
+    }
+
+    /// 处理来自通知点击的跳转：定位到对应 tab 和分区。
+    func handleAppRoute(_ route: AppRoute) {
+        switch route {
+        case .fasting:
+            if visibleMainTabSet.contains(.health) {
+                selectedTabID = MainAppTab.health.rawValue
+            }
+            healthSection = .fasting
+        }
+        notificationRouter.route = nil
     }
 
     /// 请求一次通知授权，回调在主线程返回是否已授权。

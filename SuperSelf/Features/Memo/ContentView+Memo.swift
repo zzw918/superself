@@ -36,8 +36,6 @@ extension ContentView {
                             elapsedText: item.showsElapsedDays ? elapsedDaysText(for: item) : nil
                         ) {
                             editingAnniversaryItem = item
-                        } onDelete: {
-                            deleteAnniversaryItem(item)
                         }
                     }
                 }
@@ -184,8 +182,6 @@ extension ContentView {
                                 toggleTodoTask(task)
                             } onEdit: {
                                 editingTodoTask = task
-                            } onDelete: {
-                                deleteTodoTask(task)
                             }
                         }
                     }
@@ -199,8 +195,6 @@ extension ContentView {
                                     toggleTodoTask(task)
                                 } onEdit: {
                                     editingTodoTask = task
-                                } onDelete: {
-                                    deleteTodoTask(task)
                                 }
                             }
                         }
@@ -254,8 +248,6 @@ extension ContentView {
                                 toggleWishlistItem(item)
                             } onEdit: {
                                 editingWishlistItem = item
-                            } onDelete: {
-                                deleteWishlistItem(item)
                             }
                         }
                     }
@@ -269,8 +261,6 @@ extension ContentView {
                                     toggleWishlistItem(item)
                                 } onEdit: {
                                     editingWishlistItem = item
-                                } onDelete: {
-                                    deleteWishlistItem(item)
                                 }
                             }
                         }

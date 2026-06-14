@@ -4,42 +4,43 @@ struct TodoTaskRow: View {
     let task: TodoTask
     let onToggle: () -> Void
     let onEdit: () -> Void
-    let onDelete: () -> Void
 
     var body: some View {
-        SwipeToDeleteRow(onDelete: onDelete) {
-            HStack(spacing: 12) {
-                Button(action: onToggle) {
-                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .font(.title2)
-                        .foregroundStyle(task.isCompleted ? .green : Color(.systemGray3))
-                }
-                .buttonStyle(.borderless)
-
-                Button(action: onEdit) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(task.title)
-                            .font(.subheadline.weight(.medium))
-                            .strikethrough(task.isCompleted)
-                            .foregroundStyle(task.isCompleted ? .secondary : .primary)
-                            .multilineTextAlignment(.leading)
-
-                        Text(task.isCompleted ? "完成于 \(dateText(task.completedAt ?? task.createdAt))" : "创建于 \(dateText(task.createdAt))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+        HStack(spacing: 12) {
+            Button(action: onToggle) {
+                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundStyle(task.isCompleted ? .green : Color(.systemGray3))
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color(.tertiarySystemGroupedBackground))
-            )
+            .buttonStyle(.borderless)
+
+            Button(action: onEdit) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(task.title)
+                        .font(.subheadline.weight(.medium))
+                        .strikethrough(task.isCompleted)
+                        .foregroundStyle(task.isCompleted ? .secondary : .primary)
+                        .multilineTextAlignment(.leading)
+
+                    Text(task.isCompleted ? "完成于 \(dateText(task.completedAt ?? task.createdAt))" : "创建于 \(dateText(task.createdAt))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
         }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.tertiarySystemGroupedBackground))
+        )
     }
 
     func dateText(_ date: Date) -> String {
@@ -57,53 +58,54 @@ struct WishlistRow: View {
     let category: WishlistCategory
     let onToggle: () -> Void
     let onEdit: () -> Void
-    let onDelete: () -> Void
 
     var body: some View {
-        SwipeToDeleteRow(onDelete: onDelete) {
-            HStack(spacing: 12) {
-                Button(action: onToggle) {
-                    Image(systemName: item.isCompleted ? "checkmark.circle.fill" : category.icon)
-                        .font(.title2)
-                        .foregroundStyle(item.isCompleted ? .green : .blue)
-                        .frame(width: 26)
-                }
-                .buttonStyle(.borderless)
-
-                Button(action: onEdit) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
-                            Text(item.title)
-                                .font(.subheadline.weight(.medium))
-                                .strikethrough(item.isCompleted)
-                                .foregroundStyle(item.isCompleted ? .secondary : .primary)
-                                .multilineTextAlignment(.leading)
-
-                            Text(category.title)
-                                .font(.caption2.bold())
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 2)
-                                .background(Color.blue.opacity(0.14))
-                                .foregroundStyle(.blue)
-                                .clipShape(Capsule())
-                        }
-
-                        Text(item.isCompleted ? "实现于 \(dateText(item.completedAt ?? item.createdAt))" : "记录于 \(dateText(item.createdAt))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+        HStack(spacing: 12) {
+            Button(action: onToggle) {
+                Image(systemName: item.isCompleted ? "checkmark.circle.fill" : category.icon)
+                    .font(.title2)
+                    .foregroundStyle(item.isCompleted ? .green : .blue)
+                    .frame(width: 26)
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color(.tertiarySystemGroupedBackground))
-            )
+            .buttonStyle(.borderless)
+
+            Button(action: onEdit) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(item.title)
+                            .font(.subheadline.weight(.medium))
+                            .strikethrough(item.isCompleted)
+                            .foregroundStyle(item.isCompleted ? .secondary : .primary)
+                            .multilineTextAlignment(.leading)
+
+                        Text(category.title)
+                            .font(.caption2.bold())
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(Color.blue.opacity(0.14))
+                            .foregroundStyle(.blue)
+                            .clipShape(Capsule())
+                    }
+
+                    Text(item.isCompleted ? "实现于 \(dateText(item.completedAt ?? item.createdAt))" : "记录于 \(dateText(item.createdAt))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
         }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.tertiarySystemGroupedBackground))
+        )
     }
 
     func dateText(_ date: Date) -> String {
@@ -123,63 +125,53 @@ struct AnniversaryRow: View {
     let daysUntil: Int?
     let elapsedText: String?
     let onEdit: () -> Void
-    let onDelete: () -> Void
 
     private var isToday: Bool { (daysUntil ?? -1) == 0 }
 
     var body: some View {
-        SwipeToDeleteRow(
-            onDelete: onDelete,
-            confirmation: DeleteConfirmationContent(
-                title: "删除纪念日？",
-                message: "删除后将无法恢复这条纪念日提醒。",
-                confirmTitle: "删除纪念日"
-            )
-        ) {
-            Button(action: onEdit) {
-                HStack(alignment: .center, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(item.title)
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                            .multilineTextAlignment(.leading)
+        Button(action: onEdit) {
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(item.title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.leading)
 
-                        Text(dateText)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                    Text(dateText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
 
-                        if let solarText {
-                            Text(solarText)
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        }
-
-                        if let elapsedText {
-                            Text(elapsedText)
-                                .font(.caption2.bold())
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Color.orange.opacity(0.14))
-                                .foregroundStyle(.orange)
-                                .clipShape(Capsule())
-                                .padding(.top, 2)
-                        }
+                    if let solarText {
+                        Text(solarText)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
                     }
 
-                    Spacer(minLength: 8)
-
-                    countdownView
+                    if let elapsedText {
+                        Text(elapsedText)
+                            .font(.caption2.bold())
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.orange.opacity(0.14))
+                            .foregroundStyle(.orange)
+                            .clipShape(Capsule())
+                            .padding(.top, 2)
+                    }
                 }
-                .padding(.vertical, 14)
-                .padding(.horizontal, 16)
-                .contentShape(Rectangle())
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color(.tertiarySystemGroupedBackground))
-                )
+
+                Spacer(minLength: 8)
+
+                countdownView
             }
-            .buttonStyle(.plain)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color(.tertiarySystemGroupedBackground))
+            )
         }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -211,80 +203,68 @@ struct StockResearchRow: View {
     let item: StockResearchItem
     let updatedText: String
     let onOpen: () -> Void
-    let onDelete: () -> Void
-    let onTogglePin: () -> Void
 
     var body: some View {
-        SwipeToDeleteRow(
-            onDelete: onDelete,
-            confirmation: DeleteConfirmationContent(
-                title: "删除股票研究？",
-                message: "“\(item.name)” 的研究笔记会一起删除，后续无法恢复。",
-                confirmTitle: "删除研究"
-            ),
-            pinAction: SwipePinAction(isPinned: item.isPinned, onToggle: onTogglePin)
-        ) {
-            Button(action: onOpen) {
-                HStack(alignment: .center, spacing: 12) {
-                    Image(systemName: "chart.line.text.clipboard")
-                        .font(.headline)
-                        .foregroundStyle(.blue)
-                        .frame(width: 38, height: 38)
-                        .background(Color.blue.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        Button(action: onOpen) {
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: "chart.line.text.clipboard")
+                    .font(.headline)
+                    .foregroundStyle(.blue)
+                    .frame(width: 38, height: 38)
+                    .background(Color.blue.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            if item.isPinned {
-                                Image(systemName: "pin.fill")
-                                    .font(.caption2)
-                                    .foregroundStyle(.orange)
-                            }
-
-                            Text(item.name)
-                                .font(.headline)
-                                .foregroundStyle(.primary)
-                        }
-
-                        if let preview = stockResearchPreview {
-                            Text(preview)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                            Text("更新于 \(updatedText)")
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        if item.isPinned {
+                            Image(systemName: "pin.fill")
                                 .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                        } else {
-                            Text("还没有研究笔记 · 更新于 \(updatedText)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.orange)
                         }
 
-                        if hasRatings {
-                            HStack(spacing: 6) {
-                                ratingBadge("确定", item.certainty, tint: .green)
-                                ratingBadge("成长", item.growth, tint: .orange)
-                                ratingBadge("关注", item.attention, tint: .blue)
-                            }
-                            .padding(.top, 2)
-                        }
+                        Text(item.name)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
                     }
 
-                    Spacer()
+                    if let preview = stockResearchPreview {
+                        Text(preview)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                        Text("更新于 \(updatedText)")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    } else {
+                        Text("还没有研究笔记 · 更新于 \(updatedText)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
 
-                    Image(systemName: "chevron.right")
-                        .font(.caption.bold())
-                        .foregroundStyle(.tertiary)
+                    if hasRatings {
+                        HStack(spacing: 6) {
+                            ratingBadge("确定", item.certainty, tint: .green)
+                            ratingBadge("成长", item.growth, tint: .orange)
+                            ratingBadge("关注", item.attention, tint: .blue)
+                        }
+                        .padding(.top, 2)
+                    }
                 }
-                .padding(.vertical, 12)
-                .padding(.horizontal, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color(.tertiarySystemGroupedBackground))
-                )
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
             }
-            .buttonStyle(.plain)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(.tertiarySystemGroupedBackground))
+            )
         }
+        .buttonStyle(.plain)
     }
 
     var stockResearchPreview: String? {
@@ -437,6 +417,8 @@ struct StockResearchEditorSheet: View {
     let updatedText: String
     let onRename: (String) -> Void
     let onSaveRatings: (StockRating?, StockRating?, StockRating?) -> Void
+    let onTogglePin: () -> Void
+    let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var nameInput: String
@@ -452,13 +434,17 @@ struct StockResearchEditorSheet: View {
         thesis: Binding<String>,
         updatedText: String,
         onRename: @escaping (String) -> Void,
-        onSaveRatings: @escaping (StockRating?, StockRating?, StockRating?) -> Void
+        onSaveRatings: @escaping (StockRating?, StockRating?, StockRating?) -> Void,
+        onTogglePin: @escaping () -> Void,
+        onDelete: @escaping () -> Void
     ) {
         self.item = item
         _thesis = thesis
         self.updatedText = updatedText
         self.onRename = onRename
         self.onSaveRatings = onSaveRatings
+        self.onTogglePin = onTogglePin
+        self.onDelete = onDelete
         _nameInput = State(initialValue: item.name)
         _certainty = State(initialValue: item.certainty)
         _growth = State(initialValue: item.growth)
@@ -519,6 +505,27 @@ struct StockResearchEditorSheet: View {
                             .padding(.horizontal)
                             .padding(.bottom)
                             .id(thesisAnchor)
+
+                        VStack(spacing: 10) {
+                            SheetPinButton(isPinned: item.isPinned) {
+                                onTogglePin()
+                                dismiss()
+                            }
+
+                            SheetDeleteButton(
+                                title: "删除股票",
+                                confirmation: DeleteConfirmationContent(
+                                    title: "删除股票？",
+                                    message: "「\(item.name)」及其研究笔记会被永久删除。",
+                                    confirmTitle: "删除"
+                                )
+                            ) {
+                                onDelete()
+                                dismiss()
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom)
                     }
                 }
                 .scrollDismissesKeyboard(.interactively)
@@ -602,14 +609,16 @@ struct FinanceAssetEditorSheet: View {
     let asset: FinanceAsset
     let amountText: String
     let onSave: (Double) -> Void
+    let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var amountInput: String
 
-    init(asset: FinanceAsset, amountText: String, onSave: @escaping (Double) -> Void) {
+    init(asset: FinanceAsset, amountText: String, onSave: @escaping (Double) -> Void, onDelete: @escaping () -> Void) {
         self.asset = asset
         self.amountText = amountText
         self.onSave = onSave
+        self.onDelete = onDelete
         _amountInput = State(initialValue: String(format: "%.0f", asset.amount))
     }
 
@@ -650,6 +659,18 @@ struct FinanceAssetEditorSheet: View {
                 }
                 .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
                 .disabled(!canSaveAmount)
+
+                SheetDeleteButton(
+                    title: "删除资产",
+                    confirmation: DeleteConfirmationContent(
+                        title: "删除资产？",
+                        message: "「\(asset.name)」会被永久删除。",
+                        confirmTitle: "删除"
+                    )
+                ) {
+                    onDelete()
+                    dismiss()
+                }
             }
             .padding()
             .background(Color(.systemGroupedBackground))
@@ -685,67 +706,57 @@ struct FinanceAssetRow: View {
     let updatedText: String
     let tint: Color
     let onEdit: () -> Void
-    let onDelete: () -> Void
 
     var body: some View {
-        SwipeToDeleteRow(
-            onDelete: onDelete,
-            confirmation: DeleteConfirmationContent(
-                title: "删除资产记录？",
-                message: "“\(asset.name)” 的金额记录会被移除，删除后无法恢复。",
-                confirmTitle: "删除资产"
-            )
-        ) {
-            Button(action: onEdit) {
-                HStack(alignment: .center, spacing: 12) {
-                    Image(systemName: asset.kind.icon)
-                        .font(.headline)
-                        .foregroundStyle(tint)
-                        .frame(width: 38, height: 38)
-                        .background(tint.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        Button(action: onEdit) {
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: asset.kind.icon)
+                    .font(.headline)
+                    .foregroundStyle(tint)
+                    .frame(width: 38, height: 38)
+                    .background(tint.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: 8) {
-                            Text(asset.name)
-                                .font(.headline)
-                                .foregroundStyle(.primary)
-
-                            Text(asset.kind.title)
-                                .font(.caption.bold())
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(tint.opacity(0.12))
-                                .foregroundStyle(tint)
-                                .clipShape(Capsule())
-                        }
-
-                        Text("更新于 \(updatedText)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    HStack(spacing: 6) {
-                        Text(amountText)
-                            .font(.headline.bold())
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text(asset.name)
+                            .font(.headline)
                             .foregroundStyle(.primary)
 
-                        Image(systemName: "chevron.right")
+                        Text(asset.kind.title)
                             .font(.caption.bold())
-                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(tint.opacity(0.12))
+                            .foregroundStyle(tint)
+                            .clipShape(Capsule())
                     }
+
+                    Text("更新于 \(updatedText)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.vertical, 12)
-                .padding(.horizontal, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color(.tertiarySystemGroupedBackground))
-                )
+
+                Spacer()
+
+                HStack(spacing: 6) {
+                    Text(amountText)
+                        .font(.headline.bold())
+                        .foregroundStyle(.primary)
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.tertiary)
+                }
             }
-            .buttonStyle(.plain)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(.tertiarySystemGroupedBackground))
+            )
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -755,15 +766,12 @@ struct WeightLogRow: View {
     let dateText: String
     let onDelete: () -> Void
 
+    @State private var isShowingConfirmation = false
+
     var body: some View {
-        SwipeToDeleteRow(
-            onDelete: onDelete,
-            confirmation: DeleteConfirmationContent(
-                title: "删除体重记录？",
-                message: "\(dateText) 的 \(weightText) kg 记录会被移除。",
-                confirmTitle: "删除记录"
-            )
-        ) {
+        Button {
+            isShowingConfirmation = true
+        } label: {
             HStack(spacing: 14) {
                 Image(systemName: "scalemass")
                     .font(.subheadline.weight(.semibold))
@@ -799,6 +807,13 @@ struct WeightLogRow: View {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color(.tertiarySystemGroupedBackground))
             )
+        }
+        .buttonStyle(.plain)
+        .alert("删除体重记录？", isPresented: $isShowingConfirmation) {
+            Button("取消", role: .cancel) {}
+            Button("删除记录", role: .destructive) { onDelete() }
+        } message: {
+            Text("\(dateText) 的 \(weightText) kg 记录会被移除。")
         }
     }
 }
@@ -934,14 +949,16 @@ struct MeasurementField: View {
 struct TodoEditorSheet: View {
     let task: TodoTask
     let onSave: (String) -> Void
+    let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String
     @FocusState private var isFocused: Bool
 
-    init(task: TodoTask, onSave: @escaping (String) -> Void) {
+    init(task: TodoTask, onSave: @escaping (String) -> Void, onDelete: @escaping () -> Void) {
         self.task = task
         self.onSave = onSave
+        self.onDelete = onDelete
         _titleInput = State(initialValue: task.title)
     }
 
@@ -962,11 +979,24 @@ struct TodoEditorSheet: View {
                     placeholder: "记录些什么",
                     text: $titleInput,
                     icon: "checklist",
-                    tint: .blue
+                    tint: .blue,
+                    axis: .vertical
                 )
                 .focused($isFocused)
 
                 Spacer(minLength: 0)
+
+                SheetDeleteButton(
+                    title: "删除待办",
+                    confirmation: DeleteConfirmationContent(
+                        title: "删除待办？",
+                        message: "「\(task.title)」会被永久删除。",
+                        confirmTitle: "删除"
+                    )
+                ) {
+                    onDelete()
+                    dismiss()
+                }
             }
             .padding(20)
             .background(Color(.systemGroupedBackground))
@@ -1000,16 +1030,18 @@ struct WishlistEditorSheet: View {
     let item: WishlistItem
     let categories: [WishlistCategory]
     let onSave: (String, String) -> Void
+    let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String
     @State private var categoryID: String
     @FocusState private var isFocused: Bool
 
-    init(item: WishlistItem, categories: [WishlistCategory], onSave: @escaping (String, String) -> Void) {
+    init(item: WishlistItem, categories: [WishlistCategory], onSave: @escaping (String, String) -> Void, onDelete: @escaping () -> Void) {
         self.item = item
         self.categories = categories
         self.onSave = onSave
+        self.onDelete = onDelete
         _titleInput = State(initialValue: item.title)
         _categoryID = State(initialValue: item.categoryID)
     }
@@ -1067,6 +1099,18 @@ struct WishlistEditorSheet: View {
                 .focused($isFocused)
 
                 Spacer(minLength: 0)
+
+                SheetDeleteButton(
+                    title: "删除愿望",
+                    confirmation: DeleteConfirmationContent(
+                        title: "删除愿望？",
+                        message: "「\(item.title)」会被永久删除。",
+                        confirmTitle: "删除"
+                    )
+                ) {
+                    onDelete()
+                    dismiss()
+                }
             }
             .padding(20)
             .background(Color(.systemGroupedBackground))
@@ -1294,6 +1338,7 @@ struct AnniversaryEditorSheet: View {
     let item: AnniversaryItem
     let solarPreview: (Date, AnniversaryCalendarKind) -> String?
     let onSave: (String, AnniversaryCalendarKind, Date, Bool) -> Void
+    let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String
@@ -1304,11 +1349,13 @@ struct AnniversaryEditorSheet: View {
     init(
         item: AnniversaryItem,
         solarPreview: @escaping (Date, AnniversaryCalendarKind) -> String?,
-        onSave: @escaping (String, AnniversaryCalendarKind, Date, Bool) -> Void
+        onSave: @escaping (String, AnniversaryCalendarKind, Date, Bool) -> Void,
+        onDelete: @escaping () -> Void
     ) {
         self.item = item
         self.solarPreview = solarPreview
         self.onSave = onSave
+        self.onDelete = onDelete
         _titleInput = State(initialValue: item.title)
         _calendarKind = State(initialValue: item.calendarKind)
         _date = State(initialValue: item.date)
@@ -1394,6 +1441,18 @@ struct AnniversaryEditorSheet: View {
                     .padding(.vertical, 12)
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                    SheetDeleteButton(
+                        title: "删除纪念日",
+                        confirmation: DeleteConfirmationContent(
+                            title: "删除纪念日？",
+                            message: "「\(item.title)」会被永久删除。",
+                            confirmTitle: "删除"
+                        )
+                    ) {
+                        onDelete()
+                        dismiss()
+                    }
                 }
                 .padding()
             }

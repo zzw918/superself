@@ -1,6 +1,19 @@
 import SwiftUI
 
 extension ContentView {
+    /// 每次写入后调用：请求 iCloud 同步并刷新可见的同步时间/状态。
+    @discardableResult
+    func flushToICloud() -> Bool {
+        let didSync = cloudStore.synchronize()
+        if didSync && isICloudAvailable {
+            lastICloudSyncAt = Date().timeIntervalSince1970
+            syncStatus = "已同步到 iCloud"
+        } else {
+            syncStatus = "已本地保存，iCloud 暂不可用"
+        }
+        return didSync
+    }
+
     func loadMainTabPreferences() {
         guard !mainTabPreferencesData.isEmpty,
               let preferences = try? JSONDecoder().decode(MainTabPreferences.self, from: mainTabPreferencesData) else {
@@ -16,7 +29,7 @@ extension ContentView {
         if let encodedPreferences = try? JSONEncoder().encode(preferences) {
             mainTabPreferencesData = encodedPreferences
             cloudStore.set(encodedPreferences, forKey: mainTabPreferencesCloudKey)
-            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+            flushToICloud()
         }
     }
 
@@ -112,7 +125,7 @@ extension ContentView {
             weightLogsData = encodedLogs
             cloudStore.set(encodedLogs, forKey: weightLogsCloudKey)
             persistSettingsToICloud()
-            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+            flushToICloud()
         }
     }
 
@@ -164,7 +177,7 @@ extension ContentView {
         if let encodedTasks = try? JSONEncoder().encode(todoTasks) {
             todoTasksData = encodedTasks
             cloudStore.set(encodedTasks, forKey: todoTasksCloudKey)
-            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+            flushToICloud()
         }
     }
 
@@ -299,7 +312,7 @@ extension ContentView {
         if let encodedCategories = try? JSONEncoder().encode(wishlistCategories) {
             wishlistCategoriesData = encodedCategories
             cloudStore.set(encodedCategories, forKey: wishlistCategoriesCloudKey)
-            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+            flushToICloud()
         }
     }
 
@@ -307,7 +320,7 @@ extension ContentView {
         if let encodedItems = try? JSONEncoder().encode(wishlistItems) {
             wishlistItemsData = encodedItems
             cloudStore.set(encodedItems, forKey: wishlistItemsCloudKey)
-            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+            flushToICloud()
         }
     }
 
@@ -368,7 +381,7 @@ extension ContentView {
         if let encodedItems = try? JSONEncoder().encode(anniversaryItems) {
             anniversaryItemsData = encodedItems
             cloudStore.set(encodedItems, forKey: anniversaryItemsCloudKey)
-            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+            flushToICloud()
         }
     }
 
@@ -442,7 +455,7 @@ extension ContentView {
         if let encodedSnapshots = try? JSONEncoder().encode(financeSnapshots) {
             financeSnapshotsData = encodedSnapshots
             cloudStore.set(encodedSnapshots, forKey: financeSnapshotsCloudKey)
-            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+            flushToICloud()
         }
     }
 
@@ -535,7 +548,7 @@ extension ContentView {
         if let encodedItems = try? JSONEncoder().encode(stockResearchItems) {
             stockResearchItemsData = encodedItems
             cloudStore.set(encodedItems, forKey: stockResearchItemsCloudKey)
-            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+            flushToICloud()
         }
     }
 
@@ -565,7 +578,7 @@ extension ContentView {
             fastingSessionsData = encodedSessions
             cloudStore.set(encodedSessions, forKey: fastingSessionsCloudKey)
             persistSettingsToICloud()
-            syncStatus = cloudStore.synchronize() ? "已保存并请求同步到 iCloud" : "已本地保存，iCloud 暂不可用"
+            flushToICloud()
         }
     }
 
