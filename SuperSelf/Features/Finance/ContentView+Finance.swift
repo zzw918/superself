@@ -94,7 +94,7 @@ extension ContentView {
                     VStack(alignment: .leading, spacing: 10) {
                         financeFieldLabel("名称")
                         ModernInputField(
-                            placeholder: financeAssetKind == .custom ? "自定义类目名称" : "名称，例如：招商银行卡",
+                            placeholder: financeAssetKind == .custom ? "自定义类目名称" : "资产名称",
                             text: $financeAssetNameInput,
                             icon: financeAssetKind.icon,
                             tint: financeKindTint(financeAssetKind)
@@ -104,7 +104,7 @@ extension ContentView {
                     VStack(alignment: .leading, spacing: 10) {
                         financeFieldLabel("金额")
                         ModernInputField(
-                            placeholder: "金额，例如：12000",
+                            placeholder: "资产金额",
                             text: $financeAssetAmountInput,
                             icon: "yensign.circle",
                             tint: financeKindTint(financeAssetKind),
@@ -214,14 +214,14 @@ extension ContentView {
                 }
             }
 
-            if monthlyFinanceTrendPoints.count >= 2 {
+            if !monthlyFinanceTrendPoints.isEmpty {
                 FinanceTrendView(points: monthlyFinanceTrendPoints, amountText: currencyText)
                     .frame(height: 150)
             } else {
                 AppEmptyState(
                     title: "还没有趋势",
                     systemImage: "chart.line.uptrend.xyaxis",
-                    description: "至少跨 2 个月保存资产记录后，会显示月度变化。"
+                    description: "保存资产记录后，会显示月度变化。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 130)
             }
@@ -292,10 +292,14 @@ extension ContentView {
                             asset: asset,
                             amountText: currencyText(asset.amount),
                             updatedText: chineseDateTime(asset.updatedAt),
-                            tint: financeKindTint(asset.kind)
-                        ) {
-                            editingFinanceAsset = asset
-                        }
+                            tint: financeKindTint(asset.kind),
+                            onEdit: {
+                                editingFinanceAsset = asset
+                            },
+                            onDelete: {
+                                deleteFinanceAsset(asset)
+                            }
+                        )
                     }
                 }
             }
@@ -308,20 +312,21 @@ extension ContentView {
 
     var stockResearchListCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("股票研究")
-                    .font(.title3.bold())
-
-                Spacer()
-
-                Button {
-                    stockNameInput = ""
-                    isShowingStockAddAlert = true
-                } label: {
-                    AppIconCircleButton(icon: "plus", tint: .blue, size: 40, iconFont: .subheadline.weight(.bold))
+            Button {
+                stockNameInput = ""
+                isShowingStockAddAlert = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                    Text("新增股票")
                 }
-                .buttonStyle(.plain)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.blue)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
+            .buttonStyle(.plain)
 
             SearchInputBar(placeholder: "搜索股票名称", text: $stockSearchText)
 
@@ -351,6 +356,9 @@ extension ContentView {
                             updatedText: chineseDateTime(item.updatedAt),
                             onOpen: {
                                 editingStockResearchItem = item
+                            },
+                            onDelete: {
+                                deleteStockResearchItem(item)
                             }
                         )
                     }

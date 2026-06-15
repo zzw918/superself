@@ -31,6 +31,13 @@ extension ContentView {
         return formatter.string(from: date)
     }
 
+    func dayNumber(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "d"
+        return formatter.string(from: date)
+    }
+
     func chineseYear(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "zh_CN")

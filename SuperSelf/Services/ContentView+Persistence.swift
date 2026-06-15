@@ -84,8 +84,156 @@ extension ContentView {
         }
     }
 
+    // MARK: - 各 tab 内分区偏好（顺序 / 显示隐藏）
+
+    func loadSectionPreferences() {
+        if let prefs = decodeSectionPreferences(HealthSection.self, from: healthSectionPreferencesData) {
+            healthSectionPrefs = prefs.normalized
+        }
+        if let prefs = decodeSectionPreferences(MemoSection.self, from: memoSectionPreferencesData) {
+            memoSectionPrefs = prefs.normalized
+        }
+        if let prefs = decodeSectionPreferences(FinanceSection.self, from: financeSectionPreferencesData) {
+            financeSectionPrefs = prefs.normalized
+        }
+        clampSectionSelections()
+    }
+
+    func decodeSectionPreferences<S>(_ type: S.Type, from data: Data) -> SectionPreferences<S>? {
+        guard !data.isEmpty else { return nil }
+        return try? JSONDecoder().decode(SectionPreferences<S>.self, from: data)
+    }
+
+    /// 选中的分区如果被隐藏了，回退到第一个可见分区。
+    func clampSectionSelections() {
+        let healthVisible = healthSectionPrefs.orderedVisible
+        if !healthVisible.contains(healthSection), let first = healthVisible.first {
+            healthSection = first
+        }
+        let memoVisible = memoSectionPrefs.orderedVisible
+        if !memoVisible.contains(memoSection), let first = memoVisible.first {
+            memoSection = first
+        }
+        let financeVisible = financeSectionPrefs.orderedVisible
+        if !financeVisible.contains(financeSection), let first = financeVisible.first {
+            financeSection = first
+        }
+    }
+
+    func persistHealthSectionPreferences() {
+        if let encoded = try? JSONEncoder().encode(healthSectionPrefs) {
+            healthSectionPreferencesData = encoded
+            cloudStore.set(encoded, forKey: healthSectionPreferencesCloudKey)
+            flushToICloud()
+        }
+    }
+
+    func persistMemoSectionPreferences() {
+        if let encoded = try? JSONEncoder().encode(memoSectionPrefs) {
+            memoSectionPreferencesData = encoded
+            cloudStore.set(encoded, forKey: memoSectionPreferencesCloudKey)
+            flushToICloud()
+        }
+    }
+
+    func persistFinanceSectionPreferences() {
+        if let encoded = try? JSONEncoder().encode(financeSectionPrefs) {
+            financeSectionPreferencesData = encoded
+            cloudStore.set(encoded, forKey: financeSectionPreferencesCloudKey)
+            flushToICloud()
+        }
+    }
+
+    func moveHealthSections(from source: IndexSet, to destination: Int) {
+        healthSectionPrefs.order.move(fromOffsets: source, toOffset: destination)
+        clampSectionSelections()
+        persistHealthSectionPreferences()
+    }
+
+    func moveMemoSections(from source: IndexSet, to destination: Int) {
+        memoSectionPrefs.order.move(fromOffsets: source, toOffset: destination)
+        clampSectionSelections()
+        persistMemoSectionPreferences()
+    }
+
+    func moveFinanceSections(from source: IndexSet, to destination: Int) {
+        financeSectionPrefs.order.move(fromOffsets: source, toOffset: destination)
+        clampSectionSelections()
+        persistFinanceSectionPreferences()
+    }
+
+    func healthSectionVisibilityBinding(for section: HealthSection) -> Binding<Bool> {
+        Binding(
+            get: { healthSectionPrefs.visibleSections.contains(section) },
+            set: { isVisible in setHealthSection(section, isVisible: isVisible) }
+        )
+    }
+
+    func memoSectionVisibilityBinding(for section: MemoSection) -> Binding<Bool> {
+        Binding(
+            get: { memoSectionPrefs.visibleSections.contains(section) },
+            set: { isVisible in setMemoSection(section, isVisible: isVisible) }
+        )
+    }
+
+    func financeSectionVisibilityBinding(for section: FinanceSection) -> Binding<Bool> {
+        Binding(
+            get: { financeSectionPrefs.visibleSections.contains(section) },
+            set: { isVisible in setFinanceSection(section, isVisible: isVisible) }
+        )
+    }
+
+    func setHealthSection(_ section: HealthSection, isVisible: Bool) {
+        if isVisible {
+            if !healthSectionPrefs.visibleSections.contains(section) {
+                healthSectionPrefs.visibleSections.append(section)
+            }
+        } else if healthSectionPrefs.visibleSections.count > 1 {
+            healthSectionPrefs.visibleSections.removeAll { $0 == section }
+        }
+        clampSectionSelections()
+        persistHealthSectionPreferences()
+    }
+
+    func setMemoSection(_ section: MemoSection, isVisible: Bool) {
+        if isVisible {
+            if !memoSectionPrefs.visibleSections.contains(section) {
+                memoSectionPrefs.visibleSections.append(section)
+            }
+        } else if memoSectionPrefs.visibleSections.count > 1 {
+            memoSectionPrefs.visibleSections.removeAll { $0 == section }
+        }
+        clampSectionSelections()
+        persistMemoSectionPreferences()
+    }
+
+    func setFinanceSection(_ section: FinanceSection, isVisible: Bool) {
+        if isVisible {
+            if !financeSectionPrefs.visibleSections.contains(section) {
+                financeSectionPrefs.visibleSections.append(section)
+            }
+        } else if financeSectionPrefs.visibleSections.count > 1 {
+            financeSectionPrefs.visibleSections.removeAll { $0 == section }
+        }
+        clampSectionSelections()
+        persistFinanceSectionPreferences()
+    }
+
+    func isOnlyVisibleHealthSection(_ section: HealthSection) -> Bool {
+        healthSectionPrefs.visibleSections == [section]
+    }
+
+    func isOnlyVisibleMemoSection(_ section: MemoSection) -> Bool {
+        memoSectionPrefs.visibleSections == [section]
+    }
+
+    func isOnlyVisibleFinanceSection(_ section: FinanceSection) -> Bool {
+        financeSectionPrefs.visibleSections == [section]
+    }
+
     func loadAppData() {
         loadMainTabPreferences()
+        loadSectionPreferences()
         loadWeightLogs()
         loadFastingSessions()
         loadTodoTasks()
@@ -135,6 +283,12 @@ extension ContentView {
         persistWeightLogs()
     }
 
+    func updateWeightLogNote(_ log: FastingLog, note: String) {
+        guard let index = weightLogs.firstIndex(where: { $0.id == log.id }) else { return }
+        weightLogs[index].note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        persistWeightLogs()
+    }
+
     func loadTodoTasks() {
         guard !todoTasksData.isEmpty else { return }
 
@@ -169,7 +323,10 @@ extension ContentView {
         guard !trimmed.isEmpty,
               let index = todoTasks.firstIndex(where: { $0.id == task.id }) else { return }
 
+        guard todoTasks[index].title != trimmed else { return }
+
         todoTasks[index].title = trimmed
+        todoTasks[index].updatedAt = Date()
         persistTodoTasks()
     }
 
@@ -202,6 +359,11 @@ extension ContentView {
                let musicCategory = WishlistCategory.defaultCategories.first(where: { $0.id == "music" }) {
                 let insertIndex = wishlistCategories.firstIndex(where: { $0.id == "experience" }) ?? wishlistCategories.endIndex
                 wishlistCategories.insert(musicCategory, at: insertIndex)
+                persistWishlistCategories()
+            }
+            if !wishlistCategories.contains(where: { $0.id == "other" }),
+               let otherCategory = WishlistCategory.defaultCategories.first(where: { $0.id == "other" }) {
+                wishlistCategories.append(otherCategory)
                 persistWishlistCategories()
             }
             if !wishlistCategories.contains(where: { $0.id == wishlistCategoryID }) {
@@ -635,6 +797,26 @@ extension ContentView {
             applyMainTabPreferences(cloudMainTabPreferences)
         }
 
+        if let data = cloudStore.data(forKey: healthSectionPreferencesCloudKey),
+           let prefs = try? JSONDecoder().decode(SectionPreferences<HealthSection>.self, from: data) {
+            healthSectionPrefs = prefs.normalized
+            healthSectionPreferencesData = (try? JSONEncoder().encode(healthSectionPrefs)) ?? healthSectionPreferencesData
+        }
+
+        if let data = cloudStore.data(forKey: memoSectionPreferencesCloudKey),
+           let prefs = try? JSONDecoder().decode(SectionPreferences<MemoSection>.self, from: data) {
+            memoSectionPrefs = prefs.normalized
+            memoSectionPreferencesData = (try? JSONEncoder().encode(memoSectionPrefs)) ?? memoSectionPreferencesData
+        }
+
+        if let data = cloudStore.data(forKey: financeSectionPreferencesCloudKey),
+           let prefs = try? JSONDecoder().decode(SectionPreferences<FinanceSection>.self, from: data) {
+            financeSectionPrefs = prefs.normalized
+            financeSectionPreferencesData = (try? JSONEncoder().encode(financeSectionPrefs)) ?? financeSectionPreferencesData
+        }
+
+        clampSectionSelections()
+
         if cloudStore.object(forKey: fastingStartTimeCloudKey) != nil {
             fastingStartTime = cloudStore.double(forKey: fastingStartTimeCloudKey)
         }
@@ -714,6 +896,21 @@ extension ContentView {
         ) {
             mainTabPreferencesData = encodedMainTabPreferences
             cloudStore.set(encodedMainTabPreferences, forKey: mainTabPreferencesCloudKey)
+        }
+
+        if let encoded = try? JSONEncoder().encode(healthSectionPrefs) {
+            healthSectionPreferencesData = encoded
+            cloudStore.set(encoded, forKey: healthSectionPreferencesCloudKey)
+        }
+
+        if let encoded = try? JSONEncoder().encode(memoSectionPrefs) {
+            memoSectionPreferencesData = encoded
+            cloudStore.set(encoded, forKey: memoSectionPreferencesCloudKey)
+        }
+
+        if let encoded = try? JSONEncoder().encode(financeSectionPrefs) {
+            financeSectionPreferencesData = encoded
+            cloudStore.set(encoded, forKey: financeSectionPreferencesCloudKey)
         }
 
         let didSync = cloudStore.synchronize()
@@ -806,6 +1003,9 @@ extension ContentView {
         var mergedTasksByID = Dictionary(uniqueKeysWithValues: todoTasks.map { ($0.id, $0) })
 
         for task in cloudTasks {
+            if let local = mergedTasksByID[task.id], local.lastActivityAt > task.lastActivityAt {
+                continue
+            }
             mergedTasksByID[task.id] = task
         }
 

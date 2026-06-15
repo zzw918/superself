@@ -4,6 +4,7 @@ struct TodoTaskRow: View {
     let task: TodoTask
     let onToggle: () -> Void
     let onEdit: () -> Void
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -22,7 +23,7 @@ struct TodoTaskRow: View {
                         .foregroundStyle(task.isCompleted ? .secondary : .primary)
                         .multilineTextAlignment(.leading)
 
-                    Text(task.isCompleted ? "完成于 \(dateText(task.completedAt ?? task.createdAt))" : "创建于 \(dateText(task.createdAt))")
+                    Text(timestampText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -41,6 +42,24 @@ struct TodoTaskRow: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.tertiarySystemGroupedBackground))
         )
+        .longPressDelete(
+            DeleteConfirmationContent(
+                title: "删除待办？",
+                message: "「\(task.title)」会被永久删除。",
+                confirmTitle: "删除"
+            ),
+            onDelete: onDelete
+        )
+    }
+
+    var timestampText: String {
+        if task.isCompleted {
+            return "完成于 \(dateText(task.completedAt ?? task.createdAt))"
+        }
+        if let updatedAt = task.updatedAt {
+            return "编辑于 \(dateText(updatedAt))"
+        }
+        return "创建于 \(dateText(task.createdAt))"
     }
 
     func dateText(_ date: Date) -> String {
@@ -58,6 +77,7 @@ struct WishlistRow: View {
     let category: WishlistCategory
     let onToggle: () -> Void
     let onEdit: () -> Void
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -106,6 +126,14 @@ struct WishlistRow: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.tertiarySystemGroupedBackground))
         )
+        .longPressDelete(
+            DeleteConfirmationContent(
+                title: "删除愿望？",
+                message: "「\(item.title)」会被永久删除。",
+                confirmTitle: "删除"
+            ),
+            onDelete: onDelete
+        )
     }
 
     func dateText(_ date: Date) -> String {
@@ -125,6 +153,7 @@ struct AnniversaryRow: View {
     let daysUntil: Int?
     let elapsedText: String?
     let onEdit: () -> Void
+    var onDelete: (() -> Void)? = nil
 
     private var isToday: Bool { (daysUntil ?? -1) == 0 }
 
@@ -152,8 +181,8 @@ struct AnniversaryRow: View {
                             .font(.caption2.bold())
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(Color.orange.opacity(0.14))
-                            .foregroundStyle(.orange)
+                            .background(Color.blue.opacity(0.14))
+                            .foregroundStyle(.blue)
                             .clipShape(Capsule())
                             .padding(.top, 2)
                     }
@@ -172,6 +201,14 @@ struct AnniversaryRow: View {
             )
         }
         .buttonStyle(.plain)
+        .longPressDelete(
+            DeleteConfirmationContent(
+                title: "删除纪念日？",
+                message: "「\(item.title)」会被永久删除。",
+                confirmTitle: "删除"
+            ),
+            onDelete: onDelete
+        )
     }
 
     @ViewBuilder
@@ -183,13 +220,13 @@ struct AnniversaryRow: View {
                 Text("就是今天")
                     .font(.caption.bold())
             }
-            .foregroundStyle(.orange)
+            .foregroundStyle(.blue)
             .frame(minWidth: 64)
         } else if let days = daysUntil, days > 0 {
             VStack(spacing: 0) {
                 Text("\(days)")
                     .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.blue)
                 Text("天后")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -203,6 +240,7 @@ struct StockResearchRow: View {
     let item: StockResearchItem
     let updatedText: String
     let onOpen: () -> Void
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         Button(action: onOpen) {
@@ -265,6 +303,14 @@ struct StockResearchRow: View {
             )
         }
         .buttonStyle(.plain)
+        .longPressDelete(
+            DeleteConfirmationContent(
+                title: "删除股票？",
+                message: "「\(item.name)」及其研究笔记会被永久删除。",
+                confirmTitle: "删除"
+            ),
+            onDelete: onDelete
+        )
     }
 
     var stockResearchPreview: String? {
@@ -312,55 +358,59 @@ struct StockResearchAddSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            SheetHeader(
-                icon: "chart.line.text.clipboard",
-                title: "新增股票",
-                subtitle: "先用名称建档，之后再补充研究笔记"
-            )
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("名称")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                        ModernInputField(
+                            placeholder: "股票名称",
+                            text: $name,
+                            icon: "magnifyingglass",
+                            tint: .blue
+                        )
+                        .focused($isNameFocused)
+                    }
 
-            ModernInputField(
-                placeholder: "股票名称",
-                text: $name,
-                icon: "magnifyingglass",
-                tint: .blue
-            )
-            .focused($isNameFocused)
+                    if showsSuggestions {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("快速添加")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
 
-            if showsSuggestions {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("快速添加")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-
-                    let suggestions = ["贵州茅台", "腾讯控股", "苹果", "英伟达", "宁德时代"]
-                    FlexibleChips(items: suggestions) { suggestion in
-                        name = suggestion
+                            let suggestions = ["贵州茅台", "腾讯控股", "苹果", "英伟达", "宁德时代"]
+                            FlexibleChips(items: suggestions) { suggestion in
+                                name = suggestion
+                            }
+                        }
                     }
                 }
+                .padding()
             }
-
-            Spacer(minLength: 0)
-
-            Button(action: onAdd) {
-                Text("添加")
+            .background(Color(.systemGroupedBackground))
+            .safeAreaInset(edge: .bottom) {
+                Button(action: onAdd) {
+                    Text("添加")
+                }
+                .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
+                .disabled(!canAdd)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+                .background(.bar)
             }
-            .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
-            .disabled(!canAdd)
+            .navigationTitle("新增股票")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消", action: onCancel)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
-        .padding(20)
-        .presentationBackground(Color(.systemGroupedBackground))
-        .overlay(alignment: .topTrailing) {
-            Button(action: onCancel) {
-                Image(systemName: "xmark")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 30, height: 30)
-                    .background(Color(.tertiarySystemFill), in: Circle())
-            }
-            .buttonStyle(.plain)
-            .padding(16)
-        }
+        .presentationDetents([.height(showsSuggestions ? 380 : 280)])
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 isNameFocused = true
@@ -418,7 +468,6 @@ struct StockResearchEditorSheet: View {
     let onRename: (String) -> Void
     let onSaveRatings: (StockRating?, StockRating?, StockRating?) -> Void
     let onTogglePin: () -> Void
-    let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var nameInput: String
@@ -435,8 +484,7 @@ struct StockResearchEditorSheet: View {
         updatedText: String,
         onRename: @escaping (String) -> Void,
         onSaveRatings: @escaping (StockRating?, StockRating?, StockRating?) -> Void,
-        onTogglePin: @escaping () -> Void,
-        onDelete: @escaping () -> Void
+        onTogglePin: @escaping () -> Void
     ) {
         self.item = item
         _thesis = thesis
@@ -444,7 +492,6 @@ struct StockResearchEditorSheet: View {
         self.onRename = onRename
         self.onSaveRatings = onSaveRatings
         self.onTogglePin = onTogglePin
-        self.onDelete = onDelete
         _nameInput = State(initialValue: item.name)
         _certainty = State(initialValue: item.certainty)
         _growth = State(initialValue: item.growth)
@@ -475,16 +522,6 @@ struct StockResearchEditorSheet: View {
                         .padding(.horizontal)
                         .padding(.top)
 
-                        VStack(spacing: 10) {
-                            StockRatingPicker(title: "确定性", hint: "未来大概率不会亏", tint: .green, selection: $certainty)
-                            StockRatingPicker(title: "成长性", hint: "营收利润大涨的可能", tint: .orange, selection: $growth)
-                            StockRatingPicker(title: "关注度", hint: "要不要多花精力跟踪", tint: .blue, selection: $attention)
-                        }
-                        .padding(14)
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .padding(.horizontal)
-
                         TextEditor(text: $thesis)
                             .focused($isThesisFocused)
                             .scrollContentBackground(.hidden)
@@ -507,20 +544,18 @@ struct StockResearchEditorSheet: View {
                             .id(thesisAnchor)
 
                         VStack(spacing: 10) {
+                            StockRatingPicker(title: "确定性", hint: "未来大概率不会亏", tint: .green, selection: $certainty)
+                            StockRatingPicker(title: "成长性", hint: "营收利润大涨的可能", tint: .orange, selection: $growth)
+                            StockRatingPicker(title: "关注度", hint: "要不要多花精力跟踪", tint: .blue, selection: $attention)
+                        }
+                        .padding(14)
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .padding(.horizontal)
+
+                        VStack(spacing: 10) {
                             SheetPinButton(isPinned: item.isPinned) {
                                 onTogglePin()
-                                dismiss()
-                            }
-
-                            SheetDeleteButton(
-                                title: "删除股票",
-                                confirmation: DeleteConfirmationContent(
-                                    title: "删除股票？",
-                                    message: "「\(item.name)」及其研究笔记会被永久删除。",
-                                    confirmTitle: "删除"
-                                )
-                            ) {
-                                onDelete()
                                 dismiss()
                             }
                         }
@@ -591,11 +626,11 @@ struct StockRatingPicker: View {
                     } label: {
                         Text(rating.title)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(isSelected ? .white : tint)
+                            .foregroundStyle(isSelected ? .white : Color.secondary.opacity(0.6))
                             .frame(width: 38, height: 32)
                             .background(
                                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                    .fill(isSelected ? tint : tint.opacity(0.12))
+                                    .fill(isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(Color(.tertiarySystemFill)))
                             )
                     }
                     .buttonStyle(.plain)
@@ -609,16 +644,14 @@ struct FinanceAssetEditorSheet: View {
     let asset: FinanceAsset
     let amountText: String
     let onSave: (Double) -> Void
-    let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var amountInput: String
 
-    init(asset: FinanceAsset, amountText: String, onSave: @escaping (Double) -> Void, onDelete: @escaping () -> Void) {
+    init(asset: FinanceAsset, amountText: String, onSave: @escaping (Double) -> Void) {
         self.asset = asset
         self.amountText = amountText
         self.onSave = onSave
-        self.onDelete = onDelete
         _amountInput = State(initialValue: String(format: "%.0f", asset.amount))
     }
 
@@ -659,18 +692,6 @@ struct FinanceAssetEditorSheet: View {
                 }
                 .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
                 .disabled(!canSaveAmount)
-
-                SheetDeleteButton(
-                    title: "删除资产",
-                    confirmation: DeleteConfirmationContent(
-                        title: "删除资产？",
-                        message: "「\(asset.name)」会被永久删除。",
-                        confirmTitle: "删除"
-                    )
-                ) {
-                    onDelete()
-                    dismiss()
-                }
             }
             .padding()
             .background(Color(.systemGroupedBackground))
@@ -706,6 +727,7 @@ struct FinanceAssetRow: View {
     let updatedText: String
     let tint: Color
     let onEdit: () -> Void
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         Button(action: onEdit) {
@@ -757,6 +779,14 @@ struct FinanceAssetRow: View {
             )
         }
         .buttonStyle(.plain)
+        .longPressDelete(
+            DeleteConfirmationContent(
+                title: "删除资产？",
+                message: "「\(asset.name)」会被永久删除。",
+                confirmTitle: "删除"
+            ),
+            onDelete: onDelete
+        )
     }
 }
 
@@ -764,14 +794,11 @@ struct WeightLogRow: View {
     let log: FastingLog
     let weightText: String
     let dateText: String
-    let onDelete: () -> Void
-
-    @State private var isShowingConfirmation = false
+    let onOpen: () -> Void
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
-        Button {
-            isShowingConfirmation = true
-        } label: {
+        Button(action: onOpen) {
             HStack(spacing: 14) {
                 Image(systemName: "scalemass")
                     .font(.subheadline.weight(.semibold))
@@ -800,6 +827,10 @@ struct WeightLogRow: View {
                         .font(.caption.bold())
                         .foregroundStyle(.secondary)
                 }
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
@@ -809,12 +840,99 @@ struct WeightLogRow: View {
             )
         }
         .buttonStyle(.plain)
-        .alert("删除体重记录？", isPresented: $isShowingConfirmation) {
-            Button("取消", role: .cancel) {}
-            Button("删除记录", role: .destructive) { onDelete() }
-        } message: {
-            Text("\(dateText) 的 \(weightText) kg 记录会被移除。")
+        .longPressDelete(
+            DeleteConfirmationContent(
+                title: "删除体重记录？",
+                message: "\(dateText) 的 \(weightText) kg 记录会被移除。",
+                confirmTitle: "删除"
+            ),
+            onDelete: onDelete
+        )
+    }
+}
+
+struct WeightLogEditorSheet: View {
+    let log: FastingLog
+    let weightText: String
+    let dateText: String
+    let onSave: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var noteInput: String
+    @FocusState private var isFocused: Bool
+
+    init(
+        log: FastingLog,
+        weightText: String,
+        dateText: String,
+        onSave: @escaping (String) -> Void
+    ) {
+        self.log = log
+        self.weightText = weightText
+        self.dateText = dateText
+        self.onSave = onSave
+        _noteInput = State(initialValue: log.note)
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(weightText)
+                            .font(.system(size: 44, weight: .bold, design: .rounded))
+                        Text("kg")
+                            .font(.title3.bold())
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(dateText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 18)
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("备注")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+
+                    ModernInputField(
+                        placeholder: "记一下当时的情况",
+                        text: $noteInput,
+                        icon: "text.alignleft",
+                        tint: .blue,
+                        axis: .vertical
+                    )
+                    .focused($isFocused)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(20)
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("体重记录")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        onSave(noteInput)
+                        dismiss()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                }
+            }
         }
+        .presentationDetents([.medium, .large])
     }
 }
 
@@ -949,16 +1067,14 @@ struct MeasurementField: View {
 struct TodoEditorSheet: View {
     let task: TodoTask
     let onSave: (String) -> Void
-    let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String
     @FocusState private var isFocused: Bool
 
-    init(task: TodoTask, onSave: @escaping (String) -> Void, onDelete: @escaping () -> Void) {
+    init(task: TodoTask, onSave: @escaping (String) -> Void) {
         self.task = task
         self.onSave = onSave
-        self.onDelete = onDelete
         _titleInput = State(initialValue: task.title)
     }
 
@@ -969,12 +1085,6 @@ struct TodoEditorSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
-                SheetHeader(
-                    icon: "checklist",
-                    title: "编辑待办",
-                    subtitle: "改完点完成即可保存"
-                )
-
                 ModernInputField(
                     placeholder: "记录些什么",
                     text: $titleInput,
@@ -985,21 +1095,10 @@ struct TodoEditorSheet: View {
                 .focused($isFocused)
 
                 Spacer(minLength: 0)
-
-                SheetDeleteButton(
-                    title: "删除待办",
-                    confirmation: DeleteConfirmationContent(
-                        title: "删除待办？",
-                        message: "「\(task.title)」会被永久删除。",
-                        confirmTitle: "删除"
-                    )
-                ) {
-                    onDelete()
-                    dismiss()
-                }
             }
             .padding(20)
             .background(Color(.systemGroupedBackground))
+            .navigationTitle("编辑TODO")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1030,18 +1129,16 @@ struct WishlistEditorSheet: View {
     let item: WishlistItem
     let categories: [WishlistCategory]
     let onSave: (String, String) -> Void
-    let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String
     @State private var categoryID: String
     @FocusState private var isFocused: Bool
 
-    init(item: WishlistItem, categories: [WishlistCategory], onSave: @escaping (String, String) -> Void, onDelete: @escaping () -> Void) {
+    init(item: WishlistItem, categories: [WishlistCategory], onSave: @escaping (String, String) -> Void) {
         self.item = item
         self.categories = categories
         self.onSave = onSave
-        self.onDelete = onDelete
         _titleInput = State(initialValue: item.title)
         _categoryID = State(initialValue: item.categoryID)
     }
@@ -1053,13 +1150,6 @@ struct WishlistEditorSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
-                SheetHeader(
-                    icon: "sparkles",
-                    title: "编辑愿望",
-                    subtitle: "改个名字或换个分类",
-                    gradient: [.blue, .indigo]
-                )
-
                 VStack(alignment: .leading, spacing: 10) {
                     Text("分类")
                         .font(.caption.bold())
@@ -1099,21 +1189,10 @@ struct WishlistEditorSheet: View {
                 .focused($isFocused)
 
                 Spacer(minLength: 0)
-
-                SheetDeleteButton(
-                    title: "删除愿望",
-                    confirmation: DeleteConfirmationContent(
-                        title: "删除愿望？",
-                        message: "「\(item.title)」会被永久删除。",
-                        confirmTitle: "删除"
-                    )
-                ) {
-                    onDelete()
-                    dismiss()
-                }
             }
             .padding(20)
             .background(Color(.systemGroupedBackground))
+            .navigationTitle("编辑愿望")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1338,7 +1417,6 @@ struct AnniversaryEditorSheet: View {
     let item: AnniversaryItem
     let solarPreview: (Date, AnniversaryCalendarKind) -> String?
     let onSave: (String, AnniversaryCalendarKind, Date, Bool) -> Void
-    let onDelete: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String
@@ -1349,13 +1427,11 @@ struct AnniversaryEditorSheet: View {
     init(
         item: AnniversaryItem,
         solarPreview: @escaping (Date, AnniversaryCalendarKind) -> String?,
-        onSave: @escaping (String, AnniversaryCalendarKind, Date, Bool) -> Void,
-        onDelete: @escaping () -> Void
+        onSave: @escaping (String, AnniversaryCalendarKind, Date, Bool) -> Void
     ) {
         self.item = item
         self.solarPreview = solarPreview
         self.onSave = onSave
-        self.onDelete = onDelete
         _titleInput = State(initialValue: item.title)
         _calendarKind = State(initialValue: item.calendarKind)
         _date = State(initialValue: item.date)
@@ -1370,13 +1446,6 @@ struct AnniversaryEditorSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    SheetHeader(
-                        icon: "calendar.badge.heart",
-                        title: "编辑纪念日",
-                        subtitle: "修改名称、日期或显示方式",
-                        gradient: [.orange, .pink]
-                    )
-
                     VStack(alignment: .leading, spacing: 10) {
                         fieldLabel("日期类型")
                         AppSegmentedControl(
@@ -1392,7 +1461,7 @@ struct AnniversaryEditorSheet: View {
                             placeholder: "记录个重要的日子",
                             text: $titleInput,
                             icon: "calendar.badge.heart",
-                            tint: .orange
+                            tint: .blue
                         )
                     }
 
@@ -1401,7 +1470,7 @@ struct AnniversaryEditorSheet: View {
                         WheelDatePicker(
                             date: $date,
                             calendarKind: calendarKind,
-                            tint: .orange
+                            tint: .blue
                         )
                         .id(calendarKind)
 
@@ -1409,20 +1478,20 @@ struct AnniversaryEditorSheet: View {
                            let preview = solarPreview(date, .lunar) {
                             HStack(spacing: 8) {
                                 Image(systemName: "calendar.badge.clock")
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(.blue)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("今年对应阳历")
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                     Text(preview)
                                         .font(.subheadline.bold())
-                                        .foregroundStyle(.orange)
+                                        .foregroundStyle(.blue)
                                 }
                                 Spacer()
                             }
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
-                            .background(Color.orange.opacity(0.10))
+                            .background(Color.blue.opacity(0.10))
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
                     }
@@ -1436,23 +1505,11 @@ struct AnniversaryEditorSheet: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .tint(.orange)
+                    .tint(.blue)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-
-                    SheetDeleteButton(
-                        title: "删除纪念日",
-                        confirmation: DeleteConfirmationContent(
-                            title: "删除纪念日？",
-                            message: "「\(item.title)」会被永久删除。",
-                            confirmTitle: "删除"
-                        )
-                    ) {
-                        onDelete()
-                        dismiss()
-                    }
                 }
                 .padding()
             }
@@ -1464,7 +1521,7 @@ struct AnniversaryEditorSheet: View {
                 } label: {
                     Text("保存修改")
                 }
-                .buttonStyle(AppPrimaryButtonStyle(tint: .orange))
+                .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
                 .disabled(!canSave)
                 .padding(.horizontal)
                 .padding(.bottom, 8)
@@ -1507,33 +1564,39 @@ struct WheelDatePicker: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            Picker("", selection: $yearIndex) {
-                ForEach(Array(yearStarts.enumerated()), id: \.offset) { index, start in
-                    Text(yearLabel(start)).tag(index)
-                }
-            }
-            .pickerStyle(.wheel)
-            .frame(maxWidth: .infinity)
-            .clipped()
+        GeometryReader { proxy in
+            let totalWidth = proxy.size.width
+            let yearWidth = calendarKind == .lunar ? totalWidth * 0.46 : totalWidth * 0.4
+            let restWidth = (totalWidth - yearWidth) / 2
 
-            Picker("", selection: $monthIndex) {
-                ForEach(Array(monthStartsForSelection.enumerated()), id: \.offset) { index, start in
-                    Text(monthLabel(start)).tag(index)
+            HStack(spacing: 0) {
+                Picker("", selection: $yearIndex) {
+                    ForEach(Array(yearStarts.enumerated()), id: \.offset) { index, start in
+                        Text(yearLabel(start)).tag(index)
+                    }
                 }
-            }
-            .pickerStyle(.wheel)
-            .frame(maxWidth: .infinity)
-            .clipped()
+                .pickerStyle(.wheel)
+                .frame(width: yearWidth)
+                .clipped()
 
-            Picker("", selection: $dayIndex) {
-                ForEach(Array(0..<dayCountForSelection), id: \.self) { index in
-                    Text("\(index + 1)日").tag(index)
+                Picker("", selection: $monthIndex) {
+                    ForEach(Array(monthStartsForSelection.enumerated()), id: \.offset) { index, start in
+                        Text(monthLabel(start)).tag(index)
+                    }
                 }
+                .pickerStyle(.wheel)
+                .frame(width: restWidth)
+                .clipped()
+
+                Picker("", selection: $dayIndex) {
+                    ForEach(Array(0..<dayCountForSelection), id: \.self) { index in
+                        Text("\(index + 1)日").tag(index)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(width: restWidth)
+                .clipped()
             }
-            .pickerStyle(.wheel)
-            .frame(maxWidth: .infinity)
-            .clipped()
         }
         .frame(height: 180)
         .tint(tint)

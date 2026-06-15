@@ -378,7 +378,7 @@ extension ContentView {
                             .background(Color.blue.opacity(0.12))
                             .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
 
-                        Text("体重概览")
+                        Text("我的体重")
                             .font(.title3.bold())
                     }
 
@@ -431,32 +431,10 @@ extension ContentView {
             }
 
             HStack(spacing: 10) {
-                weightOverviewMetric(
-                    title: "目标",
-                    value: targetWeightValue.map { "\(weightText($0)) kg" } ?? "未设置",
-                    tint: .blue,
-                    isPlaceholder: targetWeightValue == nil,
-                    trailingIcon: "gearshape"
-                ) {
-                    isShowingBodySettings = true
-                }
-
-                weightOverviewMetric(
-                    title: targetWeightValue == nil ? "进度" : "还差",
-                    value: targetProgressHeadline.replacingOccurrences(of: "还差 ", with: ""),
-                    tint: targetProgressColor,
-                    isPlaceholder: currentWeightValue == nil || targetWeightValue == nil
-                )
-
-                weightOverviewMetric(
-                    title: "BMI",
-                    value: bmiValue.map { "\(bmiStatusText) \(String(format: "%.1f", $0))" } ?? "未生成",
-                    tint: bmiValue.map { bmiColor(for: $0) } ?? .secondary,
-                    isPlaceholder: bmiValue == nil
-                )
+                weightGoalProgressBlock
+                weightBMIBlock
             }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity)
+            .fixedSize(horizontal: false, vertical: true)
         }
 
         .padding(18)
@@ -467,51 +445,124 @@ extension ContentView {
     }
 
     @ViewBuilder
-    func weightOverviewMetric(
-        title: String,
-        value: String,
-        tint: Color,
-        isPlaceholder: Bool = false,
-        trailingIcon: String? = nil,
-        action: (() -> Void)? = nil
-    ) -> some View {
-        let content = VStack(alignment: .leading, spacing: 5) {
+    var weightGoalProgressBlock: some View {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 4) {
-                Text(title)
+                Text(weightRemainingValue != nil ? "还差" : "目标")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
-
                 Spacer(minLength: 2)
-
-                if let trailingIcon {
-                    Image(systemName: trailingIcon)
+                Button {
+                    isShowingBodySettings = true
+                } label: {
+                    Image(systemName: "gearshape")
                         .font(.caption2.weight(.bold))
-                        .foregroundStyle(tint)
+                        .foregroundStyle(targetProgressColor)
                         .frame(width: 18, height: 18)
-                        .background(tint.opacity(0.12))
+                        .background(targetProgressColor.opacity(0.14))
                         .clipShape(Circle())
                 }
+                .buttonStyle(.plain)
             }
 
-            Text(value)
-                .font(.subheadline.bold())
-                .foregroundStyle(isPlaceholder ? .secondary : .primary)
+            if let remaining = weightRemainingValue {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(weightText(remaining))
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .foregroundStyle(targetProgressColor)
+                    Text("kg")
+                        .font(.caption.bold())
+                        .foregroundStyle(targetProgressColor.opacity(0.8))
+                }
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .minimumScaleFactor(0.7)
+
+                if let fraction = goalProgressFraction, let lost = weightLostValue {
+                    ProgressView(value: fraction)
+                        .tint(targetProgressColor)
+                        .scaleEffect(x: 1, y: 1.2, anchor: .center)
+
+                    Text("已减 \(weightText(lost)) kg")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                } else if let target = targetWeightValue {
+                    Text("目标 \(weightText(target)) kg")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            } else if targetWeightValue != nil {
+                Text("已达标")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(.green)
+                Text("保持住，状态不错")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("未设置")
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                Text("先定一个目标")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 10)
-        .background(tint.opacity(isPlaceholder ? 0.07 : 0.10))
+        .padding(12)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(targetProgressColor.opacity(weightRemainingValue != nil ? 0.10 : 0.07))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
 
-        if let action {
-            Button(action: action) {
-                content
+    @ViewBuilder
+    var weightBMIBlock: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("BMI")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            if let bmiValue {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(String(format: "%.1f", bmiValue))
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .foregroundStyle(bmiColor(for: bmiValue))
+                    Text(bmiStatusText)
+                        .font(.caption.bold())
+                        .foregroundStyle(bmiColor(for: bmiValue))
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+                BMIRangeBar(bmi: bmiValue)
+
+                HStack(spacing: 0) {
+                    Text("偏瘦")
+                    Spacer(minLength: 0)
+                    Text("正常")
+                    Spacer(minLength: 0)
+                    Text("偏胖")
+                    Spacer(minLength: 0)
+                    Text("肥胖")
+                }
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(.secondary)
+            } else {
+                Text("未生成")
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                Text(heightValue == nil ? "先填身高" : "先记体重")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
-        } else {
-            content
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     var addWeightSheet: some View {
@@ -522,7 +573,7 @@ extension ContentView {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             ZStack(alignment: .leading) {
                                 if weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    Text("0.0")
+                                    Text(weightInputPlaceholder)
                                         .font(.system(size: 56, weight: .bold, design: .rounded))
                                         .foregroundStyle(.tertiary)
                                         .allowsHitTesting(false)
@@ -626,13 +677,13 @@ extension ContentView {
                         Text(didShowWeightSaveFeedback ? "已保存" : "保存体重")
                             .font(.headline)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(isWeightInputEmpty ? Color.white.opacity(0.85) : .white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
                     .background(
                         LinearGradient(
-                            colors: weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                ? [Color(.tertiarySystemFill), Color(.tertiarySystemFill)]
+                            colors: isWeightInputEmpty
+                                ? [Color.blue.opacity(0.4), Color.cyan.opacity(0.4)]
                                 : [Color.blue, Color.cyan],
                             startPoint: .leading,
                             endPoint: .trailing
@@ -640,7 +691,7 @@ extension ContentView {
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .shadow(
-                        color: weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        color: isWeightInputEmpty
                             ? .clear
                             : Color.blue.opacity(0.22),
                         radius: 14,
@@ -648,7 +699,7 @@ extension ContentView {
                     )
                 }
                 .buttonStyle(.plain)
-                .disabled(weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(isWeightInputEmpty)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 8)
                 .background(.bar)
@@ -686,7 +737,7 @@ extension ContentView {
             }
             .animation(.spring(response: 0.3, dampingFraction: 0.85), value: didShowWeightSaveFeedback)
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
     }
 
     var trendCard: some View {
@@ -934,7 +985,7 @@ extension ContentView {
                     .background(Color.blue.opacity(0.12))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                Text("体重历史")
+                Text("体重记录")
                     .font(.title3.bold())
                 Spacer()
                 Text("\(weightLogs.count) 条")
@@ -955,9 +1006,11 @@ extension ContentView {
             } else {
                 VStack(spacing: 10) {
                     ForEach(displayedWeightLogs) { log in
-                        WeightLogRow(log: log, weightText: weightText(log.weight), dateText: chineseDateTime(log.date)) {
+                        WeightLogRow(log: log, weightText: weightText(log.weight), dateText: chineseDateTime(log.date), onOpen: {
+                            editingWeightLog = log
+                        }, onDelete: {
                             deleteWeightLog(log)
-                        }
+                        })
                     }
                 }
 
@@ -1151,13 +1204,6 @@ extension ContentView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    SheetHeader(
-                        icon: "timer",
-                        title: "断食计划",
-                        subtitle: "选择适合自己的断食 + 进食时长",
-                        gradient: [.blue, .cyan]
-                    )
-
                     Text("14+10 最容易上手，16+8 适合大多数人，18+6、20+4 难度更高。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -1173,9 +1219,23 @@ extension ContentView {
                             } label: {
                                 HStack(spacing: 14) {
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text("\(option.fasting) + \(option.eating)")
-                                            .font(.title3.bold())
-                                            .foregroundStyle(isSelected ? .white : .primary)
+                                        HStack(spacing: 8) {
+                                            Text("\(option.fasting) + \(option.eating)")
+                                                .font(.title3.bold())
+                                                .foregroundStyle(isSelected ? .white : .primary)
+
+                                            if let badge = planBadge(for: option.fasting) {
+                                                Text(badge.title)
+                                                    .font(.caption2.bold())
+                                                    .foregroundStyle(isSelected ? .white : badge.color)
+                                                    .padding(.horizontal, 8)
+                                                    .padding(.vertical, 3)
+                                                    .background(
+                                                        (isSelected ? Color.white.opacity(0.22) : badge.color.opacity(0.14)),
+                                                        in: Capsule()
+                                                    )
+                                            }
+                                        }
                                         Text("断食 \(option.fasting) 小时 · 进食 \(option.eating) 小时")
                                             .font(.caption)
                                             .foregroundStyle(isSelected ? Color.white.opacity(0.85) : .secondary)
@@ -1213,18 +1273,41 @@ extension ContentView {
                 .padding(20)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("断食计划")
+            .navigationTitle("调整断食计划")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        isShowingPlanSheet = false
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") {
                         isShowingPlanSheet = false
                     }
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
+    }
+
+    func planBadge(for fasting: Int) -> (title: String, color: Color)? {
+        switch fasting {
+        case 14:
+            return ("新手", .green)
+        case 16:
+            return ("推荐", .blue)
+        case 18:
+            return ("进阶", .orange)
+        case 20:
+            return ("挑战", .red)
+        default:
+            return nil
+        }
     }
 
     var startTimeQuickOptions: [(String, TimeInterval)] {

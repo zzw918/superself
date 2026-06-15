@@ -11,10 +11,10 @@ extension ContentView {
                     Text("添加纪念日")
                 }
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
+                .foregroundStyle(.blue)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .buttonStyle(.plain)
 
@@ -33,10 +33,14 @@ extension ContentView {
                             dateText: anniversaryDateText(for: item),
                             solarText: anniversarySolarText(for: item),
                             daysUntil: daysUntilAnniversary(for: item),
-                            elapsedText: item.showsElapsedDays ? elapsedDaysText(for: item) : nil
-                        ) {
-                            editingAnniversaryItem = item
-                        }
+                            elapsedText: item.showsElapsedDays ? elapsedDaysText(for: item) : nil,
+                            onEdit: {
+                                editingAnniversaryItem = item
+                            },
+                            onDelete: {
+                                deleteAnniversaryItem(item)
+                            }
+                        )
                     }
                 }
             }
@@ -51,13 +55,6 @@ extension ContentView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    SheetHeader(
-                        icon: "calendar.badge.heart",
-                        title: "添加纪念日",
-                        subtitle: "记录重要的日子，支持阳历和农历",
-                        gradient: [.orange, .pink]
-                    )
-
                     VStack(alignment: .leading, spacing: 10) {
                         anniversaryFieldLabel("日期类型")
                         AppSegmentedControl(
@@ -73,7 +70,7 @@ extension ContentView {
                             placeholder: "记录个重要的日子",
                             text: $anniversaryTitleInput,
                             icon: "calendar.badge.heart",
-                            tint: .orange
+                            tint: .blue
                         )
                     }
 
@@ -82,7 +79,7 @@ extension ContentView {
                         WheelDatePicker(
                             date: $anniversaryDate,
                             calendarKind: anniversaryCalendarKind,
-                            tint: .orange
+                            tint: .blue
                         )
                         .id(anniversaryCalendarKind)
 
@@ -90,20 +87,20 @@ extension ContentView {
                            let solarPreview = anniversarySolarPreviewText(date: anniversaryDate, calendarKind: .lunar) {
                             HStack(spacing: 8) {
                                 Image(systemName: "calendar.badge.clock")
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(.blue)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("今年对应阳历")
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                     Text(solarPreview)
                                         .font(.subheadline.bold())
-                                        .foregroundStyle(.orange)
+                                        .foregroundStyle(.blue)
                                 }
                                 Spacer()
                             }
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
-                            .background(Color.orange.opacity(0.10))
+                            .background(Color.blue.opacity(0.10))
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
                     }
@@ -117,7 +114,7 @@ extension ContentView {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .tint(.orange)
+                    .tint(.blue)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .background(Color(.secondarySystemGroupedBackground))
@@ -130,7 +127,7 @@ extension ContentView {
                 Button(action: addAnniversaryItem) {
                     Text("添加纪念日")
                 }
-                .buttonStyle(AppPrimaryButtonStyle(tint: .orange))
+                .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
                 .disabled(!canAddAnniversary)
                 .padding(.horizontal)
                 .padding(.bottom, 8)
@@ -178,11 +175,13 @@ extension ContentView {
                 if !activeTodoTasks.isEmpty {
                     VStack(spacing: 8) {
                         ForEach(activeTodoTasks) { task in
-                            TodoTaskRow(task: task) {
+                            TodoTaskRow(task: task, onToggle: {
                                 toggleTodoTask(task)
-                            } onEdit: {
+                            }, onEdit: {
                                 editingTodoTask = task
-                            }
+                            }, onDelete: {
+                                deleteTodoTask(task)
+                            })
                         }
                     }
                 }
@@ -191,11 +190,13 @@ extension ContentView {
                     DisclosureGroup {
                         VStack(spacing: 8) {
                             ForEach(completedTodoTasks.prefix(8)) { task in
-                                TodoTaskRow(task: task) {
+                                TodoTaskRow(task: task, onToggle: {
                                     toggleTodoTask(task)
-                                } onEdit: {
+                                }, onEdit: {
                                     editingTodoTask = task
-                                }
+                                }, onDelete: {
+                                    deleteTodoTask(task)
+                                })
                             }
                         }
                         .padding(.top, 8)
@@ -228,7 +229,7 @@ extension ContentView {
             AddEntryBar(
                 placeholder: "想要点什么",
                 text: $wishlistInput,
-                icon: wishlistCategories.first { $0.id == (wishlistFilter.categoryID ?? wishlistCategoryID) }?.icon ?? "sparkles",
+                icon: wishlistInputIcon,
                 tint: .blue,
                 action: addWishlistItem
             )
@@ -244,11 +245,13 @@ extension ContentView {
                 if !filteredOpenWishlistItems.isEmpty {
                     VStack(spacing: 8) {
                         ForEach(filteredOpenWishlistItems) { item in
-                            WishlistRow(item: item, category: wishlistCategory(for: item)) {
+                            WishlistRow(item: item, category: wishlistCategory(for: item), onToggle: {
                                 toggleWishlistItem(item)
-                            } onEdit: {
+                            }, onEdit: {
                                 editingWishlistItem = item
-                            }
+                            }, onDelete: {
+                                deleteWishlistItem(item)
+                            })
                         }
                     }
                 }
@@ -257,11 +260,13 @@ extension ContentView {
                     DisclosureGroup {
                         VStack(spacing: 8) {
                             ForEach(filteredCompletedWishlistItems.prefix(8)) { item in
-                                WishlistRow(item: item, category: wishlistCategory(for: item)) {
+                                WishlistRow(item: item, category: wishlistCategory(for: item), onToggle: {
                                     toggleWishlistItem(item)
-                                } onEdit: {
+                                }, onEdit: {
                                     editingWishlistItem = item
-                                }
+                                }, onDelete: {
+                                    deleteWishlistItem(item)
+                                })
                             }
                         }
                         .padding(.top, 8)
@@ -285,6 +290,13 @@ extension ContentView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var wishlistInputIcon: String {
+        if wishlistFilter == .all {
+            return WishlistFilter.all.icon
+        }
+        return wishlistCategories.first { $0.id == (wishlistFilter.categoryID ?? wishlistCategoryID) }?.icon ?? "sparkles"
     }
 
     var wishlistFilterBar: some View {

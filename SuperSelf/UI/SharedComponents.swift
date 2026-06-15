@@ -428,6 +428,46 @@ struct SheetDeleteButton: View {
     }
 }
 
+struct LongPressDeleteModifier: ViewModifier {
+    let confirmation: DeleteConfirmationContent
+    let onDelete: (() -> Void)?
+
+    @State private var isShowingConfirmation = false
+
+    func body(content: Content) -> some View {
+        if let onDelete {
+            content
+                .contextMenu {
+                    Button(role: .destructive) {
+                        isShowingConfirmation = true
+                    } label: {
+                        Label("删除", systemImage: "trash")
+                    }
+                }
+                .confirmationDialog(
+                    confirmation.title,
+                    isPresented: $isShowingConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button(confirmation.confirmTitle, role: .destructive) {
+                        onDelete()
+                    }
+                    Button("取消", role: .cancel) {}
+                } message: {
+                    Text(confirmation.message)
+                }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    func longPressDelete(_ confirmation: DeleteConfirmationContent, onDelete: (() -> Void)?) -> some View {
+        modifier(LongPressDeleteModifier(confirmation: confirmation, onDelete: onDelete))
+    }
+}
+
 struct SheetPinButton: View {
     let isPinned: Bool
     let onToggle: () -> Void

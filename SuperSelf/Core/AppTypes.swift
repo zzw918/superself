@@ -79,7 +79,7 @@ enum AppearanceMode: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
-enum HealthSection: String, CaseIterable, Identifiable {
+enum HealthSection: String, CaseIterable, Identifiable, Codable {
     case fasting
     case weight
 
@@ -93,9 +93,27 @@ enum HealthSection: String, CaseIterable, Identifiable {
             return "体重"
         }
     }
+
+    var icon: String {
+        switch self {
+        case .fasting:
+            return "timer"
+        case .weight:
+            return "scalemass"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .fasting:
+            return "断食计时与目标"
+        case .weight:
+            return "体重记录与趋势"
+        }
+    }
 }
 
-enum MemoSection: String, CaseIterable, Identifiable {
+enum MemoSection: String, CaseIterable, Identifiable, Codable {
     case todo
     case wishlist
     case anniversary
@@ -112,9 +130,31 @@ enum MemoSection: String, CaseIterable, Identifiable {
             return "纪念日"
         }
     }
+
+    var icon: String {
+        switch self {
+        case .todo:
+            return "checklist"
+        case .wishlist:
+            return "sparkles"
+        case .anniversary:
+            return "calendar.badge.clock"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .todo:
+            return "待办事项清单"
+        case .wishlist:
+            return "想做想要的事"
+        case .anniversary:
+            return "重要日子倒数"
+        }
+    }
 }
 
-enum FinanceSection: String, CaseIterable, Identifiable {
+enum FinanceSection: String, CaseIterable, Identifiable, Codable {
     case assetRecord
     case stockResearch
 
@@ -126,6 +166,24 @@ enum FinanceSection: String, CaseIterable, Identifiable {
             return "资产记录"
         case .stockResearch:
             return "股票研究"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .assetRecord:
+            return "wallet.pass"
+        case .stockResearch:
+            return "chart.line.text.clipboard"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .assetRecord:
+            return "资产分布与趋势"
+        case .stockResearch:
+            return "个股研究笔记"
         }
     }
 }
@@ -142,7 +200,7 @@ enum MainAppTab: String, CaseIterable, Identifiable, Codable, Hashable {
         case .health:
             return "健康"
         case .todo:
-            return "备忘录"
+            return "备忘"
         case .finance:
             return "理财"
         }
@@ -174,4 +232,54 @@ enum MainAppTab: String, CaseIterable, Identifiable, Codable, Hashable {
 struct MainTabPreferences: Codable {
     var order: [MainAppTab]
     var visibleTabs: [MainAppTab]
+}
+
+/// 通用的「分区顺序 + 可见性」偏好，供健康/备忘/理财三个 tab 复用。
+struct SectionPreferences<Section: RawRepresentable & CaseIterable & Hashable>: Codable
+where Section.RawValue == String, Section.AllCases == [Section] {
+    var order: [Section]
+    var visibleSections: [Section]
+
+    init(order: [Section] = Array(Section.allCases),
+         visibleSections: [Section] = Array(Section.allCases)) {
+        self.order = order
+        self.visibleSections = visibleSections
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let orderRaw = try container.decode([String].self, forKey: .order)
+        let visibleRaw = try container.decode([String].self, forKey: .visibleSections)
+        order = orderRaw.compactMap(Section.init(rawValue:))
+        visibleSections = visibleRaw.compactMap(Section.init(rawValue:))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(order.map(\.rawValue), forKey: .order)
+        try container.encode(visibleSections.map(\.rawValue), forKey: .visibleSections)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case order
+        case visibleSections
+    }
+
+    /// 补全缺失分区、过滤无效分区，保证 order 覆盖全部 case 且 visible 至少一个。
+    var normalized: SectionPreferences<Section> {
+        let validOrder = order.filter { Section.allCases.contains($0) }
+        let missing = Section.allCases.filter { !validOrder.contains($0) }
+        let fullOrder = validOrder + missing
+
+        let validVisible = visibleSections.filter { fullOrder.contains($0) }
+        let visible = validVisible.isEmpty ? [fullOrder[0]] : validVisible
+
+        return SectionPreferences(order: fullOrder, visibleSections: visible)
+    }
+
+    /// 按 order 排序的可见分区列表，至少返回一个。
+    var orderedVisible: [Section] {
+        let normalized = self.normalized
+        return normalized.order.filter { normalized.visibleSections.contains($0) }
+    }
 }

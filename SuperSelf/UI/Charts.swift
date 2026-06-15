@@ -415,6 +415,7 @@ struct WeightTrendView: View {
                         )
                 }
             }
+            .transaction { $0.animation = nil }
         }
     }
 

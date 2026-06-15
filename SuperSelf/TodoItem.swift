@@ -20,10 +20,16 @@ struct TodoTask: Identifiable, Equatable, Codable {
     var id = UUID()
     var title: String
     var createdAt: Date
+    var updatedAt: Date?
     var completedAt: Date?
 
     var isCompleted: Bool {
         completedAt != nil
+    }
+
+    /// 用于排序与展示的最近活动时间：编辑过取编辑时间，否则取创建时间。
+    var lastActivityAt: Date {
+        updatedAt ?? createdAt
     }
 }
 
@@ -38,7 +44,8 @@ struct WishlistCategory: Identifiable, Equatable, Hashable, Codable {
         WishlistCategory(id: "reading", title: "阅读", icon: "book.closed"),
         WishlistCategory(id: "movie", title: "电影", icon: "film"),
         WishlistCategory(id: "music", title: "音乐", icon: "music.note"),
-        WishlistCategory(id: "experience", title: "新体验", icon: "sparkles")
+        WishlistCategory(id: "experience", title: "新体验", icon: "sparkles"),
+        WishlistCategory(id: "other", title: "其他", icon: "ellipsis.circle")
     ]
 
     static let fallback = WishlistCategory(id: "experience", title: "新体验", icon: "sparkles")

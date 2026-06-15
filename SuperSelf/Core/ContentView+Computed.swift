@@ -81,7 +81,7 @@ extension ContentView {
     var activeTodoTasks: [TodoTask] {
         todoTasks
             .filter { !$0.isCompleted }
-            .sorted { $0.createdAt > $1.createdAt }
+            .sorted { $0.lastActivityAt > $1.lastActivityAt }
     }
 
     var completedTodoTasks: [TodoTask] {
@@ -160,6 +160,18 @@ extension ContentView {
     var visibleMainTabs: [MainAppTab] {
         let orderedVisibleTabs = mainTabOrder.filter { visibleMainTabSet.contains($0) }
         return orderedVisibleTabs.isEmpty ? [.health] : orderedVisibleTabs
+    }
+
+    var visibleHealthSections: [HealthSection] {
+        healthSectionPrefs.orderedVisible
+    }
+
+    var visibleMemoSections: [MemoSection] {
+        memoSectionPrefs.orderedVisible
+    }
+
+    var visibleFinanceSections: [FinanceSection] {
+        financeSectionPrefs.orderedVisible
     }
 
     var totalFinanceAmount: Double {
@@ -275,10 +287,10 @@ extension ContentView {
         case .day:
             return dailyTrendLogs.map { log in
                 WeightTrendPoint(
-                    date: log.date,
+                    date: Calendar.current.startOfDay(for: log.date),
                     weight: log.weight,
                     topLabel: chineseMonth(log.date),
-                    bottomLabel: chineseDay(log.date)
+                    bottomLabel: dayNumber(log.date)
                 )
             }
         case .week:
@@ -331,6 +343,20 @@ extension ContentView {
 
     var targetWeightValue: Double? {
         Double(targetWeight.replacingOccurrences(of: ",", with: "."))
+    }
+
+    var isWeightInputEmpty: Bool {
+        weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var weightInputPlaceholder: String {
+        if let target = targetWeightValue {
+            return weightText(target)
+        }
+        if let latest = latestWeightLog {
+            return weightText(latest.weight)
+        }
+        return "0.0"
     }
 
     var bmiStatusText: String {
@@ -436,5 +462,35 @@ extension ContentView {
         }
 
         return "heart.text.square.fill"
+    }
+
+    /// 减重起点：取最早一次记录的体重，用来衡量已经减了多少。
+    var weightStartValue: Double? {
+        oldestWeightLog?.weight
+    }
+
+    /// 距离目标还差多少（仅在还需减重时返回正值）。
+    var weightRemainingValue: Double? {
+        guard let current = currentWeightValue, let target = targetWeightValue else { return nil }
+        let diff = current - target
+        return diff > 0.05 ? diff : nil
+    }
+
+    /// 相比起点已经减掉的体重。
+    var weightLostValue: Double? {
+        guard let start = weightStartValue, let current = currentWeightValue else { return nil }
+        let lost = start - current
+        return lost > 0.05 ? lost : nil
+    }
+
+    /// 减重进度 0...1（起点 → 目标）。
+    var goalProgressFraction: Double? {
+        guard let start = weightStartValue,
+              let current = currentWeightValue,
+              let target = targetWeightValue else { return nil }
+        let total = start - target
+        guard total > 0.05 else { return nil }
+        let done = start - current
+        return min(1, max(0, done / total))
     }
 }

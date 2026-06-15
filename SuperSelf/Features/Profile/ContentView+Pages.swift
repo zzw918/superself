@@ -4,19 +4,21 @@ extension ContentView {
     var healthPage: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                healthSectionPicker
-                    .padding(.horizontal)
-                    .padding(.top)
-                    .padding(.bottom, 14)
+                if visibleHealthSections.count > 1 {
+                    healthSectionPicker
+                        .padding(.horizontal)
+                        .padding(.top)
+                        .padding(.bottom, 14)
+                }
 
                 TabView(selection: $healthSection) {
-                    sectionScroll { fastingSection }
-                        .tag(HealthSection.fasting)
-
-                    sectionScroll { weightSection }
-                        .tag(HealthSection.weight)
+                    ForEach(visibleHealthSections) { section in
+                        sectionScroll { healthSectionContent(section) }
+                            .tag(section)
+                    }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
+                .padding(.top, visibleHealthSections.count > 1 ? 0 : 8)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("健康")
@@ -31,6 +33,16 @@ extension ContentView {
     }
 
     @ViewBuilder
+    func healthSectionContent(_ section: HealthSection) -> some View {
+        switch section {
+        case .fasting:
+            fastingSection
+        case .weight:
+            weightSection
+        }
+    }
+
+    @ViewBuilder
     func sectionScroll<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         ScrollView {
             content()
@@ -41,7 +53,7 @@ extension ContentView {
 
     var healthSectionPicker: some View {
         AppUnderlineTabs(
-            options: HealthSection.allCases,
+            options: visibleHealthSections,
             selection: $healthSection,
             title: \.title
         )
@@ -65,33 +77,44 @@ extension ContentView {
     var memoPage: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                memoSectionPicker
-                    .padding(.horizontal)
-                    .padding(.top)
-                    .padding(.bottom, 14)
+                if visibleMemoSections.count > 1 {
+                    memoSectionPicker
+                        .padding(.horizontal)
+                        .padding(.top)
+                        .padding(.bottom, 14)
+                }
 
                 TabView(selection: $memoSection) {
-                    sectionScroll { todoTasksCard }
-                        .tag(MemoSection.todo)
-
-                    sectionScroll { wishlistCard }
-                        .tag(MemoSection.wishlist)
-
-                    sectionScroll { anniversaryCard }
-                        .tag(MemoSection.anniversary)
+                    ForEach(visibleMemoSections) { section in
+                        sectionScroll { memoSectionContent(section) }
+                            .tag(section)
+                    }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
+                .padding(.top, visibleMemoSections.count > 1 ? 0 : 8)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("备忘录")
+            .navigationTitle("备忘")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
         }
     }
 
+    @ViewBuilder
+    func memoSectionContent(_ section: MemoSection) -> some View {
+        switch section {
+        case .todo:
+            todoTasksCard
+        case .wishlist:
+            wishlistCard
+        case .anniversary:
+            anniversaryCard
+        }
+    }
+
     var memoSectionPicker: some View {
         AppUnderlineTabs(
-            options: MemoSection.allCases,
+            options: visibleMemoSections,
             selection: $memoSection,
             title: \.title
         )
@@ -100,19 +123,21 @@ extension ContentView {
     var financePage: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                financeSectionPicker
-                    .padding(.horizontal)
-                    .padding(.top)
-                    .padding(.bottom, 14)
+                if visibleFinanceSections.count > 1 {
+                    financeSectionPicker
+                        .padding(.horizontal)
+                        .padding(.top)
+                        .padding(.bottom, 14)
+                }
 
                 TabView(selection: $financeSection) {
-                    sectionScroll { financeAssetRecordSection }
-                        .tag(FinanceSection.assetRecord)
-
-                    sectionScroll { stockResearchSection }
-                        .tag(FinanceSection.stockResearch)
+                    ForEach(visibleFinanceSections) { section in
+                        sectionScroll { financeSectionContent(section) }
+                            .tag(section)
+                    }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
+                .padding(.top, visibleFinanceSections.count > 1 ? 0 : 8)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("理财")
@@ -121,12 +146,117 @@ extension ContentView {
         }
     }
 
+    @ViewBuilder
+    func financeSectionContent(_ section: FinanceSection) -> some View {
+        switch section {
+        case .assetRecord:
+            financeAssetRecordSection
+        case .stockResearch:
+            stockResearchSection
+        }
+    }
+
     var financeSectionPicker: some View {
         AppUnderlineTabs(
-            options: FinanceSection.allCases,
+            options: visibleFinanceSections,
             selection: $financeSection,
             title: \.title
         )
+    }
+
+    @ViewBuilder
+    var sectionManagementSheet: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(healthSectionPrefs.order) { section in
+                        sectionManageRow(
+                            icon: section.icon,
+                            title: section.title,
+                            description: section.description,
+                            tint: profileTabTint(.health),
+                            isOnlyVisible: isOnlyVisibleHealthSection(section),
+                            visibility: healthSectionVisibilityBinding(for: section)
+                        )
+                    }
+                    .onMove(perform: moveHealthSections)
+                } header: {
+                    Text("健康")
+                }
+
+                Section {
+                    ForEach(memoSectionPrefs.order) { section in
+                        sectionManageRow(
+                            icon: section.icon,
+                            title: section.title,
+                            description: section.description,
+                            tint: profileTabTint(.todo),
+                            isOnlyVisible: isOnlyVisibleMemoSection(section),
+                            visibility: memoSectionVisibilityBinding(for: section)
+                        )
+                    }
+                    .onMove(perform: moveMemoSections)
+                } header: {
+                    Text("备忘")
+                }
+
+                Section {
+                    ForEach(financeSectionPrefs.order) { section in
+                        sectionManageRow(
+                            icon: section.icon,
+                            title: section.title,
+                            description: section.description,
+                            tint: profileTabTint(.finance),
+                            isOnlyVisible: isOnlyVisibleFinanceSection(section),
+                            visibility: financeSectionVisibilityBinding(for: section)
+                        )
+                    }
+                    .onMove(perform: moveFinanceSections)
+                } header: {
+                    Text("理财")
+                } footer: {
+                    Text("拖动调整顺序，关闭开关可隐藏模块，每个分类至少保留一个。")
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("模块管理")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { isShowingSectionManagement = false }
+                        .font(.subheadline.bold())
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    func sectionManageRow(
+        icon: String,
+        title: String,
+        description: String,
+        tint: Color,
+        isOnlyVisible: Bool,
+        visibility: Binding<Bool>
+    ) -> some View {
+        HStack(spacing: 14) {
+            profileIcon(icon, tint: tint)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.headline)
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Toggle("", isOn: visibility)
+                .labelsHidden()
+                .disabled(isOnlyVisible)
+        }
+        .padding(.vertical, 4)
     }
 
     var financeAssetRecordSection: some View {
@@ -170,6 +300,9 @@ extension ContentView {
                 .onMove(perform: moveMainTabs)
 
                 profileFixedTabCard
+                    .profileCardRow()
+
+                sectionManagementEntryRow
                     .profileCardRow()
 
                 profileSectionTitleRow("外观")
@@ -352,6 +485,36 @@ extension ContentView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var sectionManagementEntryRow: some View {
+        Button {
+            isShowingSectionManagement = true
+        } label: {
+            HStack(spacing: 14) {
+                profileIcon("square.grid.2x2", tint: .blue)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("模块管理")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("调整各功能模块的顺序与显隐")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.background)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+        }
+        .buttonStyle(.plain)
     }
 
     var notificationSettingsRow: some View {

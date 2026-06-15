@@ -26,6 +26,9 @@ struct ContentView: View {
     let financeSnapshotsCloudKey = "financeSnapshots"
     let stockResearchItemsCloudKey = "stockResearchItems"
     let mainTabPreferencesCloudKey = "mainTabPreferences"
+    let healthSectionPreferencesCloudKey = "healthSectionPreferences"
+    let memoSectionPreferencesCloudKey = "memoSectionPreferences"
+    let financeSectionPreferencesCloudKey = "financeSectionPreferences"
     let heightCmCloudKey = "heightCm"
     let targetWeightCloudKey = "targetWeight"
     let planOptions = [(fasting: 14, eating: 10), (fasting: 16, eating: 8), (fasting: 18, eating: 6), (fasting: 20, eating: 4)]
@@ -46,6 +49,9 @@ struct ContentView: View {
     @AppStorage("financeSnapshots") var financeSnapshotsData = Data()
     @AppStorage("stockResearchItems") var stockResearchItemsData = Data()
     @AppStorage("mainTabPreferences") var mainTabPreferencesData = Data()
+    @AppStorage("healthSectionPreferences") var healthSectionPreferencesData = Data()
+    @AppStorage("memoSectionPreferences") var memoSectionPreferencesData = Data()
+    @AppStorage("financeSectionPreferences") var financeSectionPreferencesData = Data()
     @AppStorage("dailyGoal") var dailyGoal = "多喝水，优先吃蛋白质，散步 20 分钟"
     @AppStorage("heightCm") var heightCm = ""
     @AppStorage("targetWeight") var targetWeight = ""
@@ -85,6 +91,9 @@ struct ContentView: View {
     @State var healthSection: HealthSection = .fasting
     @State var memoSection: MemoSection = .todo
     @State var financeSection: FinanceSection = .assetRecord
+    @State var healthSectionPrefs = SectionPreferences<HealthSection>()
+    @State var memoSectionPrefs = SectionPreferences<MemoSection>()
+    @State var financeSectionPrefs = SectionPreferences<FinanceSection>()
     @State var stockResearchItems: [StockResearchItem] = []
     @State var stockNameInput = ""
     @State var stockSearchText = ""
@@ -96,6 +105,8 @@ struct ContentView: View {
     @State var editingTodoTask: TodoTask?
     @State var editingWishlistItem: WishlistItem?
     @State var editingAnniversaryItem: AnniversaryItem?
+    @State var editingWeightLog: FastingLog?
+    @State var isShowingSectionManagement = false
     @State var mainTabOrder = MainAppTab.allCases
     @State var visibleMainTabSet = Set(MainAppTab.allCases)
     @State var syncStatus = "iCloud 同步准备中"
@@ -181,6 +192,18 @@ struct ContentView: View {
         .sheet(isPresented: $isShowingWeightSheet) {
             addWeightSheet
         }
+        .sheet(isPresented: $isShowingSectionManagement) {
+            sectionManagementSheet
+        }
+        .sheet(item: $editingWeightLog) { log in
+            WeightLogEditorSheet(
+                log: log,
+                weightText: weightText(log.weight),
+                dateText: chineseDateTime(log.date)
+            ) { newNote in
+                updateWeightLogNote(log, note: newNote)
+            }
+        }
         .sheet(isPresented: $isShowingBodySettings) {
             bodySettingsSheet
         }
@@ -199,8 +222,6 @@ struct ContentView: View {
         .sheet(item: $editingFinanceAsset) { asset in
             FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newAmount in
                 updateFinanceAsset(asset, amount: newAmount)
-            } onDelete: {
-                deleteFinanceAsset(asset)
             }
         }
         .sheet(item: $editingStockResearchItem) { item in
@@ -216,9 +237,6 @@ struct ContentView: View {
                 },
                 onTogglePin: {
                     toggleStockResearchPinned(item)
-                },
-                onDelete: {
-                    deleteStockResearchItem(item)
                 }
             )
         }
@@ -229,14 +247,11 @@ struct ContentView: View {
                 stockNameInput = ""
                 isShowingStockAddAlert = false
             }
-            .presentationDetents([.height(stockResearchItems.isEmpty ? 360 : 220)])
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingTodoTask) { task in
             TodoEditorSheet(task: task) { newTitle in
                 updateTodoTask(task, title: newTitle)
-            } onDelete: {
-                deleteTodoTask(task)
             }
             .presentationDetents([.height(340)])
             .presentationDragIndicator(.visible)
@@ -244,8 +259,6 @@ struct ContentView: View {
         .sheet(item: $editingWishlistItem) { item in
             WishlistEditorSheet(item: item, categories: wishlistCategories) { newTitle, newCategoryID in
                 updateWishlistItem(item, title: newTitle, categoryID: newCategoryID)
-            } onDelete: {
-                deleteWishlistItem(item)
             }
             .presentationDetents([.height(480)])
             .presentationDragIndicator(.visible)
@@ -290,9 +303,6 @@ struct ContentView: View {
                         date: date,
                         showsElapsedDays: showsElapsed
                     )
-                },
-                onDelete: {
-                    deleteAnniversaryItem(item)
                 }
             )
         }
