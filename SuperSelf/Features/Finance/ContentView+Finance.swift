@@ -323,26 +323,26 @@ extension ContentView {
 
     var stockResearchListCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Button {
-                stockNameInput = ""
-                isShowingStockAddAlert = true
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus")
-                    Text("新增股票")
-                }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.blue)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            .buttonStyle(.plain)
-
             SearchInputBar(placeholder: "搜索股票名称", text: $stockSearchText)
 
-            if !stockResearchItems.isEmpty {
-                stockResearchFilterBar
+            HStack(alignment: .top, spacing: 10) {
+                if !stockResearchItems.isEmpty {
+                    stockResearchFilterBar
+                } else {
+                    Spacer(minLength: 0)
+                }
+
+                Button {
+                    stockNameInput = ""
+                    isShowingStockAddAlert = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Color.blue, in: Circle())
+                }
+                .buttonStyle(.plain)
             }
 
             if stockResearchItems.isEmpty {
@@ -370,6 +370,9 @@ extension ContentView {
                             },
                             onDelete: {
                                 deleteStockResearchItem(item)
+                            },
+                            onTogglePin: {
+                                toggleStockResearchPinned(item)
                             }
                         )
                     }
@@ -383,76 +386,127 @@ extension ContentView {
     }
 
     var stockResearchFilterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                StockRatingFilterMenu(title: "确定性", tint: .green, selection: $stockCertaintyFilter)
-                StockRatingFilterMenu(title: "成长性", tint: .orange, selection: $stockGrowthFilter)
-                StockRatingFilterMenu(title: "关注度", tint: .blue, selection: $stockAttentionFilter)
-
-                if hasActiveStockFilters {
-                    Button {
-                        stockCertaintyFilter = nil
-                        stockGrowthFilter = nil
-                        stockAttentionFilter = nil
-                    } label: {
-                        HStack(spacing: 3) {
-                            Image(systemName: "xmark.circle.fill")
-                            Text("清除")
-                        }
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(Color(.tertiarySystemFill), in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 2)
-        }
+        StockResearchFilterPanel(
+            certainty: $stockCertaintyFilter,
+            growth: $stockGrowthFilter,
+            attention: $stockAttentionFilter
+        )
     }
 }
 
-struct StockRatingFilterMenu: View {
+struct StockResearchFilterPanel: View {
+    @Binding var certainty: StockRating?
+    @Binding var growth: StockRating?
+    @Binding var attention: StockRating?
+
+    @State private var isExpanded = false
+
+    private var activeCount: Int {
+        [certainty, growth, attention].compactMap { $0 }.count
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "line.3.horizontal.decrease.circle\(activeCount > 0 ? ".fill" : "")")
+                    Text("筛选")
+                    if activeCount > 0 {
+                        Text("\(activeCount)")
+                            .font(.caption2.bold())
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Color.blue, in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.caption.bold())
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(activeCount > 0 ? .blue : .secondary)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                VStack(spacing: 8) {
+                    StockRatingFilterRow(title: "确定性", tint: .green, selection: $certainty)
+                    StockRatingFilterRow(title: "成长性", tint: .orange, selection: $growth)
+                    StockRatingFilterRow(title: "关注度", tint: .blue, selection: $attention)
+
+                    if activeCount > 0 {
+                        Button {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                                certainty = nil
+                                growth = nil
+                                attention = nil
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.counterclockwise")
+                                Text("重置筛选")
+                            }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(Color(.tertiarySystemFill), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.tertiarySystemGroupedBackground))
+        )
+    }
+}
+
+struct StockRatingFilterRow: View {
     let title: String
     let tint: Color
     @Binding var selection: StockRating?
 
     var body: some View {
-        Menu {
-            Button {
-                selection = nil
-            } label: {
-                if selection == nil {
-                    Label("全部", systemImage: "checkmark")
-                } else {
-                    Text("全部")
-                }
-            }
-            ForEach(StockRating.allCases) { rating in
-                Button {
-                    selection = rating
-                } label: {
-                    if selection == rating {
-                        Label(rating.title, systemImage: "checkmark")
-                    } else {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(selection == nil ? .secondary : tint)
+                .frame(width: 52, alignment: .leading)
+
+            HStack(spacing: 6) {
+                ForEach(StockRating.allCases) { rating in
+                    let isSelected = selection == rating
+                    Button {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                            selection = isSelected ? nil : rating
+                        }
+                    } label: {
                         Text(rating.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(isSelected ? .white : Color.secondary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 34)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(Color(.quaternarySystemFill)))
+                            )
                     }
+                    .buttonStyle(.plain)
                 }
             }
-        } label: {
-            HStack(spacing: 4) {
-                Text(selection == nil ? title : "\(title) \(selection!.title)")
-                    .font(.caption.weight(.semibold))
-                Image(systemName: "chevron.down")
-                    .font(.caption2.weight(.bold))
-            }
-            .foregroundStyle(selection == nil ? Color.secondary : tint)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(
-                Capsule().fill(selection == nil ? Color(.tertiarySystemFill) : tint.opacity(0.14))
-            )
         }
     }
 }

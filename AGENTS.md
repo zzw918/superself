@@ -34,6 +34,16 @@ xcodebuild -project SuperSelf.xcodeproj -scheme SuperSelf -destination 'generic/
 
 > 教训：曾因给 `FinanceAsset` 直接加 `note` 字段导致旧数据解码失败、资产被清空。此类问题必须从根上避免。
 
+## 中文本地化（涉及日期/时间显示时必须遵守）
+
+本 App 面向中文用户，**所有日期、时间相关的展示都必须是中文**，绝不能出现英文月份/星期（如 `June 2026`、`SUN MON`、`Jun 15, 2026`）。
+
+1. **系统 `DatePicker`/`Calendar` 等控件默认跟随系统语言，会显示英文**。凡是用到这类控件，**必须**显式加 `.environment(\.locale, Locale(identifier: "zh_CN"))`，否则日历头、星期、日期格式都会是英文。
+2. **手动格式化日期用 `DateFormatter` 时**，必须设 `formatter.locale = Locale(identifier: "zh_CN")`，并使用中文格式（如 `"yyyy年M月d日 HH:mm"`、`"M月d日"`）。
+3. **新增任何涉及日期/时间的 UI 前，先自查 locale 是否为中文**，这是高频易错点。
+
+> 教训：`TodoDueDateField` 的 `DatePicker` 多次忘记设中文 locale，导致日历显示英文月份/星期，被用户反复指出。此后凡涉及日期展示一律检查 locale。
+
 ## UI 与交互设计理念（涉及界面/交互改造时参考）
 
 以下理念源自乔布斯的产品设计哲学，每次做 UI 或交互改造时都应对照参考：

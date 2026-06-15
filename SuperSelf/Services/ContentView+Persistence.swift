@@ -162,6 +162,16 @@ extension ContentView {
         persistFinanceSectionPreferences()
     }
 
+    func resetSectionPreferences() {
+        healthSectionPrefs = SectionPreferences<HealthSection>()
+        memoSectionPrefs = SectionPreferences<MemoSection>()
+        financeSectionPrefs = SectionPreferences<FinanceSection>()
+        clampSectionSelections()
+        persistHealthSectionPreferences()
+        persistMemoSectionPreferences()
+        persistFinanceSectionPreferences()
+    }
+
     func healthSectionVisibilityBinding(for section: HealthSection) -> Binding<Bool> {
         Binding(
             get: { healthSectionPrefs.visibleSections.contains(section) },
@@ -320,9 +330,11 @@ extension ContentView {
         persistWeightLogs()
     }
 
-    func updateWeightLogNote(_ log: FastingLog, note: String) {
+    func updateWeightLog(_ log: FastingLog, weight: Double, note: String) {
         guard let index = weightLogs.firstIndex(where: { $0.id == log.id }) else { return }
+        weightLogs[index].weight = weight
         weightLogs[index].note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        latestWeight = latestWeightLog.map { weightText($0.weight) } ?? ""
         persistWeightLogs()
     }
 
@@ -355,15 +367,18 @@ extension ContentView {
         persistTodoTasks()
     }
 
-    func updateTodoTask(_ task: TodoTask, title: String, priority: TodoPriority) {
+    func updateTodoTask(_ task: TodoTask, title: String, priority: TodoPriority, dueDate: Date?) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty,
               let index = todoTasks.firstIndex(where: { $0.id == task.id }) else { return }
 
-        guard todoTasks[index].title != trimmed || todoTasks[index].priority != priority else { return }
+        guard todoTasks[index].title != trimmed
+                || todoTasks[index].priority != priority
+                || todoTasks[index].dueDate != dueDate else { return }
 
         todoTasks[index].title = trimmed
         todoTasks[index].priority = priority
+        todoTasks[index].dueDate = dueDate
         todoTasks[index].updatedAt = Date()
         persistTodoTasks()
     }

@@ -377,7 +377,8 @@ struct SearchInputBar: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 14)
+        .padding(.leading, 12)
+        .padding(.trailing, 14)
         .padding(.vertical, 12)
         .frame(minHeight: 48)
         .background(Color(.secondarySystemGroupedBackground))
@@ -431,17 +432,28 @@ struct SheetDeleteButton: View {
 struct LongPressDeleteModifier: ViewModifier {
     let confirmation: DeleteConfirmationContent
     let onDelete: (() -> Void)?
+    var isPinned: Bool = false
+    var onTogglePin: (() -> Void)? = nil
 
     @State private var isShowingConfirmation = false
 
     func body(content: Content) -> some View {
-        if let onDelete {
+        if onDelete != nil || onTogglePin != nil {
             content
                 .contextMenu {
-                    Button(role: .destructive) {
-                        isShowingConfirmation = true
-                    } label: {
-                        Label("删除", systemImage: "trash")
+                    if let onTogglePin {
+                        Button {
+                            onTogglePin()
+                        } label: {
+                            Label(isPinned ? "取消置顶" : "置顶", systemImage: isPinned ? "pin.slash" : "pin")
+                        }
+                    }
+                    if onDelete != nil {
+                        Button(role: .destructive) {
+                            isShowingConfirmation = true
+                        } label: {
+                            Label("删除", systemImage: "trash")
+                        }
                     }
                 }
                 .confirmationDialog(
@@ -450,7 +462,7 @@ struct LongPressDeleteModifier: ViewModifier {
                     titleVisibility: .visible
                 ) {
                     Button(confirmation.confirmTitle, role: .destructive) {
-                        onDelete()
+                        onDelete?()
                     }
                     Button("取消", role: .cancel) {}
                 } message: {
@@ -465,6 +477,20 @@ struct LongPressDeleteModifier: ViewModifier {
 extension View {
     func longPressDelete(_ confirmation: DeleteConfirmationContent, onDelete: (() -> Void)?) -> some View {
         modifier(LongPressDeleteModifier(confirmation: confirmation, onDelete: onDelete))
+    }
+
+    func longPressActions(
+        _ confirmation: DeleteConfirmationContent,
+        onDelete: (() -> Void)?,
+        isPinned: Bool,
+        onTogglePin: (() -> Void)?
+    ) -> some View {
+        modifier(LongPressDeleteModifier(
+            confirmation: confirmation,
+            onDelete: onDelete,
+            isPinned: isPinned,
+            onTogglePin: onTogglePin
+        ))
     }
 }
 

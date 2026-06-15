@@ -37,6 +37,10 @@ struct TodoTaskRow: View {
                     HStack(spacing: 8) {
                         TodoPriorityBadge(priority: task.priority)
 
+                        if let dueDate = task.dueDate, !task.isCompleted {
+                            TodoDueBadge(dueDate: dueDate)
+                        }
+
                         Text(timestampText)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -101,6 +105,34 @@ struct TodoPriorityBadge: View {
         .padding(.horizontal, 7)
         .padding(.vertical, 3)
         .background(priority.color.opacity(0.12), in: Capsule())
+    }
+}
+
+struct TodoDueBadge: View {
+    let dueDate: Date
+
+    private var isOverdue: Bool { dueDate < Date() }
+
+    private var dueText: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(dueDate, equalTo: Date(), toGranularity: .year)
+            ? "M月d日 HH:mm"
+            : "yyyy年M月d日 HH:mm"
+        return formatter.string(from: dueDate)
+    }
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: isOverdue ? "exclamationmark.circle.fill" : "calendar.badge.clock")
+                .font(.system(size: 9, weight: .bold))
+            Text(dueText)
+                .font(.caption2.weight(.semibold))
+        }
+        .foregroundStyle(isOverdue ? Color.red : Color.orange)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background((isOverdue ? Color.red : Color.orange).opacity(0.12), in: Capsule())
     }
 }
 
@@ -273,6 +305,7 @@ struct StockResearchRow: View {
     let updatedText: String
     let onOpen: () -> Void
     var onDelete: (() -> Void)? = nil
+    var onTogglePin: (() -> Void)? = nil
 
     var body: some View {
         Button(action: onOpen) {
@@ -335,13 +368,15 @@ struct StockResearchRow: View {
             )
         }
         .buttonStyle(.plain)
-        .longPressDelete(
+        .longPressActions(
             DeleteConfirmationContent(
                 title: "删除股票？",
                 message: "「\(item.name)」及其研究笔记会被永久删除。",
                 confirmTitle: "删除"
             ),
-            onDelete: onDelete
+            onDelete: onDelete,
+            isPinned: item.isPinned,
+            onTogglePin: onTogglePin
         )
     }
 
@@ -499,7 +534,6 @@ struct StockResearchEditorSheet: View {
     let updatedText: String
     let onRename: (String) -> Void
     let onSaveRatings: (StockRating?, StockRating?, StockRating?) -> Void
-    let onTogglePin: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var nameInput: String
@@ -515,15 +549,13 @@ struct StockResearchEditorSheet: View {
         thesis: Binding<String>,
         updatedText: String,
         onRename: @escaping (String) -> Void,
-        onSaveRatings: @escaping (StockRating?, StockRating?, StockRating?) -> Void,
-        onTogglePin: @escaping () -> Void
+        onSaveRatings: @escaping (StockRating?, StockRating?, StockRating?) -> Void
     ) {
         self.item = item
         _thesis = thesis
         self.updatedText = updatedText
         self.onRename = onRename
         self.onSaveRatings = onSaveRatings
-        self.onTogglePin = onTogglePin
         _nameInput = State(initialValue: item.name)
         _certainty = State(initialValue: item.certainty)
         _growth = State(initialValue: item.growth)
@@ -584,14 +616,6 @@ struct StockResearchEditorSheet: View {
                         .background(Color(.secondarySystemGroupedBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                         .padding(.horizontal)
-
-                        VStack(spacing: 10) {
-                            SheetPinButton(isPinned: item.isPinned) {
-                                onTogglePin()
-                                dismiss()
-                            }
-                        }
-                        .padding(.horizontal)
                         .padding(.bottom)
                     }
                 }
@@ -608,6 +632,13 @@ struct StockResearchEditorSheet: View {
             .navigationTitle("股票研究")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("取消") {
+                        dismiss()
+                    }
+                    .font(.subheadline)
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("完成") {
                         let trimmedName = nameInput.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -788,18 +819,12 @@ struct FinanceAssetRow: View {
     var body: some View {
         Button(action: onEdit) {
             HStack(alignment: .center, spacing: 12) {
-                Image(systemName: asset.kind.icon)
-                    .font(.headline)
-                    .foregroundStyle(tint)
-                    .frame(width: 38, height: 38)
-                    .background(tint.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 8) {
                         Text(asset.name)
                             .font(.headline)
                             .foregroundStyle(.primary)
+                            .lineLimit(1)
 
                         Text(asset.kind.title)
                             .font(.caption.bold())
@@ -808,6 +833,7 @@ struct FinanceAssetRow: View {
                             .background(tint.opacity(0.12))
                             .foregroundStyle(tint)
                             .clipShape(Capsule())
+                            .fixedSize()
                     }
 
                     Text("更新于 \(updatedText)")
@@ -916,34 +942,45 @@ struct WeightLogRow: View {
 
 struct WeightLogEditorSheet: View {
     let log: FastingLog
-    let weightText: String
     let dateText: String
-    let onSave: (String) -> Void
+    let onSave: (Double, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var weightInput: String
     @State private var noteInput: String
-    @FocusState private var isFocused: Bool
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case weight, note }
 
     init(
         log: FastingLog,
-        weightText: String,
         dateText: String,
-        onSave: @escaping (String) -> Void
+        onSave: @escaping (Double, String) -> Void
     ) {
         self.log = log
-        self.weightText = weightText
         self.dateText = dateText
         self.onSave = onSave
+        _weightInput = State(initialValue: String(format: "%.1f", log.weight))
         _noteInput = State(initialValue: log.note)
+    }
+
+    private var parsedWeight: Double? {
+        Double(weightInput.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: "."))
     }
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(weightText)
-                            .font(.system(size: 44, weight: .bold, design: .rounded))
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("体重")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        TextField("0.0", text: $weightInput)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 40, weight: .bold, design: .rounded))
+                            .focused($focusedField, equals: .weight)
                         Text("kg")
                             .font(.title3.bold())
                             .foregroundStyle(.secondary)
@@ -970,7 +1007,7 @@ struct WeightLogEditorSheet: View {
                         tint: .blue,
                         axis: .vertical
                     )
-                    .focused($isFocused)
+                    .focused($focusedField, equals: .note)
                 }
 
                 Spacer(minLength: 0)
@@ -987,11 +1024,14 @@ struct WeightLogEditorSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") {
-                        onSave(noteInput)
+                        if let weight = parsedWeight {
+                            onSave(weight, noteInput)
+                        }
                         dismiss()
                     }
                     .font(.subheadline.bold())
                     .foregroundStyle(.blue)
+                    .disabled(parsedWeight == nil)
                 }
             }
         }
@@ -1129,18 +1169,22 @@ struct MeasurementField: View {
 
 struct TodoEditorSheet: View {
     let task: TodoTask
-    let onSave: (String, TodoPriority) -> Void
+    let onSave: (String, TodoPriority, Date?) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String
     @State private var priority: TodoPriority
+    @State private var hasDueDate: Bool
+    @State private var dueDate: Date
     @FocusState private var isFocused: Bool
 
-    init(task: TodoTask, onSave: @escaping (String, TodoPriority) -> Void) {
+    init(task: TodoTask, onSave: @escaping (String, TodoPriority, Date?) -> Void) {
         self.task = task
         self.onSave = onSave
         _titleInput = State(initialValue: task.title)
         _priority = State(initialValue: task.priority)
+        _hasDueDate = State(initialValue: task.dueDate != nil)
+        _dueDate = State(initialValue: task.dueDate ?? TodoDueDateField.defaultDueDate())
     }
 
     private var canSave: Bool {
@@ -1149,26 +1193,28 @@ struct TodoEditorSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 20) {
-                ModernInputField(
-                    placeholder: "记录些什么",
-                    text: $titleInput,
-                    icon: "checklist",
-                    tint: .blue,
-                    axis: .vertical
-                )
-                .focused($isFocused)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ModernInputField(
+                        placeholder: "记录些什么",
+                        text: $titleInput,
+                        icon: "checklist",
+                        tint: .blue,
+                        axis: .vertical
+                    )
+                    .focused($isFocused)
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("优先级")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-                    TodoPrioritySelector(selection: $priority)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("优先级")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                        TodoPrioritySelector(selection: $priority)
+                    }
+
+                    TodoDueDateField(hasDueDate: $hasDueDate, dueDate: $dueDate)
                 }
-
-                Spacer(minLength: 0)
+                .padding(20)
             }
-            .padding(20)
             .background(Color(.systemGroupedBackground))
             .navigationTitle("编辑TODO")
             .navigationBarTitleDisplayMode(.inline)
@@ -1180,7 +1226,7 @@ struct TodoEditorSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") {
-                        onSave(titleInput, priority)
+                        onSave(titleInput, priority, hasDueDate ? dueDate : nil)
                         dismiss()
                     }
                     .font(.subheadline.bold())
@@ -1194,6 +1240,120 @@ struct TodoEditorSheet: View {
                 isFocused = true
             }
         }
+    }
+}
+
+struct TodoAddSheet: View {
+    let initialPriority: TodoPriority
+    let onAdd: (String, TodoPriority, Date?) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var titleInput: String = ""
+    @State private var priority: TodoPriority
+    @State private var hasDueDate: Bool = false
+    @State private var dueDate: Date = TodoDueDateField.defaultDueDate()
+    @FocusState private var isFocused: Bool
+
+    init(initialPriority: TodoPriority, onAdd: @escaping (String, TodoPriority, Date?) -> Void) {
+        self.initialPriority = initialPriority
+        self.onAdd = onAdd
+        _priority = State(initialValue: initialPriority)
+    }
+
+    private var canSave: Bool {
+        !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ModernInputField(
+                        placeholder: "记录些什么",
+                        text: $titleInput,
+                        icon: "checklist",
+                        tint: .blue,
+                        axis: .vertical
+                    )
+                    .focused($isFocused)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("优先级")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                        TodoPrioritySelector(selection: $priority)
+                    }
+
+                    TodoDueDateField(hasDueDate: $hasDueDate, dueDate: $dueDate)
+                }
+                .padding(20)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("新增 TODO")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("添加") {
+                        onAdd(titleInput.trimmingCharacters(in: .whitespacesAndNewlines), priority, hasDueDate ? dueDate : nil)
+                        dismiss()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                    .disabled(!canSave)
+                }
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                isFocused = true
+            }
+        }
+    }
+}
+
+struct TodoDueDateField: View {
+    @Binding var hasDueDate: Bool
+    @Binding var dueDate: Date
+
+    static func defaultDueDate() -> Date {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date()) ?? Date()
+        return calendar.date(bySettingHour: 18, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Toggle(isOn: $hasDueDate.animation(.spring(response: 0.25, dampingFraction: 0.88))) {
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar.badge.clock")
+                        .foregroundStyle(.blue)
+                    Text("截止时间")
+                        .font(.subheadline.bold())
+                }
+            }
+            .tint(.blue)
+
+            if hasDueDate {
+                DatePicker(
+                    "",
+                    selection: $dueDate,
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .labelsHidden()
+                .datePickerStyle(.compact)
+                .environment(\.locale, Locale(identifier: "zh_CN"))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

@@ -425,7 +425,7 @@ extension ContentView {
                     prepareWeightSheet()
                     isShowingWeightSheet = true
                 } label: {
-                    AppIconCircleButton(icon: "plus", tint: .blue, size: 38, iconFont: .subheadline.weight(.bold))
+                    AppIconCircleButton(icon: "plus", tint: .blue, size: 34, iconFont: .subheadline.weight(.bold))
                 }
                 .buttonStyle(.plain)
             }

@@ -23,6 +23,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
     var updatedAt: Date?
     var completedAt: Date?
     var priority: TodoPriority = .importantNotUrgent
+    var dueDate: Date?
 
     var isCompleted: Bool {
         completedAt != nil
@@ -34,7 +35,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, createdAt, updatedAt, completedAt, priority
+        case id, title, createdAt, updatedAt, completedAt, priority, dueDate
     }
 
     init(
@@ -43,7 +44,8 @@ struct TodoTask: Identifiable, Equatable, Codable {
         createdAt: Date,
         updatedAt: Date? = nil,
         completedAt: Date? = nil,
-        priority: TodoPriority = .importantNotUrgent
+        priority: TodoPriority = .importantNotUrgent,
+        dueDate: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -51,6 +53,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
         self.updatedAt = updatedAt
         self.completedAt = completedAt
         self.priority = priority
+        self.dueDate = dueDate
     }
 
     init(from decoder: Decoder) throws {
@@ -61,6 +64,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
         priority = try container.decodeIfPresent(TodoPriority.self, forKey: .priority) ?? .importantNotUrgent
+        dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
     }
 }
 

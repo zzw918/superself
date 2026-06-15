@@ -158,17 +158,21 @@ extension ContentView {
         VStack(alignment: .leading, spacing: 14) {
             todoFilterBar
 
-            VStack(spacing: 10) {
-                AddEntryBar(
-                    placeholder: "记录些什么",
-                    text: $todoInput,
-                    icon: todoPriorityInput.icon,
-                    tint: todoPriorityInput.color,
-                    action: addTodoTask
-                )
-
-                TodoPrioritySelector(selection: $todoPriorityInput)
+            Button {
+                todoPriorityInput = todoFilter ?? .importantNotUrgent
+                isShowingTodoAddSheet = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                    Text("新增 TODO")
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.blue)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
+            .buttonStyle(.plain)
 
             if activeTodoTasks.isEmpty && completedTodoTasks.isEmpty {
                 AppEmptyState(
@@ -252,9 +256,9 @@ extension ContentView {
                 todoFilter = priority
             }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 Image(systemName: icon)
-                    .font(.caption.weight(.bold))
+                    .font(.caption2.weight(.bold))
 
                 Text(title)
 
@@ -263,14 +267,14 @@ extension ContentView {
                     Text("\(count)")
                         .font(.caption2.bold())
                         .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 1)
                         .background((isSelected ? Color.white.opacity(0.22) : tint.opacity(0.12)), in: Capsule())
                 }
             }
-            .font(.subheadline.weight(.semibold))
+            .font(.caption.weight(.semibold))
             .foregroundStyle(isSelected ? .white : tint)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
             .background {
                 if isSelected {
                     Capsule().fill(tint.gradient)

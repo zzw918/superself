@@ -217,11 +217,30 @@ extension ContentView {
                 } footer: {
                     Text("拖动调整顺序，关闭开关可隐藏模块，每个分类至少保留一个。")
                 }
+
+                Section {
+                    Button(role: .destructive) {
+                        withAnimation {
+                            resetSectionPreferences()
+                        }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Label("重置为默认", systemImage: "arrow.counterclockwise")
+                            Spacer()
+                        }
+                    }
+                }
             }
             .environment(\.editMode, .constant(.active))
             .navigationTitle("模块管理")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { isShowingSectionManagement = false }
+                        .font(.subheadline)
+                }
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") { isShowingSectionManagement = false }
                         .font(.subheadline.bold())

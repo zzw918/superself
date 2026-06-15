@@ -80,8 +80,8 @@ enum AppearanceMode: String, CaseIterable, Identifiable, Hashable {
 }
 
 enum HealthSection: String, CaseIterable, Identifiable, Codable {
-    case fasting
     case weight
+    case fasting
 
     var id: String { rawValue }
 

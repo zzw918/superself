@@ -76,6 +76,7 @@ struct ContentView: View {
     @State var todoInput = ""
     @State var todoPriorityInput: TodoPriority = .importantNotUrgent
     @State var todoFilter: TodoPriority? = nil
+    @State var isShowingTodoAddSheet = false
     @State var wishlistInput = ""
     @State var wishlistCategoryID = WishlistCategory.defaultCategories[0].id
     @State var wishlistFilter: WishlistFilter = .all
@@ -91,7 +92,7 @@ struct ContentView: View {
     @State var financeAssetAmountInput = ""
     @State var financeAssetNoteInput = ""
     @State var financeAssetKind: FinanceAssetKind = .bankCard
-    @State var healthSection: HealthSection = .fasting
+    @State var healthSection: HealthSection = .weight
     @State var memoSection: MemoSection = .todo
     @State var financeSection: FinanceSection = .assetRecord
     @State var healthSectionPrefs = SectionPreferences<HealthSection>()
@@ -202,10 +203,9 @@ struct ContentView: View {
         .sheet(item: $editingWeightLog) { log in
             WeightLogEditorSheet(
                 log: log,
-                weightText: weightText(log.weight),
                 dateText: chineseDateTime(log.date)
-            ) { newNote in
-                updateWeightLogNote(log, note: newNote)
+            ) { newWeight, newNote in
+                updateWeightLog(log, weight: newWeight, note: newNote)
             }
         }
         .sheet(isPresented: $isShowingBodySettings) {
@@ -238,9 +238,6 @@ struct ContentView: View {
                 },
                 onSaveRatings: { certainty, growth, attention in
                     updateStockResearchRatings(item, certainty: certainty, growth: growth, attention: attention)
-                },
-                onTogglePin: {
-                    toggleStockResearchPinned(item)
                 }
             )
         }
@@ -253,11 +250,19 @@ struct ContentView: View {
             }
             .presentationDragIndicator(.visible)
         }
-        .sheet(item: $editingTodoTask) { task in
-            TodoEditorSheet(task: task) { newTitle, newPriority in
-                updateTodoTask(task, title: newTitle, priority: newPriority)
+        .sheet(isPresented: $isShowingTodoAddSheet) {
+            TodoAddSheet(initialPriority: todoPriorityInput) { title, priority, dueDate in
+                todoTasks.insert(TodoTask(title: title, createdAt: Date(), priority: priority, dueDate: dueDate), at: 0)
+                persistTodoTasks()
             }
-            .presentationDetents([.height(440)])
+            .presentationDetents([.height(520)])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $editingTodoTask) { task in
+            TodoEditorSheet(task: task) { newTitle, newPriority, newDueDate in
+                updateTodoTask(task, title: newTitle, priority: newPriority, dueDate: newDueDate)
+            }
+            .presentationDetents([.height(520)])
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingWishlistItem) { item in
