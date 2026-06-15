@@ -102,10 +102,10 @@ struct FinanceTrendView: View {
                 GeometryReader { geo in
                     Rectangle().fill(.clear).contentShape(Rectangle())
                         .gesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { drag in
+                            SpatialTapGesture()
+                                .onEnded { tap in
                                     guard let plotFrame = proxy.plotFrame else { return }
-                                    let xPosition = drag.location.x - geo[plotFrame].origin.x
+                                    let xPosition = tap.location.x - geo[plotFrame].origin.x
                                     guard let date: Date = proxy.value(atX: xPosition) else { return }
                                     selectedPointID = nearestPoint(to: date)?.id
                                 }

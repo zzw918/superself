@@ -197,6 +197,12 @@ extension ContentView {
     }
 
     func currencyText(_ amount: Double) -> String {
+        if abs(amount) >= 10_000 {
+            let value = amount / 10_000
+            let text = value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.1f", value)
+            return "¥\(text)万"
+        }
+
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = "CNY"

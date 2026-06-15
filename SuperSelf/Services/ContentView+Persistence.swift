@@ -242,10 +242,47 @@ extension ContentView {
         loadAnniversaryItems()
         loadFinanceAssets()
         loadFinanceSnapshots()
+        recoverFinanceAssetsFromSnapshotsIfNeeded()
         loadStockResearchItems()
         pullFromICloud()
+        recoverFinanceAssetsFromSnapshotsIfNeeded()
         pushAllToICloud()
+        applyColdStartSelectionIfNeeded()
         rescheduleFastingNotifications()
+    }
+
+    /// 冷启动（新进程首次加载）时，按用户自定义顺序定位到第一个 tab 与各模块的第一个分区。
+    /// 进程存活期间不再重置，由 `@State` 自然记忆用户切换过的位置。
+    func applyColdStartSelectionIfNeeded() {
+        guard !didApplyColdStartSelection else { return }
+        didApplyColdStartSelection = true
+
+        if let firstTab = visibleMainTabs.first {
+            selectedTabID = firstTab.rawValue
+        }
+        if let firstHealth = visibleHealthSections.first {
+            healthSection = firstHealth
+        }
+        if let firstMemo = visibleMemoSections.first {
+            memoSection = firstMemo
+        }
+        if let firstFinance = visibleFinanceSections.first {
+            financeSection = firstFinance
+        }
+    }
+
+    /// 旧版本因新增字段导致资产解码失败而清空时，从最近一次非空快照里恢复资产。
+    func recoverFinanceAssetsFromSnapshotsIfNeeded() {
+        guard financeAssets.isEmpty else { return }
+        guard let snapshot = financeSnapshots
+            .sorted(by: { $0.date > $1.date })
+            .first(where: { !$0.assets.isEmpty }) else { return }
+
+        financeAssets = snapshot.assets
+        if let encodedAssets = try? JSONEncoder().encode(financeAssets) {
+            financeAssetsData = encodedAssets
+            cloudStore.set(encodedAssets, forKey: financeAssetsCloudKey)
+        }
     }
 
     func loadWeightLogs() {
@@ -301,7 +338,7 @@ extension ContentView {
         let trimmedTitle = todoInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { return }
 
-        todoTasks.insert(TodoTask(title: trimmedTitle, createdAt: Date()), at: 0)
+        todoTasks.insert(TodoTask(title: trimmedTitle, createdAt: Date(), priority: todoPriorityInput), at: 0)
         todoInput = ""
         persistTodoTasks()
     }
@@ -318,14 +355,15 @@ extension ContentView {
         persistTodoTasks()
     }
 
-    func updateTodoTask(_ task: TodoTask, title: String) {
+    func updateTodoTask(_ task: TodoTask, title: String, priority: TodoPriority) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty,
               let index = todoTasks.firstIndex(where: { $0.id == task.id }) else { return }
 
-        guard todoTasks[index].title != trimmed else { return }
+        guard todoTasks[index].title != trimmed || todoTasks[index].priority != priority else { return }
 
         todoTasks[index].title = trimmed
+        todoTasks[index].priority = priority
         todoTasks[index].updatedAt = Date()
         persistTodoTasks()
     }
@@ -570,21 +608,24 @@ extension ContentView {
 
         let trimmedName = financeAssetNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let assetName = trimmedName.isEmpty ? financeAssetKind.title : trimmedName
+        let trimmedNote = financeAssetNoteInput.trimmingCharacters(in: .whitespacesAndNewlines)
 
         financeAssets.insert(
-            FinanceAsset(name: assetName, kind: financeAssetKind, amount: amount, updatedAt: Date()),
+            FinanceAsset(name: assetName, kind: financeAssetKind, amount: amount, updatedAt: Date(), note: trimmedNote),
             at: 0
         )
         financeAssetNameInput = ""
         financeAssetAmountInput = ""
+        financeAssetNoteInput = ""
         persistFinanceAssets(recordSnapshot: true)
         isShowingFinanceAssetSheet = false
     }
 
-    func updateFinanceAsset(_ asset: FinanceAsset, amount: Double) {
+    func updateFinanceAsset(_ asset: FinanceAsset, amount: Double, note: String) {
         guard let index = financeAssets.firstIndex(where: { $0.id == asset.id }) else { return }
 
         financeAssets[index].amount = amount
+        financeAssets[index].note = note
         financeAssets[index].updatedAt = Date()
         persistFinanceAssets(recordSnapshot: true)
     }

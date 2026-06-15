@@ -617,7 +617,7 @@ extension ContentView {
 
                         ZStack(alignment: .topLeading) {
                             if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Text("可选，记一下胖了 / 瘦了的原因")
+                                Text("可选，记录胖了或瘦了的原因")
                                     .font(.subheadline)
                                     .foregroundStyle(.tertiary)
                                     .padding(.top, 14)

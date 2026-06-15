@@ -156,19 +156,25 @@ extension ContentView {
 
     var todoTasksCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            AddEntryBar(
-                placeholder: "记录些什么",
-                text: $todoInput,
-                icon: "checklist",
-                tint: .blue,
-                action: addTodoTask
-            )
+            todoFilterBar
+
+            VStack(spacing: 10) {
+                AddEntryBar(
+                    placeholder: "记录些什么",
+                    text: $todoInput,
+                    icon: todoPriorityInput.icon,
+                    tint: todoPriorityInput.color,
+                    action: addTodoTask
+                )
+
+                TodoPrioritySelector(selection: $todoPriorityInput)
+            }
 
             if activeTodoTasks.isEmpty && completedTodoTasks.isEmpty {
                 AppEmptyState(
-                    title: "还没有待办",
+                    title: todoFilter == nil ? "还没有待办" : "这个优先级还没有待办",
                     systemImage: "checklist",
-                    description: "把要做的事情写在这里，避免之后忘记。"
+                    description: todoFilter == nil ? "把要做的事情写在这里，避免之后忘记。" : "可以直接在这个优先级下新增一条。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 120)
             } else {
@@ -220,6 +226,60 @@ extension ContentView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var todoFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                todoFilterChip(for: nil)
+                ForEach(TodoPriority.allCases) { priority in
+                    todoFilterChip(for: priority)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    @ViewBuilder
+    func todoFilterChip(for priority: TodoPriority?) -> some View {
+        let isSelected = todoFilter == priority
+        let tint = priority?.color ?? .blue
+        let title = priority?.title ?? "全部"
+        let icon = priority?.icon ?? "tray.full"
+
+        Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                todoFilter = priority
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.caption.weight(.bold))
+
+                Text(title)
+
+                let count = todoCount(for: priority)
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background((isSelected ? Color.white.opacity(0.22) : tint.opacity(0.12)), in: Capsule())
+                }
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isSelected ? .white : tint)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background {
+                if isSelected {
+                    Capsule().fill(tint.gradient)
+                } else {
+                    Capsule().fill(tint.opacity(0.08))
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     var wishlistCard: some View {

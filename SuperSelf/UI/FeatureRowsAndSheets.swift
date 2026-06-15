@@ -1,5 +1,16 @@
 import SwiftUI
 
+extension TodoPriority {
+    var color: Color {
+        switch self {
+        case .importantUrgent: return .red
+        case .importantNotUrgent: return .orange
+        case .urgentNotImportant: return .blue
+        case .notImportantNotUrgent: return .gray
+        }
+    }
+}
+
 struct TodoTaskRow: View {
     let task: TodoTask
     let onToggle: () -> Void
@@ -16,16 +27,20 @@ struct TodoTaskRow: View {
             .buttonStyle(.borderless)
 
             Button(action: onEdit) {
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(task.title)
                         .font(.subheadline.weight(.medium))
                         .strikethrough(task.isCompleted)
                         .foregroundStyle(task.isCompleted ? .secondary : .primary)
                         .multilineTextAlignment(.leading)
 
-                    Text(timestampText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        TodoPriorityBadge(priority: task.priority)
+
+                        Text(timestampText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
@@ -69,6 +84,23 @@ struct TodoTaskRow: View {
             ? "M月d日 HH:mm"
             : "yyyy年M月d日 HH:mm"
         return formatter.string(from: date)
+    }
+}
+
+struct TodoPriorityBadge: View {
+    let priority: TodoPriority
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: priority.icon)
+                .font(.system(size: 9, weight: .bold))
+            Text(priority.title)
+                .font(.caption2.weight(.semibold))
+        }
+        .foregroundStyle(priority.color)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(priority.color.opacity(0.12), in: Capsule())
     }
 }
 
@@ -643,16 +675,18 @@ struct StockRatingPicker: View {
 struct FinanceAssetEditorSheet: View {
     let asset: FinanceAsset
     let amountText: String
-    let onSave: (Double) -> Void
+    let onSave: (Double, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var amountInput: String
+    @State private var noteInput: String
 
-    init(asset: FinanceAsset, amountText: String, onSave: @escaping (Double) -> Void) {
+    init(asset: FinanceAsset, amountText: String, onSave: @escaping (Double, String) -> Void) {
         self.asset = asset
         self.amountText = amountText
         self.onSave = onSave
         _amountInput = State(initialValue: String(format: "%.0f", asset.amount))
+        _noteInput = State(initialValue: asset.note)
     }
 
     var canSaveAmount: Bool {
@@ -679,9 +713,31 @@ struct FinanceAssetEditorSheet: View {
                     keyboardType: .numberPad
                 )
 
-                Text("这里只记录整数金额，几毛几分钱会自动忽略。")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("备注")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+
+                    ZStack(alignment: .topLeading) {
+                        if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("可选，记一下这笔资产的详细信息")
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
+                                .padding(.top, 14)
+                                .padding(.horizontal, 14)
+                        }
+
+                        TextEditor(text: $noteInput)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 88)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
 
                 Spacer()
 
@@ -707,7 +763,7 @@ struct FinanceAssetEditorSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
     }
 
     func saveAmount() {
@@ -716,7 +772,7 @@ struct FinanceAssetEditorSheet: View {
             .replacingOccurrences(of: ",", with: ".")
 
         guard let amount = Double(normalizedAmount) else { return }
-        onSave(amount)
+        onSave(amount, noteInput.trimmingCharacters(in: .whitespacesAndNewlines))
         dismiss()
     }
 }
@@ -757,6 +813,13 @@ struct FinanceAssetRow: View {
                     Text("更新于 \(updatedText)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+
+                    if !asset.note.isEmpty {
+                        Text(asset.note)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
                 }
 
                 Spacer()
@@ -1066,16 +1129,18 @@ struct MeasurementField: View {
 
 struct TodoEditorSheet: View {
     let task: TodoTask
-    let onSave: (String) -> Void
+    let onSave: (String, TodoPriority) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String
+    @State private var priority: TodoPriority
     @FocusState private var isFocused: Bool
 
-    init(task: TodoTask, onSave: @escaping (String) -> Void) {
+    init(task: TodoTask, onSave: @escaping (String, TodoPriority) -> Void) {
         self.task = task
         self.onSave = onSave
         _titleInput = State(initialValue: task.title)
+        _priority = State(initialValue: task.priority)
     }
 
     private var canSave: Bool {
@@ -1094,6 +1159,13 @@ struct TodoEditorSheet: View {
                 )
                 .focused($isFocused)
 
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("优先级")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                    TodoPrioritySelector(selection: $priority)
+                }
+
                 Spacer(minLength: 0)
             }
             .padding(20)
@@ -1108,7 +1180,7 @@ struct TodoEditorSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") {
-                        onSave(titleInput)
+                        onSave(titleInput, priority)
                         dismiss()
                     }
                     .font(.subheadline.bold())
@@ -1120,6 +1192,40 @@ struct TodoEditorSheet: View {
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 isFocused = true
+            }
+        }
+    }
+}
+
+struct TodoPrioritySelector: View {
+    @Binding var selection: TodoPriority
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+            ForEach(TodoPriority.allCases) { priority in
+                let isSelected = selection == priority
+                Button {
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                        selection = priority
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: priority.icon)
+                            .font(.caption.weight(.bold))
+                        Text(priority.title)
+                            .font(.subheadline.weight(.medium))
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundStyle(isSelected ? .white : priority.color)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        isSelected ? AnyShapeStyle(priority.color) : AnyShapeStyle(priority.color.opacity(0.12)),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+                }
+                .buttonStyle(.plain)
             }
         }
     }

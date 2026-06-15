@@ -74,6 +74,8 @@ struct ContentView: View {
     @State var wishlistCategories: [WishlistCategory] = WishlistCategory.defaultCategories
     @State var anniversaryItems: [AnniversaryItem] = []
     @State var todoInput = ""
+    @State var todoPriorityInput: TodoPriority = .importantNotUrgent
+    @State var todoFilter: TodoPriority? = nil
     @State var wishlistInput = ""
     @State var wishlistCategoryID = WishlistCategory.defaultCategories[0].id
     @State var wishlistFilter: WishlistFilter = .all
@@ -87,6 +89,7 @@ struct ContentView: View {
     @State var financeSnapshots: [FinanceSnapshot] = []
     @State var financeAssetNameInput = ""
     @State var financeAssetAmountInput = ""
+    @State var financeAssetNoteInput = ""
     @State var financeAssetKind: FinanceAssetKind = .bankCard
     @State var healthSection: HealthSection = .fasting
     @State var memoSection: MemoSection = .todo
@@ -109,6 +112,7 @@ struct ContentView: View {
     @State var isShowingSectionManagement = false
     @State var mainTabOrder = MainAppTab.allCases
     @State var visibleMainTabSet = Set(MainAppTab.allCases)
+    @State var didApplyColdStartSelection = false
     @State var syncStatus = "iCloud 同步准备中"
     @State var isSyncing = false
     @AppStorage("lastICloudSyncAt") var lastICloudSyncAt: Double = 0
@@ -220,8 +224,8 @@ struct ContentView: View {
             planSheet
         }
         .sheet(item: $editingFinanceAsset) { asset in
-            FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newAmount in
-                updateFinanceAsset(asset, amount: newAmount)
+            FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newAmount, newNote in
+                updateFinanceAsset(asset, amount: newAmount, note: newNote)
             }
         }
         .sheet(item: $editingStockResearchItem) { item in
@@ -250,10 +254,10 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingTodoTask) { task in
-            TodoEditorSheet(task: task) { newTitle in
-                updateTodoTask(task, title: newTitle)
+            TodoEditorSheet(task: task) { newTitle, newPriority in
+                updateTodoTask(task, title: newTitle, priority: newPriority)
             }
-            .presentationDetents([.height(340)])
+            .presentationDetents([.height(440)])
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingWishlistItem) { item in

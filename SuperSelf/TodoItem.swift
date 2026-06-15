@@ -22,6 +22,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
     var createdAt: Date
     var updatedAt: Date?
     var completedAt: Date?
+    var priority: TodoPriority = .importantNotUrgent
 
     var isCompleted: Bool {
         completedAt != nil
@@ -30,6 +31,63 @@ struct TodoTask: Identifiable, Equatable, Codable {
     /// 用于排序与展示的最近活动时间：编辑过取编辑时间，否则取创建时间。
     var lastActivityAt: Date {
         updatedAt ?? createdAt
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, createdAt, updatedAt, completedAt, priority
+    }
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        createdAt: Date,
+        updatedAt: Date? = nil,
+        completedAt: Date? = nil,
+        priority: TodoPriority = .importantNotUrgent
+    ) {
+        self.id = id
+        self.title = title
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.completedAt = completedAt
+        self.priority = priority
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        title = try container.decode(String.self, forKey: .title)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+        completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+        priority = try container.decodeIfPresent(TodoPriority.self, forKey: .priority) ?? .importantNotUrgent
+    }
+}
+
+enum TodoPriority: String, CaseIterable, Identifiable, Codable {
+    case importantUrgent
+    case importantNotUrgent
+    case urgentNotImportant
+    case notImportantNotUrgent
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .importantUrgent: return "重要紧急"
+        case .importantNotUrgent: return "重要不紧急"
+        case .urgentNotImportant: return "紧急不重要"
+        case .notImportantNotUrgent: return "不重要不紧急"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .importantUrgent: return "flame.fill"
+        case .importantNotUrgent: return "star.fill"
+        case .urgentNotImportant: return "bolt.fill"
+        case .notImportantNotUrgent: return "leaf.fill"
+        }
     }
 }
 
@@ -41,8 +99,8 @@ struct WishlistCategory: Identifiable, Equatable, Hashable, Codable {
     static let defaultCategories: [WishlistCategory] = [
         WishlistCategory(id: "travel", title: "旅行", icon: "airplane"),
         WishlistCategory(id: "food", title: "美食", icon: "fork.knife"),
-        WishlistCategory(id: "reading", title: "阅读", icon: "book.closed"),
         WishlistCategory(id: "movie", title: "电影", icon: "film"),
+        WishlistCategory(id: "reading", title: "阅读", icon: "book.closed"),
         WishlistCategory(id: "music", title: "音乐", icon: "music.note"),
         WishlistCategory(id: "experience", title: "新体验", icon: "sparkles"),
         WishlistCategory(id: "other", title: "其他", icon: "ellipsis.circle")
@@ -278,6 +336,30 @@ struct FinanceAsset: Identifiable, Equatable, Codable {
     var kind: FinanceAssetKind
     var amount: Double
     var updatedAt: Date
+    var note: String = ""
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, kind, amount, updatedAt, note
+    }
+
+    init(id: UUID = UUID(), name: String, kind: FinanceAssetKind, amount: Double, updatedAt: Date, note: String = "") {
+        self.id = id
+        self.name = name
+        self.kind = kind
+        self.amount = amount
+        self.updatedAt = updatedAt
+        self.note = note
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try container.decode(String.self, forKey: .name)
+        kind = try container.decode(FinanceAssetKind.self, forKey: .kind)
+        amount = try container.decode(Double.self, forKey: .amount)
+        updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
+    }
 }
 
 struct FinanceSnapshot: Identifiable, Equatable, Codable {

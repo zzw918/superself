@@ -71,23 +71,16 @@ extension ContentView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    SheetHeader(
-                        icon: "wallet.pass.fill",
-                        title: "添加资产",
-                        subtitle: "选择类型，填写名称和金额",
-                        gradient: [.green, .teal]
-                    )
-
                     VStack(alignment: .leading, spacing: 10) {
                         financeFieldLabel("资产类型")
 
-                        LazyVGrid(
-                            columns: [GridItem(.adaptive(minimum: 96), spacing: 10)],
-                            spacing: 10
-                        ) {
-                            ForEach(FinanceAssetKind.allCases) { kind in
-                                financeKindChip(kind)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(FinanceAssetKind.allCases) { kind in
+                                    financeKindChip(kind)
+                                }
                             }
+                            .padding(.vertical, 2)
                         }
                     }
 
@@ -110,6 +103,29 @@ extension ContentView {
                             tint: financeKindTint(financeAssetKind),
                             keyboardType: .decimalPad
                         )
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        financeFieldLabel("备注")
+                        ZStack(alignment: .topLeading) {
+                            if financeAssetNoteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text("可选，记一下这笔资产的详细信息")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.tertiary)
+                                    .padding(.top, 14)
+                                    .padding(.horizontal, 14)
+                            }
+
+                            TextEditor(text: $financeAssetNoteInput)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 88)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                        }
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                 }
                 .padding()
@@ -155,24 +171,20 @@ extension ContentView {
                 financeAssetKind = kind
             }
         } label: {
-            VStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Image(systemName: kind.icon)
-                    .font(.title3)
-                    .foregroundStyle(isSelected ? .white : tint)
-                    .frame(width: 40, height: 40)
-                    .background(isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.12)), in: Circle())
+                    .font(.subheadline)
 
                 Text(kind.title)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .font(.subheadline.weight(.medium))
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(isSelected ? tint : Color(.separator).opacity(0.18), lineWidth: isSelected ? 2 : 1)
-            }
+            .foregroundStyle(isSelected ? .white : tint)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(
+                isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.12)),
+                in: Capsule()
+            )
         }
         .buttonStyle(.plain)
     }
@@ -216,7 +228,6 @@ extension ContentView {
 
             if !monthlyFinanceTrendPoints.isEmpty {
                 FinanceTrendView(points: monthlyFinanceTrendPoints, amountText: currencyText)
-                    .frame(height: 150)
             } else {
                 AppEmptyState(
                     title: "还没有趋势",

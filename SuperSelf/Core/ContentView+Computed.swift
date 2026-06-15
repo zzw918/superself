@@ -81,13 +81,22 @@ extension ContentView {
     var activeTodoTasks: [TodoTask] {
         todoTasks
             .filter { !$0.isCompleted }
+            .filter { task in todoFilter == nil || task.priority == todoFilter }
             .sorted { $0.lastActivityAt > $1.lastActivityAt }
     }
 
     var completedTodoTasks: [TodoTask] {
         todoTasks
             .filter(\.isCompleted)
+            .filter { task in todoFilter == nil || task.priority == todoFilter }
             .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
+    }
+
+    func todoCount(for priority: TodoPriority?) -> Int {
+        guard let priority else {
+            return todoTasks.filter { !$0.isCompleted }.count
+        }
+        return todoTasks.filter { !$0.isCompleted && $0.priority == priority }.count
     }
 
     var openWishlistItems: [WishlistItem] {

@@ -343,10 +343,22 @@ extension ContentView {
         HStack(spacing: 16) {
             switch weatherStore.state {
             case .loaded(let info):
-                Image(systemName: info.symbolName)
-                    .font(.system(size: 34))
-                    .symbolRenderingMode(.multicolor)
-                    .frame(width: 48)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: weatherGradient(for: info.weatherCode),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    Image(systemName: info.symbolName)
+                        .font(.system(size: 32))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
+                }
+                .frame(width: 64, height: 64)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(info.cityName)
@@ -410,6 +422,25 @@ extension ContentView {
         .contentShape(Rectangle())
         .onTapGesture {
             weatherStore.refresh()
+        }
+    }
+
+    func weatherGradient(for code: Int) -> [Color] {
+        switch code {
+        case 0:
+            return [Color(red: 1.0, green: 0.75, blue: 0.28), Color(red: 1.0, green: 0.55, blue: 0.0)]
+        case 1, 2:
+            return [Color(red: 0.43, green: 0.70, blue: 0.95), Color(red: 0.29, green: 0.56, blue: 0.89)]
+        case 45, 48:
+            return [Color(red: 0.74, green: 0.76, blue: 0.78), Color(red: 0.56, green: 0.61, blue: 0.65)]
+        case 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82:
+            return [Color(red: 0.36, green: 0.42, blue: 0.75), Color(red: 0.22, green: 0.29, blue: 0.67)]
+        case 71, 73, 75, 77, 85, 86:
+            return [Color(red: 0.61, green: 0.83, blue: 0.94), Color(red: 0.36, green: 0.68, blue: 0.89)]
+        case 95, 96, 99:
+            return [Color(red: 0.38, green: 0.41, blue: 0.44), Color(red: 0.22, green: 0.28, blue: 0.31)]
+        default:
+            return [Color(red: 0.64, green: 0.69, blue: 0.73), Color(red: 0.45, green: 0.49, blue: 0.53)]
         }
     }
 
