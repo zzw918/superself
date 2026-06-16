@@ -929,25 +929,29 @@ extension ContentView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("体重目标")
-                            .font(.title2.bold())
+                    VStack(alignment: .leading, spacing: 12) {
+                        MeasurementField(title: "身高", value: $heightCm, placeholder: "175", unit: "cm", icon: "ruler", tint: .blue)
+                        Text("填写身高用于计算 BMI 指数")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                        Text("身高和目标体重通常很少变化，设置好之后会自动刷新目标进度和 BMI。")
-                            .font(.subheadline)
+                        MeasurementField(title: "目标体重", value: $targetWeight, placeholder: "65", unit: "kg", icon: "target", tint: .orange)
+
+                        Text("建议用你能长期维持的目标体重，不需要一步到位。")
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    VStack(alignment: .leading, spacing: 12) {
-                        MeasurementField(title: "身高", value: $heightCm, placeholder: "175", unit: "cm", icon: "ruler", tint: .blue)
-                        MeasurementField(title: "目标体重", value: $targetWeight, placeholder: "65", unit: "kg", icon: "target", tint: .orange)
-                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        MeasurementField(title: "本轮初始体重", value: $roundStartWeight, placeholder: roundStartPlaceholder, unit: "kg", icon: "flag.fill", tint: .pink)
 
-                    Label("建议用你能长期维持的目标体重，不需要一步到位。", systemImage: "sparkles")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        Text("设置后，可以看到当前体重相对初始体重的变化情况")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .padding(20)
             }

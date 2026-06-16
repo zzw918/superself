@@ -706,21 +706,24 @@ struct StockRatingPicker: View {
 struct FinanceAssetEditorSheet: View {
     let asset: FinanceAsset
     let amountText: String
-    let onSave: (Double, String) -> Void
+    let onSave: (String, Double, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var nameInput: String
     @State private var amountInput: String
     @State private var noteInput: String
 
-    init(asset: FinanceAsset, amountText: String, onSave: @escaping (Double, String) -> Void) {
+    init(asset: FinanceAsset, amountText: String, onSave: @escaping (String, Double, String) -> Void) {
         self.asset = asset
         self.amountText = amountText
         self.onSave = onSave
+        _nameInput = State(initialValue: asset.name)
         _amountInput = State(initialValue: String(format: "%.0f", asset.amount))
         _noteInput = State(initialValue: asset.note)
     }
 
     var canSaveAmount: Bool {
+        !nameInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !amountInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
@@ -728,8 +731,12 @@ struct FinanceAssetEditorSheet: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(asset.name)
-                        .font(.title2.bold())
+                    ModernInputField(
+                        placeholder: "资产名称",
+                        text: $nameInput,
+                        icon: "pencil.line",
+                        tint: .blue
+                    )
 
                     Text("\(asset.kind.title) · 当前 \(amountText)")
                         .font(.subheadline)
@@ -775,7 +782,7 @@ struct FinanceAssetEditorSheet: View {
                 Button {
                     saveAmount()
                 } label: {
-                    Text("保存金额")
+                    Text("保存修改")
                 }
                 .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
                 .disabled(!canSaveAmount)
@@ -798,12 +805,13 @@ struct FinanceAssetEditorSheet: View {
     }
 
     func saveAmount() {
+        let trimmedName = nameInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedAmount = amountInput
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: ",", with: ".")
 
-        guard let amount = Double(normalizedAmount) else { return }
-        onSave(amount, noteInput.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard !trimmedName.isEmpty, let amount = Double(normalizedAmount) else { return }
+        onSave(trimmedName, amount, noteInput.trimmingCharacters(in: .whitespacesAndNewlines))
         dismiss()
     }
 }
@@ -1000,14 +1008,26 @@ struct WeightLogEditorSheet: View {
                         .font(.caption.bold())
                         .foregroundStyle(.secondary)
 
-                    ModernInputField(
-                        placeholder: "记一下当时的情况",
-                        text: $noteInput,
-                        icon: "text.alignleft",
-                        tint: .blue,
-                        axis: .vertical
-                    )
-                    .focused($focusedField, equals: .note)
+                    ZStack(alignment: .topLeading) {
+                        if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("可选，记录胖了或瘦了的原因")
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
+                                .padding(.top, 14)
+                                .padding(.horizontal, 14)
+                        }
+
+                        TextEditor(text: $noteInput)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 88)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .focused($focusedField, equals: .note)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
 
                 Spacer(minLength: 0)

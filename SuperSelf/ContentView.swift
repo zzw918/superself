@@ -31,6 +31,7 @@ struct ContentView: View {
     let financeSectionPreferencesCloudKey = "financeSectionPreferences"
     let heightCmCloudKey = "heightCm"
     let targetWeightCloudKey = "targetWeight"
+    let roundStartWeightCloudKey = "roundStartWeight"
     let planOptions = [(fasting: 14, eating: 10), (fasting: 16, eating: 8), (fasting: 18, eating: 6), (fasting: 20, eating: 4)]
     let isoCalendar = Calendar(identifier: .iso8601)
 
@@ -55,6 +56,7 @@ struct ContentView: View {
     @AppStorage("dailyGoal") var dailyGoal = "多喝水，优先吃蛋白质，散步 20 分钟"
     @AppStorage("heightCm") var heightCm = ""
     @AppStorage("targetWeight") var targetWeight = ""
+    @AppStorage("roundStartWeight") var roundStartWeight = ""
     @AppStorage("appearanceMode") var appearanceModeRaw = AppearanceMode.system.rawValue
     @AppStorage("notifyEatingSoon") var notifyEatingSoon = false
     @AppStorage("notifyEatingStart") var notifyEatingStart = false
@@ -194,6 +196,9 @@ struct ContentView: View {
         .onChange(of: targetWeight) {
             persistSettingsToICloud()
         }
+        .onChange(of: roundStartWeight) {
+            persistSettingsToICloud()
+        }
         .sheet(isPresented: $isShowingWeightSheet) {
             addWeightSheet
         }
@@ -224,8 +229,8 @@ struct ContentView: View {
             planSheet
         }
         .sheet(item: $editingFinanceAsset) { asset in
-            FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newAmount, newNote in
-                updateFinanceAsset(asset, amount: newAmount, note: newNote)
+            FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newName, newAmount, newNote in
+                updateFinanceAsset(asset, name: newName, amount: newAmount, note: newNote)
             }
         }
         .sheet(item: $editingStockResearchItem) { item in

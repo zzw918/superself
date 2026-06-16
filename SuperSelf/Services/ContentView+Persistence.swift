@@ -636,9 +636,13 @@ extension ContentView {
         isShowingFinanceAssetSheet = false
     }
 
-    func updateFinanceAsset(_ asset: FinanceAsset, amount: Double, note: String) {
+    func updateFinanceAsset(_ asset: FinanceAsset, name: String, amount: Double, note: String) {
         guard let index = financeAssets.firstIndex(where: { $0.id == asset.id }) else { return }
 
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedName.isEmpty {
+            financeAssets[index].name = trimmedName
+        }
         financeAssets[index].amount = amount
         financeAssets[index].note = note
         financeAssets[index].updatedAt = Date()
@@ -905,6 +909,10 @@ extension ContentView {
             targetWeight = cloudStore.string(forKey: targetWeightCloudKey) ?? ""
         }
 
+        if cloudStore.object(forKey: roundStartWeightCloudKey) != nil {
+            roundStartWeight = cloudStore.string(forKey: roundStartWeightCloudKey) ?? ""
+        }
+
         syncStatus = "已从 iCloud 检查更新"
     }
 
@@ -1023,6 +1031,7 @@ extension ContentView {
         cloudStore.set(dailyGoal, forKey: dailyGoalCloudKey)
         cloudStore.set(heightCm, forKey: heightCmCloudKey)
         cloudStore.set(targetWeight, forKey: targetWeightCloudKey)
+        cloudStore.set(roundStartWeight, forKey: roundStartWeightCloudKey)
     }
 
     func mergeWeightLogs(_ cloudLogs: [FastingLog]) {

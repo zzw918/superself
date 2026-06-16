@@ -473,9 +473,23 @@ extension ContentView {
         return "heart.text.square.fill"
     }
 
-    /// 减重起点：取最早一次记录的体重，用来衡量已经减了多少。
+    var roundStartWeightValue: Double? {
+        let normalized = roundStartWeight.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+        return Double(normalized)
+    }
+
+    /// 「本轮初始体重」输入框的占位：默认显示最早一次记录的体重。
+    var roundStartPlaceholder: String {
+        if let oldest = oldestWeightLog?.weight {
+            return weightText(oldest)
+        }
+        return "70.0"
+    }
+
+    /// 减重起点：优先用用户设置的「本轮减肥初始体重」，否则回退到最早一次记录的体重。
     var weightStartValue: Double? {
-        oldestWeightLog?.weight
+        roundStartWeightValue ?? oldestWeightLog?.weight
     }
 
     /// 距离目标还差多少（仅在还需减重时返回正值）。
