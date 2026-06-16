@@ -162,9 +162,6 @@ struct WishlistRow: View {
                             .clipShape(Capsule())
                     }
 
-                    Text(item.isCompleted ? "实现于 \(dateText(item.completedAt ?? item.createdAt))" : "记录于 \(dateText(item.createdAt))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
@@ -189,15 +186,6 @@ struct WishlistRow: View {
             ),
             onDelete: onDelete
         )
-    }
-
-    func dateText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
-            ? "M月d日 HH:mm"
-            : "yyyy年M月d日 HH:mm"
-        return formatter.string(from: date)
     }
 }
 
@@ -522,7 +510,6 @@ struct FlexibleChips: View {
 struct StockResearchEditorSheet: View {
     let item: StockResearchItem
     @Binding var thesis: String
-    let updatedText: String
     let onRename: (String) -> Void
     let onSaveRatings: (StockRating?, StockRating?, StockRating?) -> Void
 
@@ -538,19 +525,26 @@ struct StockResearchEditorSheet: View {
     init(
         item: StockResearchItem,
         thesis: Binding<String>,
-        updatedText: String,
         onRename: @escaping (String) -> Void,
         onSaveRatings: @escaping (StockRating?, StockRating?, StockRating?) -> Void
     ) {
         self.item = item
         _thesis = thesis
-        self.updatedText = updatedText
         self.onRename = onRename
         self.onSaveRatings = onSaveRatings
         _nameInput = State(initialValue: item.name)
         _certainty = State(initialValue: item.certainty)
         _growth = State(initialValue: item.growth)
         _attention = State(initialValue: item.attention)
+    }
+
+    private var createdTimeText: String {
+        "创建于 \(metaDateText(item.createdAt))"
+    }
+
+    private var editedTimeText: String? {
+        guard item.updatedAt != item.createdAt else { return nil }
+        return "编辑于 \(metaDateText(item.updatedAt))"
     }
 
     var body: some View {
@@ -570,7 +564,7 @@ struct StockResearchEditorSheet: View {
                                 .background(Color(.secondarySystemGroupedBackground))
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
 
-                            Text("更新于 \(updatedText)")
+                            Text("股票分析")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -606,6 +600,16 @@ struct StockResearchEditorSheet: View {
                         .padding(14)
                         .background(Color(.secondarySystemGroupedBackground))
                         .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .padding(.horizontal)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(createdTimeText)
+                            if let editedTimeText {
+                                Text(editedTimeText)
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                         .padding(.horizontal)
                         .padding(.bottom)
                     }
@@ -652,6 +656,15 @@ struct StockResearchEditorSheet: View {
                 }
             }
         }
+    }
+
+    func metaDateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+            ? "M月d日 HH:mm"
+            : "yyyy年M月d日 HH:mm"
+        return formatter.string(from: date)
     }
 }
 
@@ -718,6 +731,14 @@ struct FinanceAssetEditorSheet: View {
     var canSaveAmount: Bool {
         !nameInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !amountInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var createdTimeText: String {
+        "创建时间 \(metaDateText(asset.createdAt))"
+    }
+
+    var updatedTimeText: String {
+        "更新时间 \(metaDateText(asset.updatedAt))"
     }
 
     var body: some View {
@@ -793,6 +814,13 @@ struct FinanceAssetEditorSheet: View {
                     }
                     .buttonStyle(AppPrimaryButtonStyle(tint: financeKindTint(kind)))
                     .disabled(!canSaveAmount)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(createdTimeText)
+                        Text(updatedTimeText)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
                 }
             }
             .padding()
@@ -810,6 +838,15 @@ struct FinanceAssetEditorSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    func metaDateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+            ? "M月d日 HH:mm"
+            : "yyyy年M月d日 HH:mm"
+        return formatter.string(from: date)
     }
 
     func financeKindChip(_ item: FinanceAssetKind) -> some View {
@@ -1049,7 +1086,7 @@ struct WeightLogEditorSheet: View {
 
     private var editedTimeText: String? {
         guard let updatedAt = log.updatedAt else { return nil }
-        return "编辑于 \(metaDateText(updatedAt))"
+        return "更新于 \(metaDateText(updatedAt))"
     }
 
     var body: some View {
@@ -1343,7 +1380,7 @@ struct TodoEditorSheet: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("创建于 \(metaDateText(task.createdAt))")
                         if let updatedAt = task.updatedAt {
-                            Text("编辑于 \(metaDateText(updatedAt))")
+                            Text("更新于 \(metaDateText(updatedAt))")
                         }
                     }
                     .font(.caption)
@@ -1646,6 +1683,15 @@ struct WishlistEditorSheet: View {
         !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private var createdTimeText: String {
+        "创建于 \(metaDateText(item.createdAt))"
+    }
+
+    private var editedTimeText: String? {
+        guard let updatedAt = item.updatedAt else { return nil }
+        return "更新于 \(metaDateText(updatedAt))"
+    }
+
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
@@ -1687,6 +1733,15 @@ struct WishlistEditorSheet: View {
                 )
                 .focused($isFocused)
 
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(createdTimeText)
+                    if let editedTimeText {
+                        Text(editedTimeText)
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+
                 Spacer(minLength: 0)
             }
             .padding(20)
@@ -1710,6 +1765,15 @@ struct WishlistEditorSheet: View {
                 }
             }
         }
+    }
+
+    func metaDateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+            ? "M月d日 HH:mm"
+            : "yyyy年M月d日 HH:mm"
+        return formatter.string(from: date)
     }
 }
 
@@ -1910,6 +1974,7 @@ struct WishlistCategoryEditorSheet: View {
             }
         }
     }
+
 }
 
 struct AnniversaryEditorSheet: View {

@@ -305,9 +305,12 @@ extension ContentView {
                     Button {
                         toggleTabEditMode()
                     } label: {
-                        Text(isEditingTabs ? "完成" : "排序")
+                        Image(systemName: isEditingTabs ? "checkmark" : "square.and.pencil")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(isEditingTabs ? .blue : .secondary)
+                            .frame(width: 30, height: 30)
+                            .background(Color(.tertiarySystemFill))
+                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }

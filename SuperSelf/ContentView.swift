@@ -236,7 +236,6 @@ struct ContentView: View {
             StockResearchEditorSheet(
                 item: item,
                 thesis: stockResearchThesisBinding(for: item),
-                updatedText: chineseDateTime(item.updatedAt),
                 onRename: { newName in
                     renameStockResearchItem(item, name: newName)
                 },

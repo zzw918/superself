@@ -181,17 +181,26 @@ struct WishlistItem: Identifiable, Equatable, Codable {
     var title: String
     var categoryID: String
     var createdAt: Date
+    var updatedAt: Date?
     var completedAt: Date?
 
     var isCompleted: Bool {
         completedAt != nil
     }
 
-    init(id: UUID = UUID(), title: String, categoryID: String, createdAt: Date, completedAt: Date? = nil) {
+    init(
+        id: UUID = UUID(),
+        title: String,
+        categoryID: String,
+        createdAt: Date,
+        updatedAt: Date? = nil,
+        completedAt: Date? = nil
+    ) {
         self.id = id
         self.title = title
         self.categoryID = categoryID
         self.createdAt = createdAt
+        self.updatedAt = updatedAt
         self.completedAt = completedAt
     }
 
@@ -201,6 +210,7 @@ struct WishlistItem: Identifiable, Equatable, Codable {
         case categoryID
         case category
         case createdAt
+        case updatedAt
         case completedAt
     }
 
@@ -216,6 +226,7 @@ struct WishlistItem: Identifiable, Equatable, Codable {
             categoryID = WishlistCategory.fallback.id
         }
         createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
     }
 
@@ -368,18 +379,28 @@ struct FinanceAsset: Identifiable, Equatable, Codable {
     var name: String
     var kind: FinanceAssetKind
     var amount: Double
+    var createdAt: Date
     var updatedAt: Date
     var note: String = ""
 
     enum CodingKeys: String, CodingKey {
-        case id, name, kind, amount, updatedAt, note
+        case id, name, kind, amount, createdAt, updatedAt, note
     }
 
-    init(id: UUID = UUID(), name: String, kind: FinanceAssetKind, amount: Double, updatedAt: Date, note: String = "") {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        kind: FinanceAssetKind,
+        amount: Double,
+        createdAt: Date,
+        updatedAt: Date,
+        note: String = ""
+    ) {
         self.id = id
         self.name = name
         self.kind = kind
         self.amount = amount
+        self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.note = note
     }
@@ -391,6 +412,7 @@ struct FinanceAsset: Identifiable, Equatable, Codable {
         kind = try container.decode(FinanceAssetKind.self, forKey: .kind)
         amount = try container.decode(Double.self, forKey: .amount)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? updatedAt
         note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
     }
 }

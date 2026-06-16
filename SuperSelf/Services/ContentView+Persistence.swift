@@ -469,6 +469,7 @@ extension ContentView {
 
         wishlistItems[index].title = trimmed
         wishlistItems[index].categoryID = categoryID
+        wishlistItems[index].updatedAt = Date()
         persistWishlistItems()
     }
 
@@ -625,9 +626,10 @@ extension ContentView {
         let trimmedName = financeAssetNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let assetName = trimmedName.isEmpty ? financeAssetKind.title : trimmedName
         let trimmedNote = financeAssetNoteInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let now = Date()
 
         financeAssets.insert(
-            FinanceAsset(name: assetName, kind: financeAssetKind, amount: amount, updatedAt: Date(), note: trimmedNote),
+            FinanceAsset(name: assetName, kind: financeAssetKind, amount: amount, createdAt: now, updatedAt: now, note: trimmedNote),
             at: 0
         )
         financeAssetNameInput = ""
