@@ -166,6 +166,9 @@ extension ContentView {
             if lhsCount != rhsCount {
                 return lhsCount > rhsCount
             }
+            if lhs.element.id == "other" || rhs.element.id == "other" {
+                return rhs.element.id == "other"
+            }
             return lhs.offset < rhs.offset
         }
         .map(\.element)
@@ -237,7 +240,12 @@ extension ContentView {
     }
 
     var sortedFinanceAssets: [FinanceAsset] {
-        financeAssets.sorted { $0.updatedAt > $1.updatedAt }
+        financeAssets.sorted {
+            if $0.amount != $1.amount {
+                return $0.amount > $1.amount
+            }
+            return $0.updatedAt > $1.updatedAt
+        }
     }
 
     var sortedFinanceSnapshots: [FinanceSnapshot] {

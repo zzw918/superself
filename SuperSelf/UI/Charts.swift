@@ -237,7 +237,7 @@ struct FinanceDistributionView: View {
     }
 
     func percentageText(for amount: Double) -> String {
-        String(format: "%.0f%%", amount / max(totalAmount, 1) * 100)
+        String(format: "%.1f%%", amount / max(totalAmount, 1) * 100)
     }
 
     func point(at location: CGPoint, in size: CGSize) -> FinanceDistributionPoint? {

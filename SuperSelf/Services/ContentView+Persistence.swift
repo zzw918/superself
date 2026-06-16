@@ -75,13 +75,41 @@ extension ContentView {
 
     func moveMainTabs(from source: IndexSet, to destination: Int) {
         mainTabOrder.move(fromOffsets: source, toOffset: destination)
-        persistMainTabPreferences()
+        if !isEditingTabs {
+            persistMainTabPreferences()
+        }
     }
 
     func toggleTabEditMode() {
-        withAnimation {
-            editMode?.wrappedValue = isEditingTabs ? .inactive : .active
+        if isEditingTabs {
+            commitTabEditMode()
+        } else {
+            beginTabEditMode()
         }
+    }
+
+    func beginTabEditMode() {
+        tabEditOriginalOrder = mainTabOrder
+        tabEditOriginalVisibleSet = visibleMainTabSet
+        withAnimation {
+            editMode?.wrappedValue = .active
+        }
+    }
+
+    func commitTabEditMode() {
+        withAnimation {
+            editMode?.wrappedValue = .inactive
+        }
+        persistMainTabPreferences()
+    }
+
+    func cancelTabEditMode() {
+        mainTabOrder = tabEditOriginalOrder
+        visibleMainTabSet = tabEditOriginalVisibleSet
+        withAnimation {
+            editMode?.wrappedValue = .inactive
+        }
+        persistMainTabPreferences()
     }
 
     // MARK: - 各 tab 内分区偏好（顺序 / 显示隐藏）

@@ -17,12 +17,16 @@ struct TodoTaskRow: View {
     let onEdit: () -> Void
     var onDelete: (() -> Void)? = nil
 
+    @State private var isShowingCompleteConfirm = false
+    @State private var isCelebratingCompletion = false
+
     var body: some View {
         HStack(spacing: 12) {
-            Button(action: onToggle) {
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+            Button(action: handleToggleTap) {
+                Image(systemName: task.isCompleted || isCelebratingCompletion ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
-                    .foregroundStyle(task.isCompleted ? .green : Color(.systemGray3))
+                    .foregroundStyle(task.isCompleted || isCelebratingCompletion ? .green : Color(.systemGray3))
+                    .scaleEffect(isCelebratingCompletion ? 1.18 : 1)
             }
             .buttonStyle(.borderless)
 
@@ -30,14 +34,14 @@ struct TodoTaskRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(task.title)
                         .font(.subheadline.weight(.medium))
-                        .strikethrough(task.isCompleted)
-                        .foregroundStyle(task.isCompleted ? .secondary : .primary)
+                        .strikethrough(task.isCompleted || isCelebratingCompletion)
+                        .foregroundStyle(task.isCompleted || isCelebratingCompletion ? .secondary : .primary)
                         .multilineTextAlignment(.leading)
 
                     HStack(spacing: 8) {
                         TodoPriorityBadge(priority: task.priority)
 
-                        if let dueDate = task.dueDate, !task.isCompleted {
+                        if let dueDate = task.dueDate, !task.isCompleted, !isCelebratingCompletion {
                             TodoDueBadge(dueDate: dueDate)
                         }
                     }
@@ -55,8 +59,35 @@ struct TodoTaskRow: View {
         .padding(.horizontal, 14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.tertiarySystemGroupedBackground))
+                .fill(isCelebratingCompletion ? Color.green.opacity(0.12) : Color(.tertiarySystemGroupedBackground))
         )
+        .overlay(alignment: .trailing) {
+            if isCelebratingCompletion {
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                    Text("完成")
+                }
+                .font(.caption.bold())
+                .foregroundStyle(.green)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.green.opacity(0.14), in: Capsule())
+                .padding(.trailing, 42)
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .scaleEffect(isCelebratingCompletion ? 1.015 : 1)
+        .animation(.spring(response: 0.28, dampingFraction: 0.7), value: isCelebratingCompletion)
+        .confirmationDialog("完成这个 TODO？", isPresented: $isShowingCompleteConfirm, titleVisibility: .visible) {
+            Button("确认完成") {
+                celebrateAndToggle()
+            }
+            Button("取消", role: .cancel) {
+                isShowingCompleteConfirm = false
+            }
+        } message: {
+            Text("「\(task.title)」会移入已完成列表。")
+        }
         .longPressDelete(
             DeleteConfirmationContent(
                 title: "删除待办？",
@@ -65,6 +96,27 @@ struct TodoTaskRow: View {
             ),
             onDelete: onDelete
         )
+    }
+
+    private func handleToggleTap() {
+        guard !isCelebratingCompletion else { return }
+
+        if task.isCompleted {
+            onToggle()
+        } else {
+            isShowingCompleteConfirm = true
+        }
+    }
+
+    private func celebrateAndToggle() {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
+            isCelebratingCompletion = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+            onToggle()
+            isCelebratingCompletion = false
+        }
     }
 }
 
@@ -434,16 +486,6 @@ struct StockResearchAddSheet: View {
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
-            .safeAreaInset(edge: .bottom) {
-                Button(action: onAdd) {
-                    Text("添加")
-                }
-                .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
-                .disabled(!canAdd)
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-                .background(.bar)
-            }
             .navigationTitle("新增股票")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -451,6 +493,12 @@ struct StockResearchAddSheet: View {
                     Button("取消", action: onCancel)
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("添加", action: onAdd)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.blue)
+                        .disabled(!canAdd)
                 }
             }
         }
@@ -705,6 +753,47 @@ struct StockRatingPicker: View {
     }
 }
 
+struct TodoPriorityOptionalSelector: View {
+    @Binding var selection: TodoPriority?
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+            ForEach(TodoPriority.allCases) { priority in
+                let isSelected = selection == priority
+                Button {
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                        selection = priority
+                    }
+                } label: {
+                    HStack(spacing: 0) {
+                        Text(priority.title)
+                            .font(.subheadline.weight(.medium))
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundStyle(isSelected ? priority.color.opacity(0.95) : Color.primary.opacity(0.72))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        isSelected
+                        ? AnyShapeStyle(priority.color.opacity(0.14))
+                        : AnyShapeStyle(Color(.secondarySystemGroupedBackground)),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(
+                                isSelected ? priority.color.opacity(0.28) : Color(.separator).opacity(0.10),
+                                lineWidth: 1
+                            )
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
 struct FinanceAssetEditorSheet: View {
     let asset: FinanceAsset
     let amountText: String
@@ -908,6 +997,7 @@ struct FinanceAssetRow: View {
     let amountText: String
     let updatedText: String
     let tint: Color
+    var isPrivacyLocked = false
     let onEdit: () -> Void
     var onDelete: (() -> Void)? = nil
 
@@ -931,11 +1021,11 @@ struct FinanceAssetRow: View {
                             .fixedSize()
                     }
 
-                    Text("更新于 \(updatedText)")
+                    Text(isPrivacyLocked ? "更新于 ***" : "更新于 \(updatedText)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    if !asset.note.isEmpty {
+                    if !isPrivacyLocked && !asset.note.isEmpty {
                         Text(asset.note)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -971,6 +1061,254 @@ struct FinanceAssetRow: View {
             ),
             onDelete: onDelete
         )
+    }
+}
+
+struct FinancePrivacyUnlockSheet: View {
+    let title: String
+    let subtitle: String
+    let actionTitle: String
+    let biometricActionTitle: String?
+    @Binding var passwordInput: String
+    let errorText: String?
+    let onCancel: () -> Void
+    let onBiometricUnlock: () -> Void
+    let onUnlock: () -> Void
+
+    @FocusState private var isFocused: Bool
+
+    private var canUnlock: Bool {
+        !passwordInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title)
+                        .font(.title3.bold())
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                SecureField("输入密码", text: $passwordInput)
+                    .textContentType(.password)
+                    .keyboardType(.numberPad)
+                    .font(.headline)
+                    .focused($isFocused)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 13)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                if let biometricActionTitle {
+                    Button {
+                        onBiometricUnlock()
+                    } label: {
+                        Label(biometricActionTitle, systemImage: "faceid")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(AppSecondaryButtonStyle(tint: .blue))
+                }
+
+                if let errorText {
+                    Text(errorText)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(20)
+            .background(Color(.systemGroupedBackground))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { onCancel() }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(actionTitle) { onUnlock() }
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.blue)
+                        .disabled(!canUnlock)
+                }
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                isFocused = true
+            }
+        }
+    }
+}
+
+struct FinancePasswordChangeSheet: View {
+    let currentPassword: String
+    let biometricActionTitle: String?
+    let onCancel: () -> Void
+    let onBiometricVerify: (@escaping () -> Void, @escaping () -> Void) -> Void
+    let onSave: (String) -> Void
+
+    @State private var currentPasswordInput = ""
+    @State private var newPasswordInput = ""
+    @State private var confirmPasswordInput = ""
+    @State private var didVerifyCurrentPassword = false
+    @State private var errorText: String?
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case current
+        case new
+        case confirm
+    }
+
+    private var canContinue: Bool {
+        !currentPasswordInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var canSave: Bool {
+        !newPasswordInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !confirmPasswordInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(didVerifyCurrentPassword ? "设置新密码" : "验证当前密码")
+                        .font(.title3.bold())
+                    Text(didVerifyCurrentPassword ? "输入并确认新的资产查看密码。" : "先确认当前密码，验证通过后才能修改。")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                if didVerifyCurrentPassword {
+                    VStack(spacing: 10) {
+                        SecureField("新密码", text: $newPasswordInput)
+                            .textContentType(.newPassword)
+                            .keyboardType(.numberPad)
+                            .font(.subheadline)
+                            .focused($focusedField, equals: .new)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                        SecureField("再次输入新密码", text: $confirmPasswordInput)
+                            .textContentType(.newPassword)
+                            .keyboardType(.numberPad)
+                            .font(.subheadline)
+                            .focused($focusedField, equals: .confirm)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                } else {
+                    VStack(spacing: 12) {
+                        SecureField("当前密码", text: $currentPasswordInput)
+                            .textContentType(.password)
+                            .keyboardType(.numberPad)
+                            .font(.subheadline)
+                            .focused($focusedField, equals: .current)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                        if let biometricActionTitle {
+                            Button {
+                                verifyWithBiometrics()
+                            } label: {
+                                Label(biometricActionTitle, systemImage: "faceid")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(AppSecondaryButtonStyle(tint: .blue))
+
+                            Text("忘记密码时，也可以通过本机生物识别验证后重置。")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+
+                if let errorText {
+                    Text(errorText)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(20)
+            .background(Color(.systemGroupedBackground))
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { onCancel() }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(didVerifyCurrentPassword ? "保存" : "下一步") {
+                        didVerifyCurrentPassword ? saveNewPassword() : verifyCurrentPassword()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                    .disabled(didVerifyCurrentPassword ? !canSave : !canContinue)
+                }
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                focusedField = .current
+            }
+        }
+    }
+
+    private func verifyCurrentPassword() {
+        guard currentPasswordInput == currentPassword else {
+            errorText = "当前密码不正确"
+            currentPasswordInput = ""
+            return
+        }
+
+        errorText = nil
+        didVerifyCurrentPassword = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            focusedField = .new
+        }
+    }
+
+    private func verifyWithBiometrics() {
+        onBiometricVerify({
+            errorText = nil
+            didVerifyCurrentPassword = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                focusedField = .new
+            }
+        }, {
+            errorText = "生物识别验证未通过"
+        })
+    }
+
+    private func saveNewPassword() {
+        let password = newPasswordInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let confirmation = confirmPasswordInput.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !password.isEmpty else {
+            errorText = "请输入新密码"
+            return
+        }
+
+        guard password == confirmation else {
+            errorText = "两次输入的密码不一致"
+            return
+        }
+
+        onSave(password)
     }
 }
 
@@ -1037,6 +1375,7 @@ struct WeightLogRow: View {
 
 struct WeightLogEditorSheet: View {
     let log: FastingLog
+    let shouldFocusNote: Bool
     let onSave: (Double, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -1048,9 +1387,11 @@ struct WeightLogEditorSheet: View {
 
     init(
         log: FastingLog,
+        shouldFocusNote: Bool = false,
         onSave: @escaping (Double, String) -> Void
     ) {
         self.log = log
+        self.shouldFocusNote = shouldFocusNote
         self.onSave = onSave
         _weightInput = State(initialValue: String(format: "%.1f", log.weight))
         _noteInput = State(initialValue: log.note)
@@ -1120,12 +1461,12 @@ struct WeightLogEditorSheet: View {
                             .font(.title3.bold())
                             .foregroundStyle(.secondary)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 18)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 18)
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("备注")
@@ -1189,6 +1530,11 @@ struct WeightLogEditorSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .task {
+            guard shouldFocusNote else { return }
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            focusedField = .note
+        }
     }
 
     func metaDateText(_ date: Date) -> String {
@@ -1424,24 +1770,24 @@ struct TodoEditorSheet: View {
 }
 
 struct TodoAddSheet: View {
-    let initialPriority: TodoPriority
+    let initialPriority: TodoPriority?
     let onAdd: (String, TodoPriority, Date?) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String = ""
-    @State private var priority: TodoPriority
+    @State private var priority: TodoPriority?
     @State private var hasDueDate: Bool = false
     @State private var dueDate: Date = TodoDueDateField.defaultDueDate()
     @FocusState private var isFocused: Bool
 
-    init(initialPriority: TodoPriority, onAdd: @escaping (String, TodoPriority, Date?) -> Void) {
+    init(initialPriority: TodoPriority?, onAdd: @escaping (String, TodoPriority, Date?) -> Void) {
         self.initialPriority = initialPriority
         self.onAdd = onAdd
         _priority = State(initialValue: initialPriority)
     }
 
     private var canSave: Bool {
-        !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && priority != nil
     }
 
     var body: some View {
@@ -1461,7 +1807,7 @@ struct TodoAddSheet: View {
                         Text("优先级")
                             .font(.caption.bold())
                             .foregroundStyle(.secondary)
-                        TodoPrioritySelector(selection: $priority)
+                        TodoPriorityOptionalSelector(selection: $priority)
                     }
 
                     TodoDueDateField(hasDueDate: $hasDueDate, dueDate: $dueDate)
@@ -1479,6 +1825,7 @@ struct TodoAddSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("添加") {
+                        guard let priority else { return }
                         onAdd(titleInput.trimmingCharacters(in: .whitespacesAndNewlines), priority, hasDueDate ? dueDate : nil)
                         dismiss()
                     }
@@ -1502,6 +1849,100 @@ struct TodoAddSheet: View {
             ? "M月d日 HH:mm"
             : "yyyy年M月d日 HH:mm"
         return formatter.string(from: date)
+    }
+}
+
+struct WishlistAddSheet: View {
+    @Binding var title: String
+    @Binding var categoryID: String
+    let categories: [WishlistCategory]
+    let onAdd: () -> Void
+    let onCancel: () -> Void
+
+    @FocusState private var isTitleFocused: Bool
+
+    private var selectedCategory: WishlistCategory {
+        categories.first { $0.id == categoryID } ?? categories.first ?? WishlistCategory.fallback
+    }
+
+    private var canAdd: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("愿望")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+
+                        ModernInputField(
+                            placeholder: "想要点什么",
+                            text: $title,
+                            icon: selectedCategory.icon,
+                            tint: .blue
+                        )
+                        .focused($isTitleFocused)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("分类")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(categories) { category in
+                                    let isSelected = categoryID == category.id
+                                    Button {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                            categoryID = category.id
+                                        }
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: category.icon)
+                                                .font(.caption.bold())
+                                            Text(category.title)
+                                        }
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(isSelected ? .white : .blue)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(isSelected ? Color.blue : Color.blue.opacity(0.10), in: Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("新增愿望")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消", action: onCancel)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("添加", action: onAdd)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.blue)
+                        .disabled(!canAdd)
+                }
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                isTitleFocused = true
+            }
+        }
     }
 }
 

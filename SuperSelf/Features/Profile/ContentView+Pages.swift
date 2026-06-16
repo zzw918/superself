@@ -302,17 +302,45 @@ extension ContentView {
                     .profileCardRow()
 
                 profileSectionTitleRow("功能管理") {
-                    Button {
-                        toggleTabEditMode()
-                    } label: {
-                        Image(systemName: isEditingTabs ? "checkmark" : "square.and.pencil")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(isEditingTabs ? .blue : .secondary)
-                            .frame(width: 30, height: 30)
-                            .background(Color(.tertiarySystemFill))
-                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    if isEditingTabs {
+                        HStack(spacing: 8) {
+                            Button {
+                                cancelTabEditMode()
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 30, height: 30)
+                                    .background(Color(.tertiarySystemFill))
+                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                commitTabEditMode()
+                            } label: {
+                                Image(systemName: "checkmark")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.blue)
+                                    .frame(width: 30, height: 30)
+                                    .background(Color.blue.opacity(0.12))
+                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    } else {
+                        Button {
+                            beginTabEditMode()
+                        } label: {
+                            Image(systemName: "square.and.pencil")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30, height: 30)
+                                .background(Color(.tertiarySystemFill))
+                                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
 
                 ForEach(mainTabOrder) { tab in
@@ -332,19 +360,22 @@ extension ContentView {
                 appearanceRow
                     .profileCardRow()
 
+                profileSectionTitleRow("安全")
+
+                securitySettingsRow
+                    .profileCardRow()
+
                 profileSectionTitleRow("通知")
 
                 notificationSettingsRow
                     .profileCardRow()
-
-                profileSectionNoteRow("在关键节点收到本地通知。需要在系统「设置-通知」中允许通知权限。")
 
                 profileSectionTitleRow("数据同步")
 
                 syncCard
                     .profileCardRow()
 
-                profileSectionNoteRow("数据保存在本地，并在 iCloud 可用时同步。")
+                profileSectionNoteRow("数据保存在本地，并在 iCloud 可用时同步。", topInset: 0)
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
@@ -615,14 +646,132 @@ extension ContentView {
         }
     }
 
+    var securitySettingsRow: some View {
+        HStack(spacing: 14) {
+            profileIcon("lock.shield", tint: .blue)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("安全设置")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("设置理财资产隐私")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(isFinanceAssetDefaultHidden ? "默认隐藏" : "直接显示")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            NavigationLink {
+                securitySettingsPage
+            } label: {
+                EmptyView()
+            }
+            .opacity(0)
+        }
+    }
+
+    var securitySettingsPage: some View {
+        List {
+            financePrivacyDefaultCard
+                .profileCardRow()
+
+            securityPasswordCard
+                .profileCardRow()
+
+            profileSectionNoteRow("默认密码是 111111。开启默认隐藏后，每次进入资产记录都需要验证密码或本机生物识别才能查看。")
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("安全设置")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    var financePrivacyDefaultCard: some View {
+        HStack(spacing: 14) {
+            profileIcon("eye.slash", tint: .blue)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("默认隐藏资产记录")
+                    .font(.headline)
+                Text(isFinanceAssetDefaultHidden ? "进入资产记录时默认显示为 ***" : "进入资产记录时直接显示真实数字")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { isFinanceAssetDefaultHidden },
+                    set: { updateFinanceAssetDefaultHidden($0) }
+                )
+            )
+            .labelsHidden()
+            .tint(.blue)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var securityPasswordCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 14) {
+                profileIcon("lock.shield", tint: .blue)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("资产查看密码")
+                        .font(.headline)
+                    Text("用于解锁理财资产记录里的真实数字")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+            }
+
+            if let financeSecurityPasswordMessage {
+                Text(financeSecurityPasswordMessage)
+                    .font(.caption)
+                    .foregroundStyle(financeSecurityPasswordMessage.contains("已更新") ? .green : .red)
+            }
+
+            Button {
+                isShowingFinancePasswordChangeSheet = true
+            } label: {
+                Text("修改密码")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(AppSecondaryButtonStyle(tint: .blue))
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
     var notificationSettingsPage: some View {
         List {
             profileSectionTitleRow("16 + 8 断食")
 
             notificationCard
                 .profileCardRow()
-
-            profileSectionNoteRow("在关键节点收到本地通知。需要在系统「设置-通知」中允许通知权限。")
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -815,12 +964,12 @@ extension ContentView {
         .listRowSeparator(.hidden)
     }
 
-    func profileSectionNoteRow(_ text: String) -> some View {
+    func profileSectionNoteRow(_ text: String, topInset: CGFloat = 6) -> some View {
         Text(text)
             .font(.footnote)
             .foregroundStyle(.secondary)
             .lineSpacing(2)
-            .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 2, trailing: 20))
+            .listRowInsets(EdgeInsets(top: topInset, leading: 20, bottom: 2, trailing: 20))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
     }

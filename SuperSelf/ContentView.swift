@@ -62,6 +62,8 @@ struct ContentView: View {
     @AppStorage("notifyEatingStart") var notifyEatingStart = false
     @AppStorage("notifyFastingSoon") var notifyFastingSoon = false
     @AppStorage("notifyFastingStart") var notifyFastingStart = false
+    @AppStorage("financePrivacyPassword") var financePrivacyPassword = "111111"
+    @AppStorage("isFinanceAssetDefaultHidden") var isFinanceAssetDefaultHidden = true
 
     @StateObject var weatherStore = WeatherStore()
     @ObservedObject var notificationRouter = NotificationRouter.shared
@@ -78,10 +80,12 @@ struct ContentView: View {
     @State var todoInput = ""
     @State var todoPriorityInput: TodoPriority = .importantNotUrgent
     @State var todoFilter: TodoPriority? = nil
+    @State var todoAddInitialPriority: TodoPriority?
     @State var isShowingTodoAddSheet = false
     @State var wishlistInput = ""
     @State var wishlistCategoryID = WishlistCategory.defaultCategories[0].id
     @State var wishlistFilter: WishlistFilter = .all
+    @State var isShowingWishlistAddSheet = false
     @State var isShowingWishlistCategorySheet = false
     @State var isShowingWishlistCategoryPicker = false
     @State var anniversaryTitleInput = ""
@@ -94,6 +98,18 @@ struct ContentView: View {
     @State var financeAssetAmountInput = ""
     @State var financeAssetNoteInput = ""
     @State var financeAssetKind: FinanceAssetKind = .bankCard
+    @State var isFinanceAssetPrivacyUnlocked = false
+    @State var isFinanceAssetTemporarilyHidden = false
+    @State var isShowingFinancePrivacyUnlockSheet = false
+    @State var isFinancePrivacyUnlockingDefaultHidden = false
+    @State var pendingFinanceAssetDefaultHidden: Bool?
+    @State var financePrivacyUnlockInput = ""
+    @State var financePrivacyUnlockError: String?
+    @State var financeSecurityCurrentPasswordInput = ""
+    @State var financeSecurityPasswordInput = ""
+    @State var financeSecurityPasswordConfirmInput = ""
+    @State var financeSecurityPasswordMessage: String?
+    @State var isShowingFinancePasswordChangeSheet = false
     @State var healthSection: HealthSection = .weight
     @State var memoSection: MemoSection = .todo
     @State var financeSection: FinanceSection = .assetRecord
@@ -112,9 +128,12 @@ struct ContentView: View {
     @State var editingWishlistItem: WishlistItem?
     @State var editingAnniversaryItem: AnniversaryItem?
     @State var editingWeightLog: FastingLog?
+    @State var shouldFocusWeightLogNote = false
     @State var isShowingSectionManagement = false
     @State var mainTabOrder = MainAppTab.allCases
     @State var visibleMainTabSet = Set(MainAppTab.allCases)
+    @State var tabEditOriginalOrder = MainAppTab.allCases
+    @State var tabEditOriginalVisibleSet = Set(MainAppTab.allCases)
     @State var didApplyColdStartSelection = false
     @State var syncStatus = "iCloud 同步准备中"
     @State var isSyncing = false
@@ -132,6 +151,7 @@ struct ContentView: View {
     @State var didShowWeightSaveFeedback = false
     @State var isShowingEndFastingConfirm = false
     @FocusState var focusedWeightSheetField: WeightSheetField?
+    @FocusState var isAnniversaryTitleFocused: Bool
 
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -174,6 +194,10 @@ struct ContentView: View {
             case .active:
                 pullFromICloud()
             case .background, .inactive:
+                if isFinanceAssetDefaultHidden {
+                    isFinanceAssetPrivacyUnlocked = false
+                    isFinanceAssetTemporarilyHidden = false
+                }
                 pushAllToICloud()
             @unknown default:
                 break
@@ -207,9 +231,13 @@ struct ContentView: View {
         }
         .sheet(item: $editingWeightLog) { log in
             WeightLogEditorSheet(
-                log: log
+                log: log,
+                shouldFocusNote: shouldFocusWeightLogNote
             ) { newWeight, newNote in
                 updateWeightLog(log, weight: newWeight, note: newNote)
+            }
+            .onDisappear {
+                shouldFocusWeightLogNote = false
             }
         }
         .sheet(isPresented: $isShowingBodySettings) {
@@ -217,6 +245,61 @@ struct ContentView: View {
         }
         .sheet(isPresented: $isShowingFinanceAssetSheet) {
             financeAddAssetSheet
+        }
+        .sheet(isPresented: $isShowingFinancePrivacyUnlockSheet) {
+            FinancePrivacyUnlockSheet(
+                title: financePrivacyUnlockTitle,
+                subtitle: financePrivacyUnlockSubtitle,
+                actionTitle: financePrivacyUnlockActionTitle,
+                biometricActionTitle: canUseFinanceBiometrics ? "使用 \(financeBiometricTypeText)" : nil,
+                passwordInput: $financePrivacyUnlockInput,
+                errorText: financePrivacyUnlockError,
+                onCancel: {
+                    resetFinancePrivacyUnlockInput()
+                    isFinancePrivacyUnlockingDefaultHidden = false
+                    pendingFinanceAssetDefaultHidden = nil
+                    isShowingFinancePrivacyUnlockSheet = false
+                },
+                onBiometricUnlock: {
+                    authenticateFinanceBiometrics(reason: financePrivacyUnlockSubtitle) {
+                        if isFinancePrivacyUnlockingDefaultHidden, let pendingFinanceAssetDefaultHidden {
+                            applyFinanceAssetDefaultHidden(pendingFinanceAssetDefaultHidden)
+                            isFinancePrivacyUnlockingDefaultHidden = false
+                            self.pendingFinanceAssetDefaultHidden = nil
+                        } else {
+                            isFinanceAssetPrivacyUnlocked = true
+                            isFinanceAssetTemporarilyHidden = false
+                        }
+                        resetFinancePrivacyUnlockInput()
+                        isShowingFinancePrivacyUnlockSheet = false
+                    } onFailure: {
+                        financePrivacyUnlockError = "\(financeBiometricTypeText) 验证未通过，请输入密码"
+                    }
+                },
+                onUnlock: {
+                    submitFinancePrivacyUnlock()
+                }
+            )
+            .presentationDetents([.height(350)])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $isShowingFinancePasswordChangeSheet) {
+            FinancePasswordChangeSheet(
+                currentPassword: financePrivacyPasswordValue,
+                biometricActionTitle: canUseFinanceBiometrics ? "使用 \(financeBiometricTypeText) 验证" : nil,
+                onCancel: {
+                    isShowingFinancePasswordChangeSheet = false
+                },
+                onBiometricVerify: { onSuccess, onFailure in
+                    authenticateFinanceBiometrics(reason: "验证后修改或重置资产查看密码", onSuccess: onSuccess, onFailure: onFailure)
+                },
+                onSave: { newPassword in
+                    saveFinancePrivacyPassword(newPassword)
+                    isShowingFinancePasswordChangeSheet = false
+                }
+            )
+            .presentationDetents([.height(460)])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingAnniversarySheet) {
             anniversaryAddSheet
@@ -254,7 +337,7 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingTodoAddSheet) {
-            TodoAddSheet(initialPriority: todoPriorityInput) { title, priority, dueDate in
+            TodoAddSheet(initialPriority: todoAddInitialPriority) { title, priority, dueDate in
                 todoTasks.insert(TodoTask(title: title, createdAt: Date(), priority: priority, dueDate: dueDate), at: 0)
                 persistTodoTasks()
             }
@@ -266,6 +349,17 @@ struct ContentView: View {
                 updateTodoTask(task, title: newTitle, priority: newPriority, dueDate: newDueDate)
             }
             .presentationDetents([.height(520)])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $isShowingWishlistAddSheet) {
+            WishlistAddSheet(title: $wishlistInput, categoryID: $wishlistCategoryID, categories: sortedWishlistCategories) {
+                insertWishlistItem(title: wishlistInput, categoryID: wishlistCategoryID)
+                isShowingWishlistAddSheet = false
+            } onCancel: {
+                wishlistInput = ""
+                isShowingWishlistAddSheet = false
+            }
+            .presentationDetents([.height(380)])
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingWishlistItem) { item in

@@ -563,45 +563,28 @@ extension ContentView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            ZStack(alignment: .leading) {
-                                if weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    Text(weightInputPlaceholder)
-                                        .font(.system(size: 56, weight: .bold, design: .rounded))
-                                        .foregroundStyle(.tertiary)
-                                        .allowsHitTesting(false)
-                                }
-
-                                TextField("", text: $weightInput)
-                                    .keyboardType(.decimalPad)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        ZStack(alignment: .leading) {
+                            if weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text(weightInputPlaceholder)
                                     .font(.system(size: 56, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.primary)
-                                    .focused($focusedWeightSheetField, equals: .weight)
+                                    .foregroundStyle(.tertiary)
+                                    .allowsHitTesting(false)
                             }
-                            .fixedSize()
 
-                            Text("kg")
-                                .font(.title2.bold())
-                                .foregroundStyle(.secondary)
-
-                            Spacer()
+                            TextField("", text: $weightInput)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 56, weight: .bold, design: .rounded))
+                                .foregroundStyle(.primary)
+                                .focused($focusedWeightSheetField, equals: .weight)
                         }
+                        .fixedSize()
 
-                        if let latestWeightLog {
-                            HStack(spacing: 6) {
-                                Text("上次 \(weightText(latestWeightLog.weight)) kg · \(chineseDateTime(latestWeightLog.date))")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
+                        Text("kg")
+                            .font(.title2.bold())
+                            .foregroundStyle(.secondary)
 
-                                Button("填入") {
-                                    weightInput = weightText(latestWeightLog.weight)
-                                }
-                                .font(.footnote.bold())
-                                .foregroundStyle(.blue)
-                                .buttonStyle(.plain)
-                            }
-                        }
+                        Spacer()
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
@@ -658,46 +641,6 @@ extension ContentView {
                 .padding(20)
             }
             .background(Color(.systemGroupedBackground))
-            .safeAreaInset(edge: .bottom) {
-                Button {
-                    saveWeight()
-                } label: {
-                    HStack(spacing: 8) {
-                        if didShowWeightSaveFeedback {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.headline)
-                        }
-
-                        Text(didShowWeightSaveFeedback ? "已保存" : "保存体重")
-                            .font(.headline)
-                    }
-                    .foregroundStyle(isWeightInputEmpty ? Color.white.opacity(0.85) : .white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(
-                        LinearGradient(
-                            colors: isWeightInputEmpty
-                                ? [Color.blue.opacity(0.4), Color.cyan.opacity(0.4)]
-                                : [Color.blue, Color.cyan],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .shadow(
-                        color: isWeightInputEmpty
-                            ? .clear
-                            : Color.blue.opacity(0.22),
-                        radius: 14,
-                        y: 8
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(isWeightInputEmpty)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 8)
-                .background(.bar)
-            }
             .overlay(alignment: .top) {
                 if didShowWeightSaveFeedback {
                     Label("体重已保存", systemImage: "checkmark.circle.fill")
@@ -720,6 +663,14 @@ extension ContentView {
                     }
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        saveWeight()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                    .disabled(isWeightInputEmpty)
                 }
             }
             .onAppear {
@@ -923,13 +874,15 @@ extension ContentView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
                         MeasurementField(title: "身高", value: $heightCm, placeholder: "175", unit: "cm", icon: "ruler", tint: .blue)
                         Text("填写身高用于计算 BMI 指数")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+                    }
 
+                    VStack(alignment: .leading, spacing: 6) {
                         MeasurementField(title: "目标体重", value: $targetWeight, placeholder: "65", unit: "kg", icon: "target", tint: .orange)
 
                         Text("建议用你能长期维持的目标体重，不需要一步到位。")
@@ -938,7 +891,7 @@ extension ContentView {
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 6) {
                         MeasurementField(title: "本轮初始体重", value: $roundStartWeight, placeholder: roundStartPlaceholder, unit: "kg", icon: "flag.fill", tint: .pink)
 
                         Text("设置后，可以看到当前体重相对初始体重的变化情况")
@@ -1005,6 +958,7 @@ extension ContentView {
                 VStack(spacing: 10) {
                     ForEach(displayedWeightLogs) { log in
                         WeightLogRow(log: log, weightText: weightText(log.weight), dateText: chineseDateTime(log.date), onOpen: {
+                            shouldFocusWeightLogNote = false
                             editingWeightLog = log
                         }, onDelete: {
                             deleteWeightLog(log)
@@ -1452,6 +1406,7 @@ extension ContentView {
 
     func openTodayWeightEntry() {
         if let todayWeightLog {
+            shouldFocusWeightLogNote = true
             editingWeightLog = todayWeightLog
         } else {
             prepareWeightSheet()

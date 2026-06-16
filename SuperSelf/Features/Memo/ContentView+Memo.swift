@@ -72,6 +72,7 @@ extension ContentView {
                             icon: "calendar.badge.heart",
                             tint: .blue
                         )
+                        .focused($isAnniversaryTitleFocused)
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -123,16 +124,6 @@ extension ContentView {
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
-            .safeAreaInset(edge: .bottom) {
-                Button(action: addAnniversaryItem) {
-                    Text("添加纪念日")
-                }
-                .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
-                .disabled(!canAddAnniversary)
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-                .background(.bar)
-            }
             .navigationTitle("添加纪念日")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -143,9 +134,21 @@ extension ContentView {
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("添加") {
+                        addAnniversaryItem()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                    .disabled(!canAddAnniversary)
+                }
             }
         }
         .presentationDetents([.large])
+        .task {
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            isAnniversaryTitleFocused = true
+        }
     }
 
     func anniversaryFieldLabel(_ text: String) -> some View {
@@ -161,7 +164,7 @@ extension ContentView {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button {
-                    todoPriorityInput = todoFilter ?? .importantNotUrgent
+                    todoAddInitialPriority = todoFilter
                     isShowingTodoAddSheet = true
                 } label: {
                     Image(systemName: "plus")
@@ -283,15 +286,25 @@ extension ContentView {
 
     var wishlistCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            wishlistFilterBar
+            HStack(spacing: 10) {
+                wishlistFilterBar
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-            AddEntryBar(
-                placeholder: "想要点什么",
-                text: $wishlistInput,
-                icon: wishlistInputIcon,
-                tint: .blue,
-                action: addWishlistItem
-            )
+                Button {
+                    wishlistInput = ""
+                    if let categoryID = wishlistFilter.categoryID {
+                        wishlistCategoryID = categoryID
+                    }
+                    isShowingWishlistAddSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(Color.blue, in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
 
             if filteredOpenWishlistItems.isEmpty && filteredCompletedWishlistItems.isEmpty {
                 AppEmptyState(

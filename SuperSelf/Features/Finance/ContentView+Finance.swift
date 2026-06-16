@@ -1,6 +1,187 @@
+import LocalAuthentication
 import SwiftUI
 
 extension ContentView {
+    var financePrivacyPasswordValue: String {
+        let trimmed = financePrivacyPassword.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "111111" : trimmed
+    }
+
+    var isFinanceAssetRecordVisible: Bool {
+        if isFinanceAssetTemporarilyHidden {
+            return false
+        }
+        return isFinanceAssetDefaultHidden ? isFinanceAssetPrivacyUnlocked : true
+    }
+
+    var financePrivacyUnlockTitle: String {
+        guard let pendingFinanceAssetDefaultHidden else {
+            return "查看资产"
+        }
+        return pendingFinanceAssetDefaultHidden ? "开启默认隐藏" : "关闭默认隐藏"
+    }
+
+    var financePrivacyUnlockSubtitle: String {
+        guard let pendingFinanceAssetDefaultHidden else {
+            return "输入安全密码后显示真实资产金额。"
+        }
+        return pendingFinanceAssetDefaultHidden
+            ? "输入安全密码后开启默认隐藏资产记录。"
+            : "输入安全密码后关闭默认隐藏资产记录。"
+    }
+
+    var financePrivacyUnlockActionTitle: String {
+        guard let pendingFinanceAssetDefaultHidden else {
+            return "查看"
+        }
+        return pendingFinanceAssetDefaultHidden ? "开启" : "关闭"
+    }
+
+    var financeBiometricTypeText: String {
+        let context = LAContext()
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            return "生物识别"
+        }
+
+        switch context.biometryType {
+        case .faceID:
+            return "Face ID"
+        case .touchID:
+            return "Touch ID"
+        case .opticID:
+            return "Optic ID"
+        default:
+            return "生物识别"
+        }
+    }
+
+    var canUseFinanceBiometrics: Bool {
+        let context = LAContext()
+        var error: NSError?
+        return context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
+    }
+
+    func maskedFinanceAmount(_ amount: Double) -> String {
+        isFinanceAssetRecordVisible ? currencyText(amount) : "***"
+    }
+
+    func maskedFinanceText(_ text: String?) -> String {
+        isFinanceAssetRecordVisible ? (text ?? "--") : "***"
+    }
+
+    func handleFinanceAssetPrivacyTap() {
+        if isFinanceAssetRecordVisible {
+            isFinanceAssetPrivacyUnlocked = false
+            isFinanceAssetTemporarilyHidden = true
+            resetFinancePrivacyUnlockInput()
+        } else if !isFinanceAssetDefaultHidden {
+            isFinanceAssetTemporarilyHidden = false
+        } else {
+            requestFinancePrivacyUnlock()
+        }
+    }
+
+    func requestFinancePrivacyUnlock() {
+        guard canUseFinanceBiometrics else {
+            showFinancePrivacyPasswordUnlock()
+            return
+        }
+
+        authenticateFinanceBiometrics(reason: "验证后查看理财资产记录里的真实数字") {
+            isFinanceAssetPrivacyUnlocked = true
+            isFinanceAssetTemporarilyHidden = false
+            resetFinancePrivacyUnlockInput()
+            isShowingFinancePrivacyUnlockSheet = false
+        } onFailure: {
+            showFinancePrivacyPasswordUnlock()
+        }
+    }
+
+    func showFinancePrivacyPasswordUnlock() {
+        resetFinancePrivacyUnlockInput()
+        isShowingFinancePrivacyUnlockSheet = true
+    }
+
+    func authenticateFinanceBiometrics(reason: String, onSuccess: @escaping () -> Void, onFailure: (() -> Void)? = nil) {
+        let context = LAContext()
+        var error: NSError?
+
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+            onFailure?()
+            return
+        }
+
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, _ in
+            DispatchQueue.main.async {
+                if success {
+                    onSuccess()
+                } else {
+                    onFailure?()
+                }
+            }
+        }
+    }
+
+    func submitFinancePrivacyUnlock() {
+        if financePrivacyUnlockInput == financePrivacyPasswordValue {
+            if isFinancePrivacyUnlockingDefaultHidden, let pendingFinanceAssetDefaultHidden {
+                applyFinanceAssetDefaultHidden(pendingFinanceAssetDefaultHidden)
+            } else {
+                isFinanceAssetPrivacyUnlocked = true
+                isFinanceAssetTemporarilyHidden = false
+            }
+            resetFinancePrivacyUnlockInput()
+            isFinancePrivacyUnlockingDefaultHidden = false
+            pendingFinanceAssetDefaultHidden = nil
+            isShowingFinancePrivacyUnlockSheet = false
+        } else {
+            financePrivacyUnlockError = "密码不正确，请重新输入"
+            financePrivacyUnlockInput = ""
+        }
+    }
+
+    func resetFinancePrivacyUnlockInput() {
+        financePrivacyUnlockInput = ""
+        financePrivacyUnlockError = nil
+    }
+
+    func saveFinancePrivacyPassword(_ password: String) {
+        financePrivacyPassword = password
+        isFinanceAssetPrivacyUnlocked = false
+        isFinanceAssetTemporarilyHidden = false
+        financeSecurityCurrentPasswordInput = ""
+        financeSecurityPasswordInput = ""
+        financeSecurityPasswordConfirmInput = ""
+        financeSecurityPasswordMessage = isFinanceAssetDefaultHidden ? "密码已更新，资产记录已重新锁定" : "密码已更新"
+    }
+
+    func updateFinanceAssetDefaultHidden(_ isHidden: Bool) {
+        resetFinancePrivacyUnlockInput()
+        pendingFinanceAssetDefaultHidden = isHidden
+        isFinancePrivacyUnlockingDefaultHidden = true
+
+        guard canUseFinanceBiometrics else {
+            isShowingFinancePrivacyUnlockSheet = true
+            return
+        }
+
+        authenticateFinanceBiometrics(reason: "验证后修改资产记录默认隐藏设置") {
+            applyFinanceAssetDefaultHidden(isHidden)
+            isFinancePrivacyUnlockingDefaultHidden = false
+            pendingFinanceAssetDefaultHidden = nil
+        } onFailure: {
+            isShowingFinancePrivacyUnlockSheet = true
+        }
+    }
+
+    func applyFinanceAssetDefaultHidden(_ isHidden: Bool) {
+        isFinanceAssetDefaultHidden = isHidden
+        isFinanceAssetPrivacyUnlocked = false
+        isFinanceAssetTemporarilyHidden = false
+        financeSecurityPasswordMessage = isHidden ? "已开启默认隐藏，资产记录已锁定" : "已关闭默认隐藏，资产记录将直接显示"
+    }
+
     var financeSummaryCard: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
@@ -9,7 +190,7 @@ extension ContentView {
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.white.opacity(0.85))
 
-                    Text(currencyText(totalFinanceAmount))
+                    Text(maskedFinanceAmount(totalFinanceAmount))
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
                         .minimumScaleFactor(0.6)
@@ -18,26 +199,15 @@ extension ContentView {
 
                 Spacer()
 
-                if let financeMonthChangeText {
-                    HStack(spacing: 4) {
-                        Image(systemName: financeMonthChangeText.hasPrefix("-") ? "arrow.down.right" : "arrow.up.right")
-                            .font(.caption.weight(.bold))
-                        Text(financeMonthChangeText)
-                            .font(.caption.weight(.bold))
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(.white.opacity(0.22), in: Capsule())
-                }
+                financeAssetPrivacyButton
             }
 
             HStack(spacing: 12) {
-                financeHeroStat(title: "资产项", value: "\(financeAssets.count)")
+                financeHeroStat(title: "资产项", value: isFinanceAssetRecordVisible ? "\(financeAssets.count)" : "***")
                 Divider().frame(height: 30).overlay(Color.white.opacity(0.25))
-                financeHeroStat(title: "历史记录", value: "\(financeSnapshots.count)")
+                financeHeroStat(title: "历史记录", value: isFinanceAssetRecordVisible ? "\(financeSnapshots.count)" : "***")
                 Divider().frame(height: 30).overlay(Color.white.opacity(0.25))
-                financeHeroStat(title: "本月变化", value: financeMonthChangeText ?? "--")
+                financeHeroStat(title: "本月变化", value: maskedFinanceText(financeMonthChangeText))
             }
         }
         .padding(20)
@@ -131,16 +301,6 @@ extension ContentView {
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
-            .safeAreaInset(edge: .bottom) {
-                Button(action: addFinanceAsset) {
-                    Text("添加资产")
-                }
-                .buttonStyle(AppPrimaryButtonStyle(tint: financeKindTint(financeAssetKind)))
-                .disabled(financeAssetAmountInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-                .background(.bar)
-            }
             .navigationTitle("添加资产")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -150,6 +310,14 @@ extension ContentView {
                     }
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("添加") {
+                        addFinanceAsset()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(financeKindTint(financeAssetKind))
+                    .disabled(financeAssetAmountInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         }
@@ -219,14 +387,21 @@ extension ContentView {
 
                 Spacer()
 
-                if let financeMonthChangeText {
+                if isFinanceAssetRecordVisible, let financeMonthChangeText {
                     Text(financeMonthChangeText)
                         .font(.caption.bold())
                         .foregroundStyle(financeMonthChangeText.hasPrefix("-") ? .red : .blue)
+                } else if !isFinanceAssetRecordVisible {
+                    Text("***")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
                 }
             }
 
-            if !monthlyFinanceTrendPoints.isEmpty {
+            if !isFinanceAssetRecordVisible {
+                financePrivacyPlaceholder(title: "趋势已隐藏", systemImage: "lock.fill")
+                    .frame(maxWidth: .infinity, minHeight: 130)
+            } else if !monthlyFinanceTrendPoints.isEmpty {
                 FinanceTrendView(points: monthlyFinanceTrendPoints, amountText: currencyText)
             } else {
                 AppEmptyState(
@@ -248,7 +423,10 @@ extension ContentView {
             Text("资产分布")
                 .font(.title3.bold())
 
-            if financeDistributionPoints.isEmpty {
+            if !isFinanceAssetRecordVisible {
+                financePrivacyPlaceholder(title: "分布已隐藏", systemImage: "lock.fill")
+                    .frame(maxWidth: .infinity, minHeight: 130)
+            } else if financeDistributionPoints.isEmpty {
                 AppEmptyState(
                     title: "还没有分布",
                     systemImage: "chart.pie",
@@ -274,7 +452,7 @@ extension ContentView {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("资产明细")
                         .font(.title3.bold())
-                    Text("\(financeAssets.count) 项")
+                    Text(isFinanceAssetRecordVisible ? "\(financeAssets.count) 项" : "*** 项")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -282,9 +460,18 @@ extension ContentView {
                 Spacer()
 
                 Button {
-                    isShowingFinanceAssetSheet = true
+                    if isFinanceAssetRecordVisible {
+                        isShowingFinanceAssetSheet = true
+                    } else {
+                        handleFinanceAssetPrivacyTap()
+                    }
                 } label: {
-                    AppIconCircleButton(icon: "plus", tint: .blue, size: 32, iconFont: .subheadline.weight(.bold))
+                    AppIconCircleButton(
+                        icon: isFinanceAssetRecordVisible ? "plus" : "lock.fill",
+                        tint: isFinanceAssetRecordVisible ? .blue : .secondary,
+                        size: 32,
+                        iconFont: .subheadline.weight(.bold)
+                    )
                 }
                 .buttonStyle(.plain)
             }
@@ -301,14 +488,21 @@ extension ContentView {
                     ForEach(sortedFinanceAssets) { asset in
                         FinanceAssetRow(
                             asset: asset,
-                            amountText: currencyText(asset.amount),
-                            updatedText: chineseDateTime(asset.updatedAt),
+                            amountText: maskedFinanceAmount(asset.amount),
+                            updatedText: isFinanceAssetRecordVisible ? chineseDateTime(asset.updatedAt) : "***",
                             tint: financeKindTint(asset.kind),
+                            isPrivacyLocked: !isFinanceAssetRecordVisible,
                             onEdit: {
-                                editingFinanceAsset = asset
+                                if isFinanceAssetRecordVisible {
+                                    editingFinanceAsset = asset
+                                } else {
+                                    handleFinanceAssetPrivacyTap()
+                                }
                             },
                             onDelete: {
-                                deleteFinanceAsset(asset)
+                                if isFinanceAssetRecordVisible {
+                                    deleteFinanceAsset(asset)
+                                }
                             }
                         )
                     }
@@ -319,6 +513,34 @@ extension ContentView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var financeAssetPrivacyButton: some View {
+        Button {
+            handleFinanceAssetPrivacyTap()
+        } label: {
+            Image(systemName: isFinanceAssetRecordVisible ? "eye" : "eye.slash")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 34, height: 34)
+                .background(.white.opacity(0.20), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isFinanceAssetRecordVisible ? "隐藏资产金额" : "查看资产金额")
+    }
+
+    func financePrivacyPlaceholder(title: String, systemImage: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(title)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+            Text("***")
+                .font(.title3.bold())
+                .foregroundStyle(.primary)
+        }
     }
 
     var stockResearchListCard: some View {
