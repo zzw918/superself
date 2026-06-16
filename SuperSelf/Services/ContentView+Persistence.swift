@@ -994,17 +994,46 @@ extension ContentView {
     }
 
     var syncStatusText: String {
-        if !isICloudAvailable {
-            return "未连接，无法同步"
-        }
         if isSyncing {
             return "正在同步…"
+        }
+        if syncStatus != "iCloud 同步准备中" {
+            return syncStatus
+        }
+        if !isICloudAvailable {
+            return "未连接，无法同步"
         }
         if lastICloudSyncAt > 0 {
             let date = Date(timeIntervalSince1970: lastICloudSyncAt)
             return "上次同步 \(relativeTimeText(for: date))"
         }
         return "等待首次同步"
+    }
+
+    var syncStatusIcon: String {
+        if isSyncing {
+            return "arrow.triangle.2.circlepath"
+        }
+        if syncStatusText.contains("完成") || syncStatusText.contains("已同步") || syncStatusText.contains("已请求") {
+            return "checkmark.circle.fill"
+        }
+        if syncStatusText.contains("未") || syncStatusText.contains("无法") || syncStatusText.contains("失败") || syncStatusText.contains("重试") {
+            return "exclamationmark.circle.fill"
+        }
+        return "arrow.triangle.2.circlepath"
+    }
+
+    var syncStatusTint: Color {
+        if isSyncing {
+            return .blue
+        }
+        if syncStatusText.contains("完成") || syncStatusText.contains("已同步") || syncStatusText.contains("已请求") {
+            return .green
+        }
+        if syncStatusText.contains("未") || syncStatusText.contains("无法") || syncStatusText.contains("失败") || syncStatusText.contains("重试") {
+            return .orange
+        }
+        return .secondary
     }
 
     /// 用户手动点击「立即同步」：先推送本地数据，再回拉云端，并更新可见状态。

@@ -156,23 +156,22 @@ extension ContentView {
 
     var todoTasksCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            todoFilterBar
+            HStack(spacing: 10) {
+                todoFilterBar
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button {
-                todoPriorityInput = todoFilter ?? .importantNotUrgent
-                isShowingTodoAddSheet = true
-            } label: {
-                HStack(spacing: 6) {
+                Button {
+                    todoPriorityInput = todoFilter ?? .importantNotUrgent
+                    isShowingTodoAddSheet = true
+                } label: {
                     Image(systemName: "plus")
-                    Text("新增 TODO")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(Color.blue, in: Circle())
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.blue)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
             if activeTodoTasks.isEmpty && completedTodoTasks.isEmpty {
                 AppEmptyState(
@@ -249,7 +248,6 @@ extension ContentView {
         let isSelected = todoFilter == priority
         let tint = priority?.color ?? .blue
         let title = priority?.title ?? "全部"
-        let icon = priority?.icon ?? "tray.full"
 
         Button {
             withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
@@ -257,9 +255,6 @@ extension ContentView {
             }
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.caption2.weight(.bold))
-
                 Text(title)
 
                 let count = todoCount(for: priority)
@@ -267,14 +262,14 @@ extension ContentView {
                     Text("\(count)")
                         .font(.caption2.bold())
                         .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
+                        .padding(.vertical, 2)
                         .background((isSelected ? Color.white.opacity(0.22) : tint.opacity(0.12)), in: Capsule())
                 }
             }
-            .font(.caption.weight(.semibold))
+            .font(.subheadline.weight(.semibold))
             .foregroundStyle(isSelected ? .white : tint)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .background {
                 if isSelected {
                     Capsule().fill(tint.gradient)

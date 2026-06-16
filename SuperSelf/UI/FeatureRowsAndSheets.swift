@@ -85,9 +85,7 @@ struct TodoPriorityBadge: View {
     }
 
     var body: some View {
-        HStack(spacing: 3) {
-            Image(systemName: priority.icon)
-                .font(.system(size: 9, weight: .bold))
+        HStack(spacing: 0) {
             Text(priority.title)
                 .font(.caption2.weight(.semibold))
         }
@@ -1630,9 +1628,7 @@ struct TodoPrioritySelector: View {
                         selection = priority
                     }
                 } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: priority.icon)
-                            .font(.caption.weight(.bold))
+                    HStack(spacing: 0) {
                         Text(priority.title)
                             .font(.subheadline.weight(.medium))
                         Spacer(minLength: 0)

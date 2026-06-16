@@ -397,13 +397,10 @@ extension ContentView {
 
                 Spacer(minLength: 8)
 
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(info.apparentText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("湿度 \(info.humidity)%")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    weatherMetricRow(title: "体感", value: "\(Int(info.apparentTemperature.rounded()))°")
+                    weatherMetricRow(title: "湿度", value: "\(info.humidity)%")
+                    weatherMetricRow(title: "风速", value: "\(Int(info.windSpeed.rounded())) km/h")
                 }
 
             case .loading, .idle:
@@ -445,6 +442,17 @@ extension ContentView {
         .onTapGesture {
             weatherStore.refresh()
         }
+    }
+
+    func weatherMetricRow(title: String, value: String) -> some View {
+        HStack(spacing: 4) {
+            Text(title)
+                .frame(width: 28, alignment: .leading)
+            Text(value)
+                .monospacedDigit()
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
 
     func weatherGradient(for code: Int) -> [Color] {

@@ -258,12 +258,12 @@ extension ContentView {
             }
 
             HStack(spacing: 8) {
-                Image(systemName: "arrow.triangle.2.circlepath")
+                Image(systemName: syncStatusIcon)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(syncStatusTint)
                 Text(syncStatusText)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(syncStatusTint)
 
                 Spacer()
 
@@ -274,9 +274,9 @@ extension ContentView {
                         syncNow()
                     }
                     .buttonStyle(AppSecondaryButtonStyle(tint: .blue))
-                    .disabled(!isICloudAvailable)
                 }
             }
+            .contentTransition(.opacity)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -310,26 +310,18 @@ extension ContentView {
                             .foregroundStyle(.secondary)
                     }
 
-                    HStack(spacing: 8) {
-                        Text("最近 \(chineseDateTime(latestWeightLog.date))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-
-                        if let badge = weightDeltaBadge {
-                            HStack(spacing: 2) {
-                                Image(systemName: badge.icon)
-                                Text(badge.text)
-                            }
-                            .font(.caption2.bold())
-                            .foregroundStyle(badge.color)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background(badge.color.opacity(0.14))
-                            .clipShape(Capsule())
-                            .fixedSize()
+                    if let badge = weightDeltaBadge {
+                        HStack(spacing: 2) {
+                            Image(systemName: badge.icon)
+                            Text(badge.text)
                         }
+                        .font(.caption2.bold())
+                        .foregroundStyle(badge.color)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(badge.color.opacity(0.14))
+                        .clipShape(Capsule())
+                        .fixedSize()
                     }
                 } else {
                     Text("还没有体重记录")
@@ -411,12 +403,6 @@ extension ContentView {
                             }
                         }
 
-                        if let latestWeightLog {
-                            Text("最近 \(chineseDateTime(latestWeightLog.date))")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
                     } else {
                         Text("还没有体重记录")
                             .font(.subheadline)

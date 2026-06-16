@@ -133,65 +133,141 @@ struct FinanceDistributionView: View {
     let points: [FinanceDistributionPoint]
     let amountText: (Double) -> String
 
+    @State private var selectedPointID: String?
+
     var totalAmount: Double {
         points.map(\.amount).reduce(0, +)
+    }
+
+    var selectedPoint: FinanceDistributionPoint? {
+        guard let selectedPointID else { return nil }
+        return points.first { $0.id == selectedPointID }
     }
 
     var body: some View {
         HStack(alignment: .center, spacing: 20) {
             Chart(points) { point in
+                let isSelected = selectedPointID == point.id
                 SectorMark(
                     angle: .value("金额", point.amount),
                     innerRadius: .ratio(0.62),
+                    outerRadius: .ratio(selectedPointID == nil || isSelected ? 1.0 : 0.92),
                     angularInset: 1.5
                 )
-                .cornerRadius(4)
-                .foregroundStyle(point.color)
+                .cornerRadius(isSelected ? 7 : 4)
+                .foregroundStyle(point.color.opacity(selectedPointID == nil || isSelected ? 1 : 0.32))
             }
             .chartLegend(.hidden)
             .frame(width: 140, height: 140)
             .overlay {
                 VStack(spacing: 2) {
-                    Text("总计")
+                    Text(selectedPoint?.title ?? "总计")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(amountText(totalAmount))
+                        .foregroundStyle(selectedPoint?.color ?? .secondary)
+                        .contentTransition(.opacity)
+                    Text(amountText(selectedPoint?.amount ?? totalAmount))
                         .font(.subheadline.bold())
                         .foregroundStyle(.primary)
                         .minimumScaleFactor(0.7)
                         .lineLimit(1)
+                        .contentTransition(.numericText())
                 }
                 .padding(.horizontal, 8)
+            }
+            .overlay {
+                GeometryReader { proxy in
+                    Circle()
+                        .fill(.clear)
+                        .contentShape(Circle())
+                        .gesture(
+                            SpatialTapGesture()
+                                .onEnded { tap in
+                                    guard let tappedPoint = point(at: tap.location, in: proxy.size) else { return }
+                                    selectedPointID = selectedPointID == tappedPoint.id ? nil : tappedPoint.id
+                                }
+                        )
+                }
             }
 
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(points.prefix(5)) { point in
-                    HStack(spacing: 10) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(point.color)
-                            .frame(width: 10, height: 10)
+                    let isSelected = selectedPointID == point.id
+                    Button {
+                        selectedPointID = isSelected ? nil : point.id
+                    } label: {
+                        HStack(spacing: 10) {
+                            RoundedRectangle(cornerRadius: isSelected ? 5 : 3)
+                                .fill(point.color)
+                                .frame(width: isSelected ? 12 : 10, height: isSelected ? 12 : 10)
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(point.title)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(point.title)
+                                    .font(.caption.bold())
+                                    .foregroundStyle(isSelected ? point.color : .primary)
+                                Text(amountText(point.amount))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer(minLength: 0)
+
+                            Text(percentageText(for: point.amount))
                                 .font(.caption.bold())
-                            Text(amountText(point.amount))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(point.color)
                         }
-
-                        Spacer(minLength: 0)
-
-                        Text(percentageText(for: point.amount))
-                            .font(.caption.bold())
-                            .foregroundStyle(point.color)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 7)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(isSelected ? point.color.opacity(0.10) : Color.clear)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(isSelected ? point.color.opacity(0.22) : Color.clear, lineWidth: 1)
+                        }
+                        .scaleEffect(isSelected ? 1.02 : 1.0, anchor: .leading)
                     }
+                    .buttonStyle(.plain)
                 }
             }
+        }
+        .transaction { transaction in
+            transaction.animation = nil
         }
     }
 
     func percentageText(for amount: Double) -> String {
         String(format: "%.0f%%", amount / max(totalAmount, 1) * 100)
+    }
+
+    func point(at location: CGPoint, in size: CGSize) -> FinanceDistributionPoint? {
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let dx = location.x - center.x
+        let dy = location.y - center.y
+        let distance = sqrt(dx * dx + dy * dy)
+        let outerRadius = min(size.width, size.height) / 2
+        let innerRadius = outerRadius * 0.62
+
+        guard distance >= innerRadius, distance <= outerRadius else { return nil }
+
+        var radians = atan2(dx, -dy)
+        if radians < 0 {
+            radians += .pi * 2
+        }
+
+        return point(at: Double(radians / (.pi * 2)) * totalAmount)
+    }
+
+    func point(at angleValue: Double) -> FinanceDistributionPoint? {
+        var lowerBound = 0.0
+        for point in points {
+            let upperBound = lowerBound + point.amount
+            if angleValue >= lowerBound && angleValue <= upperBound {
+                return point
+            }
+            lowerBound = upperBound
+        }
+        return points.last
     }
 }
 

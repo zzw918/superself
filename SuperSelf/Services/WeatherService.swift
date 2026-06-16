@@ -5,6 +5,7 @@ struct WeatherInfo: Equatable {
     var temperature: Double
     var apparentTemperature: Double
     var humidity: Int
+    var windSpeed: Double
     var weatherCode: Int
     var cityName: String
 
@@ -129,7 +130,7 @@ final class WeatherStore: NSObject, ObservableObject {
         components?.queryItems = [
             URLQueryItem(name: "latitude", value: String(coordinate.latitude)),
             URLQueryItem(name: "longitude", value: String(coordinate.longitude)),
-            URLQueryItem(name: "current", value: "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code"),
+            URLQueryItem(name: "current", value: "temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code"),
             URLQueryItem(name: "timezone", value: "auto")
         ]
 
@@ -143,6 +144,7 @@ final class WeatherStore: NSObject, ObservableObject {
                 temperature: current.temperature_2m,
                 apparentTemperature: current.apparent_temperature,
                 humidity: current.relative_humidity_2m,
+                windSpeed: current.wind_speed_10m,
                 weatherCode: current.weather_code,
                 cityName: ""
             )
@@ -193,6 +195,7 @@ private struct OpenMeteoResponse: Decodable {
         let temperature_2m: Double
         let relative_humidity_2m: Int
         let apparent_temperature: Double
+        let wind_speed_10m: Double
         let weather_code: Int
     }
     let current: Current
