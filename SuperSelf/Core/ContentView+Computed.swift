@@ -70,6 +70,10 @@ extension ContentView {
         sortedWeightLogs.first
     }
 
+    var todayWeightLog: FastingLog? {
+        sortedWeightLogs.first { Calendar.current.isDateInToday($0.date) }
+    }
+
     var oldestWeightLog: FastingLog? {
         sortedWeightLogs.last
     }
@@ -82,7 +86,33 @@ extension ContentView {
         todoTasks
             .filter { !$0.isCompleted }
             .filter { task in todoFilter == nil || task.priority == todoFilter }
-            .sorted { $0.lastActivityAt > $1.lastActivityAt }
+            .sorted { lhs, rhs in
+                let lhsPriorityIndex = TodoPriority.allCases.firstIndex(of: lhs.priority) ?? .max
+                let rhsPriorityIndex = TodoPriority.allCases.firstIndex(of: rhs.priority) ?? .max
+
+                if lhsPriorityIndex != rhsPriorityIndex {
+                    return lhsPriorityIndex < rhsPriorityIndex
+                }
+
+                switch (lhs.dueDate, rhs.dueDate) {
+                case let (lhsDue?, rhsDue?):
+                    if lhsDue != rhsDue {
+                        return lhsDue < rhsDue
+                    }
+                case (.some, nil):
+                    return true
+                case (nil, .some):
+                    return false
+                case (nil, nil):
+                    break
+                }
+
+                if lhs.lastActivityAt != rhs.lastActivityAt {
+                    return lhs.lastActivityAt > rhs.lastActivityAt
+                }
+
+                return lhs.createdAt > rhs.createdAt
+            }
     }
 
     var completedTodoTasks: [TodoTask] {

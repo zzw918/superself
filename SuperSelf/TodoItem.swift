@@ -5,6 +5,35 @@ struct FastingLog: Identifiable, Equatable, Codable {
     var date: Date
     var weight: Double
     var note: String
+
+    var updatedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id, date, weight, note, updatedAt
+    }
+
+    init(
+        id: UUID = UUID(),
+        date: Date,
+        weight: Double,
+        note: String,
+        updatedAt: Date? = nil
+    ) {
+        self.id = id
+        self.date = date
+        self.weight = weight
+        self.note = note
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        date = try container.decode(Date.self, forKey: .date)
+        weight = try container.decode(Double.self, forKey: .weight)
+        note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
 }
 
 struct FastingSession: Identifiable, Equatable, Codable {

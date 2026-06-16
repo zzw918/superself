@@ -207,8 +207,7 @@ struct ContentView: View {
         }
         .sheet(item: $editingWeightLog) { log in
             WeightLogEditorSheet(
-                log: log,
-                dateText: chineseDateTime(log.date)
+                log: log
             ) { newWeight, newNote in
                 updateWeightLog(log, weight: newWeight, note: newNote)
             }
@@ -229,8 +228,8 @@ struct ContentView: View {
             planSheet
         }
         .sheet(item: $editingFinanceAsset) { asset in
-            FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newName, newAmount, newNote in
-                updateFinanceAsset(asset, name: newName, amount: newAmount, note: newNote)
+            FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newName, newKind, newAmount, newNote in
+                updateFinanceAsset(asset, name: newName, kind: newKind, amount: newAmount, note: newNote)
             }
         }
         .sheet(item: $editingStockResearchItem) { item in

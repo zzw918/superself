@@ -340,10 +340,14 @@ extension ContentView {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             Button {
-                prepareWeightSheet()
-                isShowingWeightSheet = true
+                openTodayWeightEntry()
             } label: {
-                AppIconCircleButton(icon: "plus", tint: .blue, size: 44, iconFont: .headline.weight(.bold))
+                AppIconCircleButton(
+                    icon: todayWeightLog == nil ? "plus" : "pencil",
+                    tint: .blue,
+                    size: 44,
+                    iconFont: .headline.weight(.bold)
+                )
             }
             .buttonStyle(.plain)
         }
@@ -422,10 +426,14 @@ extension ContentView {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button {
-                    prepareWeightSheet()
-                    isShowingWeightSheet = true
+                    openTodayWeightEntry()
                 } label: {
-                    AppIconCircleButton(icon: "plus", tint: .blue, size: 34, iconFont: .subheadline.weight(.bold))
+                    AppIconCircleButton(
+                        icon: todayWeightLog == nil ? "plus" : "pencil",
+                        tint: .blue,
+                        size: 34,
+                        iconFont: .subheadline.weight(.bold)
+                    )
                 }
                 .buttonStyle(.plain)
             }
@@ -448,7 +456,7 @@ extension ContentView {
     var weightGoalProgressBlock: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 4) {
-                Text(weightRemainingValue != nil ? "还差" : "目标")
+                Text(weightRemainingValue != nil ? "还需减重" : "目标")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 2)
@@ -617,7 +625,7 @@ extension ContentView {
 
                         ZStack(alignment: .topLeading) {
                             if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Text("可选，记录胖了或瘦了的原因")
+                                Text("今天吃了什么喝了什么，这里记录下吧")
                                     .font(.subheadline)
                                     .foregroundStyle(.tertiary)
                                     .padding(.top, 14)
@@ -1454,6 +1462,15 @@ extension ContentView {
         weightInput = ""
         noteInput = ""
         didShowWeightSaveFeedback = false
+    }
+
+    func openTodayWeightEntry() {
+        if let todayWeightLog {
+            editingWeightLog = todayWeightLog
+        } else {
+            prepareWeightSheet()
+            isShowingWeightSheet = true
+        }
     }
 
     func applyWeightNoteSuggestion(_ suggestion: String) {

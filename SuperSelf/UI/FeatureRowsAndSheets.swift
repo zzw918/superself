@@ -40,10 +40,6 @@ struct TodoTaskRow: View {
                         if let dueDate = task.dueDate, !task.isCompleted {
                             TodoDueBadge(dueDate: dueDate)
                         }
-
-                        Text(timestampText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -70,29 +66,23 @@ struct TodoTaskRow: View {
             onDelete: onDelete
         )
     }
-
-    var timestampText: String {
-        if task.isCompleted {
-            return "完成于 \(dateText(task.completedAt ?? task.createdAt))"
-        }
-        if let updatedAt = task.updatedAt {
-            return "编辑于 \(dateText(updatedAt))"
-        }
-        return "创建于 \(dateText(task.createdAt))"
-    }
-
-    func dateText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
-            ? "M月d日 HH:mm"
-            : "yyyy年M月d日 HH:mm"
-        return formatter.string(from: date)
-    }
 }
 
 struct TodoPriorityBadge: View {
     let priority: TodoPriority
+
+    private var tint: Color {
+        switch priority {
+        case .importantUrgent:
+            return .red.opacity(0.72)
+        case .importantNotUrgent:
+            return .orange.opacity(0.72)
+        case .urgentNotImportant:
+            return .blue.opacity(0.72)
+        case .notImportantNotUrgent:
+            return .secondary.opacity(0.82)
+        }
+    }
 
     var body: some View {
         HStack(spacing: 3) {
@@ -101,10 +91,10 @@ struct TodoPriorityBadge: View {
             Text(priority.title)
                 .font(.caption2.weight(.semibold))
         }
-        .foregroundStyle(priority.color)
+        .foregroundStyle(tint)
         .padding(.horizontal, 7)
         .padding(.vertical, 3)
-        .background(priority.color.opacity(0.12), in: Capsule())
+        .background(tint.opacity(0.10), in: Capsule())
     }
 }
 
@@ -112,6 +102,7 @@ struct TodoDueBadge: View {
     let dueDate: Date
 
     private var isOverdue: Bool { dueDate < Date() }
+    private var tint: Color { isOverdue ? .red.opacity(0.70) : .orange.opacity(0.72) }
 
     private var dueText: String {
         let formatter = DateFormatter()
@@ -129,10 +120,10 @@ struct TodoDueBadge: View {
             Text(dueText)
                 .font(.caption2.weight(.semibold))
         }
-        .foregroundStyle(isOverdue ? Color.red : Color.orange)
+        .foregroundStyle(tint)
         .padding(.horizontal, 7)
         .padding(.vertical, 3)
-        .background((isOverdue ? Color.red : Color.orange).opacity(0.12), in: Capsule())
+        .background(tint.opacity(0.10), in: Capsule())
     }
 }
 
@@ -706,18 +697,20 @@ struct StockRatingPicker: View {
 struct FinanceAssetEditorSheet: View {
     let asset: FinanceAsset
     let amountText: String
-    let onSave: (String, Double, String) -> Void
+    let onSave: (String, FinanceAssetKind, Double, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var nameInput: String
+    @State private var kind: FinanceAssetKind
     @State private var amountInput: String
     @State private var noteInput: String
 
-    init(asset: FinanceAsset, amountText: String, onSave: @escaping (String, Double, String) -> Void) {
+    init(asset: FinanceAsset, amountText: String, onSave: @escaping (String, FinanceAssetKind, Double, String) -> Void) {
         self.asset = asset
         self.amountText = amountText
         self.onSave = onSave
         _nameInput = State(initialValue: asset.name)
+        _kind = State(initialValue: asset.kind)
         _amountInput = State(initialValue: String(format: "%.0f", asset.amount))
         _noteInput = State(initialValue: asset.note)
     }
@@ -729,63 +722,78 @@ struct FinanceAssetEditorSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("资产类型")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(FinanceAssetKind.allCases) { item in
+                                    financeKindChip(item)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        ModernInputField(
+                            placeholder: kind == .custom ? "自定义类目名称" : "资产名称",
+                            text: $nameInput,
+                            icon: kind.icon,
+                            tint: financeKindTint(kind)
+                        )
+
+                        Text("\(kind.title) · 当前 \(amountText)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
                     ModernInputField(
-                        placeholder: "资产名称",
-                        text: $nameInput,
-                        icon: "pencil.line",
-                        tint: .blue
+                        placeholder: "输入新的金额",
+                        text: $amountInput,
+                        icon: "yensign.circle",
+                        tint: financeKindTint(kind),
+                        keyboardType: .numberPad
                     )
 
-                    Text("\(asset.kind.title) · 当前 \(amountText)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("备注")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
 
-                ModernInputField(
-                    placeholder: "输入新的金额",
-                    text: $amountInput,
-                    icon: "yensign.circle",
-                    tint: .blue,
-                    keyboardType: .numberPad
-                )
+                        ZStack(alignment: .topLeading) {
+                            if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text("可选，记一下这笔资产的详细信息")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.tertiary)
+                                    .padding(.top, 14)
+                                    .padding(.horizontal, 14)
+                            }
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("备注")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-
-                    ZStack(alignment: .topLeading) {
-                        if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("可选，记一下这笔资产的详细信息")
+                            TextEditor(text: $noteInput)
                                 .font(.subheadline)
-                                .foregroundStyle(.tertiary)
-                                .padding(.top, 14)
-                                .padding(.horizontal, 14)
+                                .foregroundStyle(.primary)
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 88)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
                         }
-
-                        TextEditor(text: $noteInput)
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-                            .scrollContentBackground(.hidden)
-                            .frame(minHeight: 88)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
-                    .background(Color(.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
 
-                Spacer()
-
-                Button {
-                    saveAmount()
-                } label: {
-                    Text("保存修改")
+                    Button {
+                        saveAmount()
+                    } label: {
+                        Text("保存修改")
+                    }
+                    .buttonStyle(AppPrimaryButtonStyle(tint: financeKindTint(kind)))
+                    .disabled(!canSaveAmount)
                 }
-                .buttonStyle(AppPrimaryButtonStyle(tint: .blue))
-                .disabled(!canSaveAmount)
             }
             .padding()
             .background(Color(.systemGroupedBackground))
@@ -804,6 +812,50 @@ struct FinanceAssetEditorSheet: View {
         .presentationDetents([.medium, .large])
     }
 
+    func financeKindChip(_ item: FinanceAssetKind) -> some View {
+        let isSelected = kind == item
+        let tint = financeKindTint(item)
+
+        return Button {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                kind = item
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: item.icon)
+                    .font(.subheadline)
+
+                Text(item.title)
+                    .font(.subheadline.weight(.medium))
+            }
+            .foregroundStyle(isSelected ? .white : tint)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(
+                isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.12)),
+                in: Capsule()
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    func financeKindTint(_ item: FinanceAssetKind) -> Color {
+        switch item {
+        case .bankCard:
+            return .blue
+        case .stock:
+            return .green
+        case .option:
+            return .orange
+        case .alipay:
+            return .cyan
+        case .wechat:
+            return .mint
+        case .custom:
+            return .purple
+        }
+    }
+
     func saveAmount() {
         let trimmedName = nameInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedAmount = amountInput
@@ -811,7 +863,7 @@ struct FinanceAssetEditorSheet: View {
             .replacingOccurrences(of: ",", with: ".")
 
         guard !trimmedName.isEmpty, let amount = Double(normalizedAmount) else { return }
-        onSave(trimmedName, amount, noteInput.trimmingCharacters(in: .whitespacesAndNewlines))
+        onSave(trimmedName, kind, amount, noteInput.trimmingCharacters(in: .whitespacesAndNewlines))
         dismiss()
     }
 }
@@ -950,7 +1002,6 @@ struct WeightLogRow: View {
 
 struct WeightLogEditorSheet: View {
     let log: FastingLog
-    let dateText: String
     let onSave: (Double, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -962,11 +1013,9 @@ struct WeightLogEditorSheet: View {
 
     init(
         log: FastingLog,
-        dateText: String,
         onSave: @escaping (Double, String) -> Void
     ) {
         self.log = log
-        self.dateText = dateText
         self.onSave = onSave
         _weightInput = State(initialValue: String(format: "%.1f", log.weight))
         _noteInput = State(initialValue: log.note)
@@ -976,9 +1025,52 @@ struct WeightLogEditorSheet: View {
         Double(weightInput.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: "."))
     }
 
+    private var dayTagText: String? {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(log.date) {
+            return "今天"
+        }
+        if calendar.isDateInYesterday(log.date) {
+            return "昨天"
+        }
+        return nil
+    }
+
+    private var fullDateText: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年M月d日"
+        return formatter.string(from: log.date)
+    }
+
+    private var createdTimeText: String {
+        "创建于 \(metaDateText(log.date))"
+    }
+
+    private var editedTimeText: String? {
+        guard let updatedAt = log.updatedAt else { return nil }
+        return "编辑于 \(metaDateText(updatedAt))"
+    }
+
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
+                HStack(spacing: 8) {
+                    Text(fullDateText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    if let dayTagText {
+                        Text(dayTagText)
+                            .font(.caption.bold())
+                            .foregroundStyle(.blue)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.blue.opacity(0.10))
+                            .clipShape(Capsule())
+                    }
+                }
+
                 VStack(alignment: .leading, spacing: 8) {
                     Text("体重")
                         .font(.caption.bold())
@@ -993,9 +1085,6 @@ struct WeightLogEditorSheet: View {
                             .font(.title3.bold())
                             .foregroundStyle(.secondary)
                     }
-                    Text(dateText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
@@ -1010,7 +1099,7 @@ struct WeightLogEditorSheet: View {
 
                     ZStack(alignment: .topLeading) {
                         if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("可选，记录胖了或瘦了的原因")
+                            Text("今天吃了什么喝了什么，这里记录下吧")
                                 .font(.subheadline)
                                 .foregroundStyle(.tertiary)
                                 .padding(.top, 14)
@@ -1029,6 +1118,15 @@ struct WeightLogEditorSheet: View {
                     .background(Color(.secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(createdTimeText)
+                    if let editedTimeText {
+                        Text(editedTimeText)
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.tertiary)
 
                 Spacer(minLength: 0)
             }
@@ -1056,6 +1154,15 @@ struct WeightLogEditorSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    func metaDateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+            ? "M月d日 HH:mm"
+            : "yyyy年M月d日 HH:mm"
+        return formatter.string(from: date)
     }
 }
 
@@ -1232,6 +1339,15 @@ struct TodoEditorSheet: View {
                     }
 
                     TodoDueDateField(hasDueDate: $hasDueDate, dueDate: $dueDate)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("创建于 \(metaDateText(task.createdAt))")
+                        if let updatedAt = task.updatedAt {
+                            Text("编辑于 \(metaDateText(updatedAt))")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
                 }
                 .padding(20)
             }
@@ -1260,6 +1376,15 @@ struct TodoEditorSheet: View {
                 isFocused = true
             }
         }
+    }
+
+    func metaDateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+            ? "M月d日 HH:mm"
+            : "yyyy年M月d日 HH:mm"
+        return formatter.string(from: date)
     }
 }
 
@@ -1334,16 +1459,43 @@ struct TodoAddSheet: View {
             }
         }
     }
+
+    func metaDateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+            ? "M月d日 HH:mm"
+            : "yyyy年M月d日 HH:mm"
+        return formatter.string(from: date)
+    }
 }
 
 struct TodoDueDateField: View {
     @Binding var hasDueDate: Bool
     @Binding var dueDate: Date
+    @State private var isShowingDatePicker = false
+    @State private var isShowingTimePicker = false
 
     static func defaultDueDate() -> Date {
         let calendar = Calendar.current
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date()) ?? Date()
         return calendar.date(bySettingHour: 18, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+    }
+
+    private var dueDateText: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(dueDate, equalTo: Date(), toGranularity: .year)
+            ? "M月d日"
+            : "yyyy年M月d日"
+        return formatter.string(from: dueDate)
+    }
+
+    private var dueTimeText: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: dueDate)
     }
 
     var body: some View {
@@ -1359,21 +1511,73 @@ struct TodoDueDateField: View {
             .tint(.blue)
 
             if hasDueDate {
-                DatePicker(
-                    "",
-                    selection: $dueDate,
-                    displayedComponents: [.date, .hourAndMinute]
-                )
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .environment(\.locale, Locale(identifier: "zh_CN"))
-                .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 8) {
+                    Button {
+                        isShowingDatePicker = true
+                        isShowingTimePicker = false
+                    } label: {
+                        Text(dueDateText)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.blue)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color(.tertiarySystemGroupedBackground))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $isShowingDatePicker, arrowEdge: .bottom) {
+                        DatePicker(
+                            "",
+                            selection: $dueDate,
+                            displayedComponents: .date
+                        )
+                        .labelsHidden()
+                        .datePickerStyle(.graphical)
+                        .environment(\.locale, Locale(identifier: "zh_CN"))
+                        .padding(10)
+                        .frame(minWidth: 320)
+                        .presentationCompactAdaptation(.popover)
+                    }
+
+                    Button {
+                        isShowingTimePicker = true
+                        isShowingDatePicker = false
+                    } label: {
+                        Text(dueTimeText)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color(.tertiarySystemGroupedBackground))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $isShowingTimePicker, arrowEdge: .bottom) {
+                        DatePicker(
+                            "",
+                            selection: $dueDate,
+                            displayedComponents: .hourAndMinute
+                        )
+                        .labelsHidden()
+                        .datePickerStyle(.wheel)
+                        .environment(\.locale, Locale(identifier: "zh_CN"))
+                        .frame(width: 320, height: 180)
+                        .clipped()
+                        .presentationCompactAdaptation(.popover)
+                    }
+                }
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .onChange(of: hasDueDate) {
+            if !hasDueDate {
+                isShowingDatePicker = false
+                isShowingTimePicker = false
+            }
+        }
     }
 }
 
@@ -1396,14 +1600,23 @@ struct TodoPrioritySelector: View {
                             .font(.subheadline.weight(.medium))
                         Spacer(minLength: 0)
                     }
-                    .foregroundStyle(isSelected ? .white : priority.color)
+                    .foregroundStyle(isSelected ? priority.color.opacity(0.95) : Color.primary.opacity(0.72))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .frame(maxWidth: .infinity)
                     .background(
-                        isSelected ? AnyShapeStyle(priority.color) : AnyShapeStyle(priority.color.opacity(0.12)),
+                        isSelected
+                        ? AnyShapeStyle(priority.color.opacity(0.14))
+                        : AnyShapeStyle(Color(.secondarySystemGroupedBackground)),
                         in: RoundedRectangle(cornerRadius: 12, style: .continuous)
                     )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(
+                                isSelected ? priority.color.opacity(0.28) : Color(.separator).opacity(0.10),
+                                lineWidth: 1
+                            )
+                    }
                 }
                 .buttonStyle(.plain)
             }

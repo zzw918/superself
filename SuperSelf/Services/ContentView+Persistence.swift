@@ -334,6 +334,7 @@ extension ContentView {
         guard let index = weightLogs.firstIndex(where: { $0.id == log.id }) else { return }
         weightLogs[index].weight = weight
         weightLogs[index].note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        weightLogs[index].updatedAt = Date()
         latestWeight = latestWeightLog.map { weightText($0.weight) } ?? ""
         persistWeightLogs()
     }
@@ -636,13 +637,14 @@ extension ContentView {
         isShowingFinanceAssetSheet = false
     }
 
-    func updateFinanceAsset(_ asset: FinanceAsset, name: String, amount: Double, note: String) {
+    func updateFinanceAsset(_ asset: FinanceAsset, name: String, kind: FinanceAssetKind, amount: Double, note: String) {
         guard let index = financeAssets.firstIndex(where: { $0.id == asset.id }) else { return }
 
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedName.isEmpty {
             financeAssets[index].name = trimmedName
         }
+        financeAssets[index].kind = kind
         financeAssets[index].amount = amount
         financeAssets[index].note = note
         financeAssets[index].updatedAt = Date()
