@@ -463,6 +463,11 @@ extension ContentView {
                     weatherMetricRow(title: "湿度", value: "\(info.humidity)%")
                     weatherMetricRow(title: "风速", value: "\(Int(info.windSpeed.rounded())) km/h")
                 }
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+                    .padding(.leading, 4)
 
             case .loading, .idle:
                 ProgressView()
@@ -501,7 +506,11 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .contentShape(Rectangle())
         .onTapGesture {
-            weatherStore.refresh()
+            if case .loaded = weatherStore.state {
+                isShowingWeatherForecastSheet = true
+            } else {
+                weatherStore.refresh()
+            }
         }
     }
 

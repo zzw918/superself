@@ -1,6 +1,19 @@
 import Foundation
 import CoreLocation
 
+struct DailyWeatherInfo: Equatable, Identifiable {
+    let id = UUID()
+    var date: Date
+    var weatherCode: Int
+    var maxTemperature: Double
+    var minTemperature: Double
+    
+    var symbolName: String { WeatherInfo.symbol(for: weatherCode) }
+    var conditionText: String { WeatherInfo.condition(for: weatherCode) }
+    var maxTemperatureText: String { "\(Int(maxTemperature.rounded()))°" }
+    var minTemperatureText: String { "\(Int(minTemperature.rounded()))°" }
+}
+
 struct WeatherInfo: Equatable {
     var temperature: Double
     var apparentTemperature: Double
@@ -8,6 +21,7 @@ struct WeatherInfo: Equatable {
     var windSpeed: Double
     var weatherCode: Int
     var cityName: String
+    var dailyForecast: [DailyWeatherInfo] = []
 
     var symbolName: String { WeatherInfo.symbol(for: weatherCode) }
     var conditionText: String { WeatherInfo.condition(for: weatherCode) }
@@ -125,13 +139,33 @@ final class WeatherStore: NSObject, ObservableObject {
         }
     }
 
+    private struct OpenMeteoResponse: Decodable {
+        struct Current: Decodable {
+            let temperature_2m: Double
+            let relative_humidity_2m: Int
+            let apparent_temperature: Double
+            let wind_speed_10m: Double
+            let weather_code: Int
+        }
+        struct Daily: Decodable {
+            let time: [String]
+            let weather_code: [Int]
+            let temperature_2m_max: [Double]
+            let temperature_2m_min: [Double]
+        }
+        let current: Current
+        let daily: Daily?
+    }
+
     private func fetchWeather(for coordinate: CLLocationCoordinate2D) async -> WeatherInfo? {
         var components = URLComponents(string: "https://api.open-meteo.com/v1/forecast")
         components?.queryItems = [
             URLQueryItem(name: "latitude", value: String(coordinate.latitude)),
             URLQueryItem(name: "longitude", value: String(coordinate.longitude)),
             URLQueryItem(name: "current", value: "temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code"),
-            URLQueryItem(name: "timezone", value: "auto")
+            URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min"),
+            URLQueryItem(name: "timezone", value: "auto"),
+            URLQueryItem(name: "forecast_days", value: "10")
         ]
 
         guard let url = components?.url else { return nil }
@@ -140,13 +174,34 @@ final class WeatherStore: NSObject, ObservableObject {
             let (data, _) = try await URLSession.shared.data(from: url)
             let response = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
             let current = response.current
+            
+            var dailyForecast: [DailyWeatherInfo] = []
+            if let daily = response.daily {
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "yyyy-MM-dd"
+                dateFormatter.timeZone = TimeZone.current
+                
+                let count = min(daily.time.count, min(daily.weather_code.count, min(daily.temperature_2m_max.count, daily.temperature_2m_min.count)))
+                for i in 0..<count {
+                    if let date = dateFormatter.date(from: daily.time[i]) {
+                        dailyForecast.append(DailyWeatherInfo(
+                            date: date,
+                            weatherCode: daily.weather_code[i],
+                            maxTemperature: daily.temperature_2m_max[i],
+                            minTemperature: daily.temperature_2m_min[i]
+                        ))
+                    }
+                }
+            }
+            
             return WeatherInfo(
                 temperature: current.temperature_2m,
                 apparentTemperature: current.apparent_temperature,
                 humidity: current.relative_humidity_2m,
                 windSpeed: current.wind_speed_10m,
                 weatherCode: current.weather_code,
-                cityName: ""
+                cityName: "",
+                dailyForecast: dailyForecast
             )
         } catch {
             return nil
@@ -188,15 +243,4 @@ extension WeatherStore: CLLocationManagerDelegate {
             }
         }
     }
-}
-
-private struct OpenMeteoResponse: Decodable {
-    struct Current: Decodable {
-        let temperature_2m: Double
-        let relative_humidity_2m: Int
-        let apparent_temperature: Double
-        let wind_speed_10m: Double
-        let weather_code: Int
-    }
-    let current: Current
 }

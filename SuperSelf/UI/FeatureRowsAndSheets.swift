@@ -3337,3 +3337,102 @@ struct WheelDatePicker: View {
         }
     }
 }
+
+struct WeatherForecastSheet: View {
+    let info: WeatherInfo
+    let onRefresh: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    ForEach(info.dailyForecast) { daily in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(dateText(for: daily.date))
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(isToday(daily.date) ? .blue : .primary)
+                                Text(weekdayText(for: daily.date))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(width: 60, alignment: .leading)
+
+                            Image(systemName: daily.symbolName)
+                                .font(.title3)
+                                .symbolRenderingMode(.multicolor)
+                                .frame(width: 32)
+                                .foregroundStyle(isToday(daily.date) ? .blue : .primary)
+
+                            Text(daily.conditionText)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            HStack(spacing: 6) {
+                                Text(daily.minTemperatureText)
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 36, alignment: .trailing)
+                                
+                                Capsule()
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(width: 40, height: 4)
+                                
+                                Text(daily.maxTemperatureText)
+                                    .font(.subheadline.monospacedDigit().weight(.medium))
+                                    .frame(width: 36, alignment: .trailing)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                }
+                .padding()
+            }
+            .refreshable {
+                onRefresh()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("\(info.cityName)未来天气")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("完成") {
+                        dismiss()
+                    }
+                    .font(.subheadline.bold())
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func isToday(_ date: Date) -> Bool {
+        Calendar.current.isDateInToday(date)
+    }
+
+    private func dateText(for date: Date) -> String {
+        if Calendar.current.isDateInToday(date) {
+            return "今天"
+        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M/d"
+        return formatter.string(from: date)
+    }
+
+    private func weekdayText(for date: Date) -> String {
+        if Calendar.current.isDateInToday(date) {
+            return ""
+        }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "EEE"
+        return formatter.string(from: date)
+    }
+}

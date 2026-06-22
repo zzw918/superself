@@ -147,6 +147,7 @@ struct ContentView: View {
     @State var isShowingBodySettings = false
     @State var isShowingFinanceAssetSheet = false
     @State var isShowingAnniversarySheet = false
+    @State var isShowingWeatherForecastSheet = false
     @State var isShowingStartTimeSheet = false
     @State var startTimeDraft = Date()
     @State var isShowingPlanSheet = false
@@ -308,6 +309,13 @@ struct ContentView: View {
         }
         .sheet(isPresented: $isShowingAnniversarySheet) {
             anniversaryAddSheet
+        }
+        .sheet(isPresented: $isShowingWeatherForecastSheet) {
+            if case .loaded(let info) = weatherStore.state {
+                WeatherForecastSheet(info: info) {
+                    weatherStore.refresh()
+                }
+            }
         }
         .sheet(isPresented: $isShowingStartTimeSheet) {
             startTimeSheet
