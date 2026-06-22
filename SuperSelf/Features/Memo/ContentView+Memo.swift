@@ -164,7 +164,7 @@ extension ContentView {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button {
-                    todoAddInitialPriority = todoFilter
+                    todoAddInitialPriority = todoFilter ?? .notImportantNotUrgent
                     isShowingTodoAddSheet = true
                 } label: {
                     Image(systemName: "plus")
@@ -234,6 +234,60 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
+    var memoNotesCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                noteTagFilterBar
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button {
+                    isShowingNoteAddSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 36, height: 36)
+                        .background(Color.blue, in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
+
+            if sortedMemoNotes.isEmpty {
+                AppEmptyState(
+                    title: noteTagFilter == nil ? "还没有笔记" : "这个标签下还没有笔记",
+                    systemImage: "square.text.square",
+                    description: noteTagFilter == nil ? "随手记想法、资料和灵感，也可以配图。" : "换个标签看看，或者在当前标签下新建一条。"
+                )
+                .frame(maxWidth: .infinity, minHeight: 140)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(sortedMemoNotes) { note in
+                        MemoNoteCard(
+                            note: note,
+                            dateText: preciseDateTime(note.lastActivityAt),
+                            imageDatas: note.imageFileNames.compactMap(loadMemoNoteImageData),
+                            onTagTap: { tag in
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                                    noteTagFilter = tag
+                                }
+                            },
+                            onEdit: {
+                                editingMemoNote = note
+                            },
+                            onDelete: {
+                                deleteMemoNote(note)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
     var todoFilterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
@@ -261,6 +315,56 @@ extension ContentView {
                 Text(title)
 
                 let count = todoCount(for: priority)
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background((isSelected ? Color.white.opacity(0.22) : tint.opacity(0.12)), in: Capsule())
+                }
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(isSelected ? .white : tint)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background {
+                if isSelected {
+                    Capsule().fill(tint.gradient)
+                } else {
+                    Capsule().fill(tint.opacity(0.08))
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    var noteTagFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                noteTagChip(for: nil)
+                ForEach(allMemoNoteTags, id: \.self) { tag in
+                    noteTagChip(for: tag)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    @ViewBuilder
+    func noteTagChip(for tag: String?) -> some View {
+        let isSelected = noteTagFilter == tag
+        let title = tag.map { "#\($0)" } ?? "全部"
+        let tint = Color.blue
+
+        Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                noteTagFilter = tag
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(title)
+
+                let count = memoNoteCount(for: tag)
                 if count > 0 {
                     Text("\(count)")
                         .font(.caption2.bold())

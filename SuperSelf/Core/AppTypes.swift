@@ -115,6 +115,7 @@ enum HealthSection: String, CaseIterable, Identifiable, Codable {
 
 enum MemoSection: String, CaseIterable, Identifiable, Codable {
     case todo
+    case note
     case wishlist
     case anniversary
 
@@ -124,8 +125,10 @@ enum MemoSection: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .todo:
             return "TODO"
+        case .note:
+            return "笔记"
         case .wishlist:
-            return "愿望清单"
+            return "愿望"
         case .anniversary:
             return "纪念日"
         }
@@ -135,6 +138,8 @@ enum MemoSection: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .todo:
             return "checklist"
+        case .note:
+            return "square.text.square"
         case .wishlist:
             return "sparkles"
         case .anniversary:
@@ -146,6 +151,8 @@ enum MemoSection: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .todo:
             return "待办事项清单"
+        case .note:
+            return "带标签和图片的笔记"
         case .wishlist:
             return "想做想要的事"
         case .anniversary:
@@ -222,7 +229,7 @@ enum MainAppTab: String, CaseIterable, Identifiable, Codable, Hashable {
         case .health:
             return "16 + 8、体重和健康目标"
         case .todo:
-            return "TODO、愿望清单和纪念日"
+            return "TODO、笔记、愿望和纪念日"
         case .finance:
             return "资产记录和股票研究"
         }

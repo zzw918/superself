@@ -105,6 +105,8 @@ extension ContentView {
         switch section {
         case .todo:
             todoTasksCard
+        case .note:
+            memoNotesCard
         case .wishlist:
             wishlistCard
         case .anniversary:

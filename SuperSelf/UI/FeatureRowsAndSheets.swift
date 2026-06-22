@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 extension TodoPriority {
@@ -82,6 +83,7 @@ struct TodoTaskRow: View {
             Button("确认完成") {
                 celebrateAndToggle()
             }
+            .tint(.green)
             Button("取消", role: .cancel) {
                 isShowingCompleteConfirm = false
             }
@@ -232,6 +234,144 @@ struct WishlistRow: View {
             DeleteConfirmationContent(
                 title: "删除愿望？",
                 message: "「\(item.title)」会被永久删除。",
+                confirmTitle: "删除"
+            ),
+            onDelete: onDelete
+        )
+    }
+}
+
+struct MemoNoteCard: View {
+    let note: MemoNote
+    let dateText: String
+    let imageDatas: [Data]
+    let onTagTap: (String) -> Void
+    let onEdit: () -> Void
+    var onDelete: (() -> Void)? = nil
+    @State private var isShowingImagePreview = false
+    @State private var selectedPreviewIndex = 0
+    @State private var isExpanded = false
+
+    private var previewText: String {
+        note.content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var previewImages: [UIImage] {
+        imageDatas.compactMap(UIImage.init(data:))
+    }
+
+    private var shouldShowExpandToggle: Bool {
+        previewText.count > 90 || previewText.filter { $0 == "\n" }.count >= 4
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(dateText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if !note.tags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(note.tags, id: \.self) { tag in
+                            Button {
+                                onTagTap(tag)
+                            } label: {
+                                Text("#\(tag)")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.blue)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color.blue.opacity(0.10), in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+
+            if !previewText.isEmpty {
+                Text(previewText)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(isExpanded ? nil : 5)
+            }
+
+            if shouldShowExpandToggle {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    Text(isExpanded ? "收起" : "展开")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.blue)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if !imageDatas.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(previewImages.enumerated()), id: \.offset) { index, uiImage in
+                            Button {
+                                selectedPreviewIndex = index
+                                isShowingImagePreview = true
+                            } label: {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 86, height: 86)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color(.tertiarySystemGroupedBackground))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onEdit)
+        .fullScreenCover(isPresented: $isShowingImagePreview) {
+            ZStack(alignment: .topTrailing) {
+                Color.black.ignoresSafeArea()
+
+                TabView(selection: $selectedPreviewIndex) {
+                    ForEach(Array(previewImages.enumerated()), id: \.offset) { index, uiImage in
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding(20)
+                            .tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: previewImages.count > 1 ? .automatic : .never))
+
+                Button {
+                    isShowingImagePreview = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 30))
+                        .foregroundStyle(.white.opacity(0.92))
+                        .padding(20)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .longPressDelete(
+            DeleteConfirmationContent(
+                title: "删除笔记？",
+                message: "这条笔记会被永久删除。",
                 confirmTitle: "删除"
             ),
             onDelete: onDelete
@@ -1316,22 +1456,21 @@ struct WeightLogRow: View {
     let log: FastingLog
     let weightText: String
     let dateText: String
+    let weekdayText: String
     let onOpen: () -> Void
     var onDelete: (() -> Void)? = nil
 
     var body: some View {
         Button(action: onOpen) {
             HStack(spacing: 14) {
-                Image(systemName: "scalemass")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.blue)
-                    .frame(width: 38, height: 38)
-                    .background(Color.blue.opacity(0.10))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(dateText)
-                        .font(.subheadline.weight(.medium))
+                    HStack(spacing: 4) {
+                        Text(dateText)
+                            .font(.subheadline.weight(.medium))
+                        Text("（\(weekdayText)）")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     if !log.note.isEmpty {
                         Text(log.note)
                             .font(.caption)
@@ -1339,8 +1478,7 @@ struct WeightLogRow: View {
                             .lineLimit(1)
                     }
                 }
-
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text(weightText)
@@ -1415,7 +1553,7 @@ struct WeightLogEditorSheet: View {
     private var fullDateText: String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "zh_CN")
-        formatter.dateFormat = "yyyy年M月d日"
+        formatter.dateFormat = "yyyy年M月d日 EEEE"
         return formatter.string(from: log.date)
     }
 
@@ -1836,6 +1974,9 @@ struct TodoAddSheet: View {
             }
         }
         .onAppear {
+            priority = initialPriority
+            hasDueDate = false
+            dueDate = TodoDueDateField.defaultDueDate()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 isFocused = true
             }
@@ -1943,6 +2084,427 @@ struct WishlistAddSheet: View {
                 isTitleFocused = true
             }
         }
+    }
+}
+
+struct MemoNoteEditorSheet: View {
+    let note: MemoNote?
+    let existingTags: [String]
+    let initialImageDatas: [Data]
+    let onSave: (String, [String], [Data]) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var contentInput: String
+    @State private var selectedTags: [String]
+    @State private var selectedImageDatas: [Data]
+    @State private var photoItems: [PhotosPickerItem] = []
+    @State private var isShowingTagPopover = false
+    @State private var tagDraft = ""
+    @State private var editingTagIndex: Int?
+    @State private var isShowingImagePreview = false
+    @State private var selectedPreviewIndex = 0
+    @FocusState private var isFocused: Bool
+
+    init(
+        note: MemoNote? = nil,
+        existingTags: [String],
+        initialImageDatas: [Data],
+        onSave: @escaping (String, [String], [Data]) -> Void
+    ) {
+        self.note = note
+        self.existingTags = existingTags
+        self.initialImageDatas = initialImageDatas
+        self.onSave = onSave
+        _contentInput = State(initialValue: note?.content ?? "")
+        _selectedTags = State(initialValue: note?.tags ?? [])
+        _selectedImageDatas = State(initialValue: initialImageDatas)
+    }
+
+    private var canSave: Bool {
+        !contentInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedImageDatas.isEmpty || !selectedTags.isEmpty
+    }
+
+    private var suggestedTags: [String] {
+        existingTags.filter { !selectedTags.contains($0) }
+    }
+
+    private var showsCurrentTags: Bool {
+        !selectedTags.isEmpty
+    }
+
+    private var createdTimeText: String? {
+        guard let note else { return nil }
+        return "创建于 \(metaDateText(note.createdAt))"
+    }
+
+    private var editedTimeText: String? {
+        guard let updatedAt = note?.updatedAt else { return nil }
+        return "更新于 \(metaDateText(updatedAt))"
+    }
+
+    private var previewImages: [UIImage] {
+        selectedImageDatas.compactMap(UIImage.init(data:))
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("内容")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+
+                        ZStack(alignment: .topLeading) {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color(.secondarySystemGroupedBackground))
+
+                            if contentInput.isEmpty {
+                                Text("写点内容，标签用左下角 # 添加")
+                                    .foregroundStyle(.tertiary)
+                                    .padding(.horizontal, 14)
+                                    .padding(.top, showsCurrentTags ? 48 : 14)
+                            }
+
+                            TextEditor(text: $contentInput)
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 180)
+                                .padding(.horizontal, 10)
+                                .padding(.top, showsCurrentTags ? 42 : 8)
+                                .padding(.bottom, 38)
+                                .focused($isFocused)
+
+                            if showsCurrentTags {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(Array(selectedTags.enumerated()), id: \.offset) { index, tag in
+                                            Button {
+                                                presentTagPopover(editingIndex: index)
+                                            } label: {
+                                                HStack(spacing: 4) {
+                                                    Text("#\(tag)")
+                                                    Image(systemName: "pencil")
+                                                        .font(.system(size: 10, weight: .bold))
+                                                }
+                                                .font(.caption.bold())
+                                                .foregroundStyle(.blue)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 6)
+                                                .background(Color.blue.opacity(0.12), in: Capsule())
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.top, 10)
+                                }
+                            }
+
+                            HStack(spacing: 12) {
+                                Button {
+                                    presentTagPopover()
+                                } label: {
+                                    Text("#")
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(.blue)
+                                        .frame(width: 28, height: 28)
+                                        .background(Color.blue.opacity(0.10), in: Circle())
+                                }
+                                .buttonStyle(.plain)
+
+                                PhotosPicker(selection: $photoItems, maxSelectionCount: 9, matching: .images) {
+                                    Image(systemName: "photo.on.rectangle.angled")
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(.blue)
+                                        .frame(width: 28, height: 28)
+                                        .background(Color.blue.opacity(0.10), in: Circle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.leading, 12)
+                            .padding(.bottom, 10)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                        }
+                        .frame(minHeight: 180)
+                    }
+
+                    if !suggestedTags.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("常用标签")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(suggestedTags, id: \.self) { tag in
+                                        Button {
+                                            addTag(tag)
+                                        } label: {
+                                            Text("#\(tag)")
+                                                .font(.subheadline.weight(.semibold))
+                                                .foregroundStyle(.blue)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 8)
+                                                .background(Color.blue.opacity(0.10), in: Capsule())
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    }
+
+                    if !selectedImageDatas.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    ForEach(Array(previewImages.enumerated()), id: \.offset) { index, uiImage in
+                                        ZStack(alignment: .topTrailing) {
+                                            Button {
+                                                selectedPreviewIndex = index
+                                                isShowingImagePreview = true
+                                            } label: {
+                                                Image(uiImage: uiImage)
+                                                    .resizable()
+                                                    .scaledToFill()
+                                                    .frame(width: 100, height: 100)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                            }
+                                            .buttonStyle(.plain)
+
+                                            Button {
+                                                selectedImageDatas.remove(at: index)
+                                            } label: {
+                                                Image(systemName: "xmark.circle.fill")
+                                                    .font(.title3)
+                                                    .foregroundStyle(.white, .black.opacity(0.45))
+                                                    .padding(6)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if createdTimeText != nil || editedTimeText != nil {
+                        VStack(alignment: .leading, spacing: 4) {
+                            if let createdTimeText {
+                                Text(createdTimeText)
+                            }
+                            if let editedTimeText {
+                                Text(editedTimeText)
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    }
+                }
+                .padding(20)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle(note == nil ? "新增笔记" : "编辑笔记")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(note == nil ? "添加" : "完成") {
+                        onSave(contentInput, selectedTags, selectedImageDatas)
+                        dismiss()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                    .disabled(!canSave)
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $isShowingImagePreview) {
+            ZStack(alignment: .topTrailing) {
+                Color.black.ignoresSafeArea()
+
+                TabView(selection: $selectedPreviewIndex) {
+                    ForEach(Array(previewImages.enumerated()), id: \.offset) { index, uiImage in
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding(20)
+                            .tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: previewImages.count > 1 ? .automatic : .never))
+
+                Button {
+                    isShowingImagePreview = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 30))
+                        .foregroundStyle(.white.opacity(0.92))
+                        .padding(20)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                isFocused = true
+            }
+        }
+        .popover(isPresented: $isShowingTagPopover, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(editingTagIndex == nil ? "添加标签" : "编辑标签")
+                    .font(.headline)
+
+                TextField("输入标签名称", text: $tagDraft)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                if !suggestedTags.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(suggestedTags, id: \.self) { tag in
+                                Button {
+                                    tagDraft = tag
+                                    commitTagEdit()
+                                } label: {
+                                    Text("#\(tag)")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(.blue)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(Color.blue.opacity(0.10), in: Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    if editingTagIndex != nil {
+                        Button("删除") {
+                            removeEditingTag()
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.red)
+                    }
+
+                    Spacer()
+
+                    Button("取消") {
+                        dismissTagPopover()
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+
+                    Button("确定") {
+                        commitTagEdit()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                    .disabled(normalizedTag(tagDraft).isEmpty)
+                }
+            }
+            .padding(18)
+            .frame(width: 320)
+        }
+        .onChange(of: contentInput) { oldValue, newValue in
+            handlePotentialTagTrigger(oldValue: oldValue, newValue: newValue)
+        }
+        .onChange(of: photoItems) {
+            Task {
+                var loadedDatas: [Data] = []
+
+                for item in photoItems {
+                    if let data = try? await item.loadTransferable(type: Data.self) {
+                        loadedDatas.append(data)
+                    }
+                }
+
+                await MainActor.run {
+                    selectedImageDatas.append(contentsOf: loadedDatas)
+                    photoItems = []
+                }
+            }
+        }
+    }
+
+    private func normalizedTag(_ tag: String) -> String {
+        tag
+            .replacingOccurrences(of: "#", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func addTag(_ tag: String) {
+        let normalized = normalizedTag(tag)
+        guard !normalized.isEmpty, !selectedTags.contains(normalized) else { return }
+        selectedTags.append(normalized)
+    }
+
+    private func presentTagPopover(editingIndex: Int? = nil) {
+        self.editingTagIndex = editingIndex
+        tagDraft = editingIndex.flatMap { selectedTags.indices.contains($0) ? selectedTags[$0] : nil } ?? ""
+        isShowingTagPopover = true
+        isFocused = false
+    }
+
+    private func dismissTagPopover() {
+        tagDraft = ""
+        editingTagIndex = nil
+        isShowingTagPopover = false
+    }
+
+    private func commitTagEdit() {
+        let normalized = normalizedTag(tagDraft)
+        guard !normalized.isEmpty else { return }
+
+        if let editingTagIndex, selectedTags.indices.contains(editingTagIndex) {
+            selectedTags.remove(at: editingTagIndex)
+            if !selectedTags.contains(normalized) {
+                selectedTags.insert(normalized, at: editingTagIndex)
+            }
+        } else if !selectedTags.contains(normalized) {
+            selectedTags.append(normalized)
+        }
+
+        dismissTagPopover()
+    }
+
+    private func removeEditingTag() {
+        if let editingTagIndex, selectedTags.indices.contains(editingTagIndex) {
+            selectedTags.remove(at: editingTagIndex)
+        }
+        dismissTagPopover()
+    }
+
+    private func handlePotentialTagTrigger(oldValue: String, newValue: String) {
+        let oldHashCount = oldValue.filter { $0 == "#" }.count
+        let newHashCount = newValue.filter { $0 == "#" }.count
+        guard newHashCount > oldHashCount,
+              let hashIndex = newValue.lastIndex(of: "#") else { return }
+
+        var sanitized = newValue
+        sanitized.remove(at: hashIndex)
+        if sanitized != contentInput {
+            contentInput = sanitized
+        }
+        presentTagPopover()
+    }
+
+    private func metaDateText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.string(from: date)
     }
 }
 

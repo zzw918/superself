@@ -10,6 +10,13 @@ extension ContentView {
         return formatter.string(from: date)
     }
 
+    func preciseDateTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.string(from: date)
+    }
+
     func chineseMonthDay(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "zh_CN")
@@ -50,6 +57,21 @@ extension ContentView {
         formatter.locale = Locale(identifier: "zh_CN")
         formatter.dateFormat = "yyyy年M月"
         return formatter.string(from: date)
+    }
+
+    func chineseWeekday(_ date: Date) -> String {
+        let weekday = Calendar.current.component(.weekday, from: date)
+
+        switch weekday {
+        case 1: return "周日"
+        case 2: return "周一"
+        case 3: return "周二"
+        case 4: return "周三"
+        case 5: return "周四"
+        case 6: return "周五"
+        case 7: return "周六"
+        default: return ""
+        }
     }
 
     func anniversaryDateText(for item: AnniversaryItem) -> String {
@@ -174,6 +196,19 @@ extension ContentView {
         let hours = totalSeconds / 3600
         let minutes = (totalSeconds % 3600) / 60
         let seconds = totalSeconds % 60
+
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+
+    func timerDisplayText(from interval: TimeInterval) -> String {
+        let totalSeconds = max(0, Int(interval))
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        if hours >= 100 {
+            return String(format: "%d:%02d", hours, minutes)
+        }
 
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }

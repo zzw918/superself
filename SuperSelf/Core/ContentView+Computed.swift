@@ -129,6 +129,38 @@ extension ContentView {
         return todoTasks.filter { !$0.isCompleted && $0.priority == priority }.count
     }
 
+    var sortedMemoNotes: [MemoNote] {
+        memoNotes
+            .filter { note in
+                noteTagFilter.map { note.tags.contains($0) } ?? true
+            }
+            .sorted { lhs, rhs in
+                if lhs.lastActivityAt != rhs.lastActivityAt {
+                    return lhs.lastActivityAt > rhs.lastActivityAt
+                }
+                return lhs.createdAt > rhs.createdAt
+            }
+    }
+
+    var allMemoNoteTags: [String] {
+        let tags = memoNotes.flatMap(\.tags)
+        let counts = Dictionary(tags.map { ($0, 1) }, uniquingKeysWith: +)
+
+        return counts.keys.sorted { lhs, rhs in
+            let lhsCount = counts[lhs] ?? 0
+            let rhsCount = counts[rhs] ?? 0
+            if lhsCount != rhsCount {
+                return lhsCount > rhsCount
+            }
+            return lhs.localizedStandardCompare(rhs) == .orderedAscending
+        }
+    }
+
+    func memoNoteCount(for tag: String?) -> Int {
+        guard let tag else { return memoNotes.count }
+        return memoNotes.filter { $0.tags.contains(tag) }.count
+    }
+
     var openWishlistItems: [WishlistItem] {
         wishlistItems
             .filter { !$0.isCompleted }

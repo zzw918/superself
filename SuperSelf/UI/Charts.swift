@@ -215,6 +215,7 @@ struct FinanceDistributionView: View {
                                 .font(.caption.bold())
                                 .foregroundStyle(point.color)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 7)
                         .background(
@@ -225,11 +226,13 @@ struct FinanceDistributionView: View {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .stroke(isSelected ? point.color.opacity(0.22) : Color.clear, lineWidth: 1)
                         }
+                        .contentShape(Rectangle())
                         .scaleEffect(isSelected ? 1.02 : 1.0, anchor: .leading)
                     }
                     .buttonStyle(.plain)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .transaction { transaction in
             transaction.animation = nil

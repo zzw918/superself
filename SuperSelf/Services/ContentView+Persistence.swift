@@ -119,7 +119,7 @@ extension ContentView {
             healthSectionPrefs = prefs.normalized
         }
         if let prefs = decodeSectionPreferences(MemoSection.self, from: memoSectionPreferencesData) {
-            memoSectionPrefs = prefs.normalized
+            memoSectionPrefs = migrateMemoSectionPreferences(prefs)
         }
         if let prefs = decodeSectionPreferences(FinanceSection.self, from: financeSectionPreferencesData) {
             financeSectionPrefs = prefs.normalized
@@ -130,6 +130,25 @@ extension ContentView {
     func decodeSectionPreferences<S>(_ type: S.Type, from data: Data) -> SectionPreferences<S>? {
         guard !data.isEmpty else { return nil }
         return try? JSONDecoder().decode(SectionPreferences<S>.self, from: data)
+    }
+
+    func migrateMemoSectionPreferences(_ prefs: SectionPreferences<MemoSection>) -> SectionPreferences<MemoSection> {
+        var order = prefs.order
+        var visibleSections = prefs.visibleSections
+
+        if !order.contains(.note) {
+            if let todoIndex = order.firstIndex(of: .todo) {
+                order.insert(.note, at: todoIndex + 1)
+            } else {
+                order.insert(.note, at: min(1, order.count))
+            }
+        }
+
+        if !visibleSections.contains(.note) {
+            visibleSections.append(.note)
+        }
+
+        return SectionPreferences(order: order, visibleSections: visibleSections).normalized
     }
 
     /// 选中的分区如果被隐藏了，回退到第一个可见分区。
@@ -275,6 +294,7 @@ extension ContentView {
         loadWeightLogs()
         loadFastingSessions()
         loadTodoTasks()
+        loadMemoNotes()
         loadWishlistCategories()
         loadWishlistItems()
         loadAnniversaryItems()
@@ -375,6 +395,15 @@ extension ContentView {
         }
     }
 
+    func loadMemoNotes() {
+        guard !memoNotesData.isEmpty else { return }
+
+        if let decodedNotes = try? JSONDecoder().decode([MemoNote].self, from: memoNotesData) {
+            memoNotes = decodedNotes
+            normalizeMemoNoteTagFilter()
+        }
+    }
+
     func addTodoTask() {
         let trimmedTitle = todoInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { return }
@@ -417,6 +446,108 @@ extension ContentView {
             todoTasksData = encodedTasks
             cloudStore.set(encodedTasks, forKey: todoTasksCloudKey)
             flushToICloud()
+        }
+    }
+
+    func addMemoNote(content: String, tags: [String], imageDatas: [Data]) {
+        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedTags = Array(NSOrderedSet(array: tags.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })) as? [String] ?? []
+        guard !trimmedContent.isEmpty || !imageDatas.isEmpty || !normalizedTags.isEmpty,
+              let imageFileNames = storeMemoNoteImages(imageDatas) else { return }
+
+        memoNotes.insert(
+            MemoNote(content: trimmedContent, tags: normalizedTags, createdAt: Date(), imageFileNames: imageFileNames),
+            at: 0
+        )
+        normalizeMemoNoteTagFilter()
+        persistMemoNotes()
+    }
+
+    func updateMemoNote(_ note: MemoNote, content: String, tags: [String], imageDatas: [Data]) {
+        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedTags = Array(NSOrderedSet(array: tags.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })) as? [String] ?? []
+        guard !trimmedContent.isEmpty || !imageDatas.isEmpty || !normalizedTags.isEmpty,
+              let index = memoNotes.firstIndex(where: { $0.id == note.id }),
+              let imageFileNames = storeMemoNoteImages(imageDatas) else { return }
+
+        let oldImageFileNames = memoNotes[index].imageFileNames
+        memoNotes[index].content = trimmedContent
+        memoNotes[index].tags = normalizedTags
+        memoNotes[index].updatedAt = Date()
+        memoNotes[index].imageFileNames = imageFileNames
+        normalizeMemoNoteTagFilter()
+        persistMemoNotes()
+        deleteMemoNoteImages(fileNames: oldImageFileNames)
+    }
+
+    func deleteMemoNote(_ note: MemoNote) {
+        let fileNames = memoNotes.first(where: { $0.id == note.id })?.imageFileNames ?? []
+        memoNotes.removeAll { $0.id == note.id }
+        normalizeMemoNoteTagFilter()
+        persistMemoNotes()
+        deleteMemoNoteImages(fileNames: fileNames)
+    }
+
+    func persistMemoNotes() {
+        if let encodedNotes = try? JSONEncoder().encode(memoNotes) {
+            memoNotesData = encodedNotes
+        }
+    }
+
+    func normalizeMemoNoteTagFilter() {
+        if let noteTagFilter, !allMemoNoteTags.contains(noteTagFilter) {
+            self.noteTagFilter = nil
+        }
+    }
+
+    func memoNoteImagesDirectoryURL() -> URL? {
+        guard let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+
+        let directoryURL = baseURL.appendingPathComponent("MemoNoteImages", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: directoryURL.path) {
+            do {
+                try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+            } catch {
+                return nil
+            }
+        }
+        return directoryURL
+    }
+
+    func storeMemoNoteImages(_ imageDatas: [Data]) -> [String]? {
+        guard let directoryURL = memoNoteImagesDirectoryURL() else { return nil }
+
+        var fileNames: [String] = []
+
+        for imageData in imageDatas {
+            let fileName = "\(UUID().uuidString).img"
+            let fileURL = directoryURL.appendingPathComponent(fileName)
+
+            do {
+                try imageData.write(to: fileURL, options: .atomic)
+                fileNames.append(fileName)
+            } catch {
+                deleteMemoNoteImages(fileNames: fileNames)
+                return nil
+            }
+        }
+
+        return fileNames
+    }
+
+    func loadMemoNoteImageData(fileName: String) -> Data? {
+        guard let directoryURL = memoNoteImagesDirectoryURL() else { return nil }
+        return try? Data(contentsOf: directoryURL.appendingPathComponent(fileName))
+    }
+
+    func deleteMemoNoteImages(fileNames: [String]) {
+        guard let directoryURL = memoNoteImagesDirectoryURL() else { return }
+
+        for fileName in fileNames {
+            let fileURL = directoryURL.appendingPathComponent(fileName)
+            try? FileManager.default.removeItem(at: fileURL)
         }
     }
 
@@ -897,7 +1028,7 @@ extension ContentView {
 
         if let data = cloudStore.data(forKey: memoSectionPreferencesCloudKey),
            let prefs = try? JSONDecoder().decode(SectionPreferences<MemoSection>.self, from: data) {
-            memoSectionPrefs = prefs.normalized
+            memoSectionPrefs = migrateMemoSectionPreferences(prefs)
             memoSectionPreferencesData = (try? JSONEncoder().encode(memoSectionPrefs)) ?? memoSectionPreferencesData
         }
 

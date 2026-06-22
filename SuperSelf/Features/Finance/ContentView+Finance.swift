@@ -380,9 +380,6 @@ extension ContentView {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("资产趋势")
                         .font(.title3.bold())
-                    Text("按每个月最后一次记录作为当月数据")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()

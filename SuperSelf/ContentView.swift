@@ -43,6 +43,7 @@ struct ContentView: View {
     @AppStorage("weightLogs") var weightLogsData = Data()
     @AppStorage("fastingSessions") var fastingSessionsData = Data()
     @AppStorage("todoTasks") var todoTasksData = Data()
+    @AppStorage("memoNotes") var memoNotesData = Data()
     @AppStorage("wishlistItems") var wishlistItemsData = Data()
     @AppStorage("wishlistCategories") var wishlistCategoriesData = Data()
     @AppStorage("anniversaryItems") var anniversaryItemsData = Data()
@@ -74,6 +75,7 @@ struct ContentView: View {
     @State var weightLogs: [FastingLog] = []
     @State var fastingSessions: [FastingSession] = []
     @State var todoTasks: [TodoTask] = []
+    @State var memoNotes: [MemoNote] = []
     @State var wishlistItems: [WishlistItem] = []
     @State var wishlistCategories: [WishlistCategory] = WishlistCategory.defaultCategories
     @State var anniversaryItems: [AnniversaryItem] = []
@@ -82,6 +84,8 @@ struct ContentView: View {
     @State var todoFilter: TodoPriority? = nil
     @State var todoAddInitialPriority: TodoPriority?
     @State var isShowingTodoAddSheet = false
+    @State var noteTagFilter: String?
+    @State var isShowingNoteAddSheet = false
     @State var wishlistInput = ""
     @State var wishlistCategoryID = WishlistCategory.defaultCategories[0].id
     @State var wishlistFilter: WishlistFilter = .all
@@ -125,6 +129,7 @@ struct ContentView: View {
     @State var editingFinanceAsset: FinanceAsset?
     @State var editingStockResearchItem: StockResearchItem?
     @State var editingTodoTask: TodoTask?
+    @State var editingMemoNote: MemoNote?
     @State var editingWishlistItem: WishlistItem?
     @State var editingAnniversaryItem: AnniversaryItem?
     @State var editingWeightLog: FastingLog?
@@ -349,6 +354,28 @@ struct ContentView: View {
                 updateTodoTask(task, title: newTitle, priority: newPriority, dueDate: newDueDate)
             }
             .presentationDetents([.height(520)])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $isShowingNoteAddSheet) {
+            MemoNoteEditorSheet(
+                existingTags: allMemoNoteTags,
+                initialImageDatas: []
+            ) { content, tags, imageDatas in
+                addMemoNote(content: content, tags: tags, imageDatas: imageDatas)
+                isShowingNoteAddSheet = false
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $editingMemoNote) { note in
+            MemoNoteEditorSheet(
+                note: note,
+                existingTags: allMemoNoteTags,
+                initialImageDatas: note.imageFileNames.compactMap(loadMemoNoteImageData)
+            ) { content, tags, imageDatas in
+                updateMemoNote(note, content: content, tags: tags, imageDatas: imageDatas)
+            }
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingWishlistAddSheet) {

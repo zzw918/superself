@@ -240,6 +240,85 @@ struct WishlistItem: Identifiable, Equatable, Codable {
     }
 }
 
+struct MemoNote: Identifiable, Equatable, Codable {
+    var id = UUID()
+    var content: String
+    var tags: [String] = []
+    var createdAt: Date
+    var updatedAt: Date?
+    var imageFileNames: [String] = []
+
+    var lastActivityAt: Date {
+        updatedAt ?? createdAt
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case content
+        case tags
+        case createdAt
+        case updatedAt
+        case imageFileNames
+    }
+
+    init(
+        id: UUID = UUID(),
+        content: String,
+        tags: [String] = [],
+        createdAt: Date,
+        updatedAt: Date? = nil,
+        imageFileNames: [String] = []
+    ) {
+        self.id = id
+        self.content = content
+        self.tags = tags
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.imageFileNames = imageFileNames
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        let decodedContent = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
+        let decodedTags = try container.decodeIfPresent([String].self, forKey: .tags)
+        tags = decodedTags ?? Self.extractTags(from: decodedContent)
+        content = decodedTags == nil ? Self.strippedContent(from: decodedContent, removing: tags) : decodedContent
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+        imageFileNames = try container.decodeIfPresent([String].self, forKey: .imageFileNames) ?? []
+    }
+
+    static func extractTags(from text: String) -> [String] {
+        let nsRange = NSRange(text.startIndex..<text.endIndex, in: text)
+        let pattern = "#([\\p{L}\\p{N}_-]+)"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+
+        var uniqueTags: [String] = []
+
+        for match in regex.matches(in: text, range: nsRange) {
+            guard match.numberOfRanges > 1,
+                  let range = Range(match.range(at: 1), in: text) else { continue }
+
+            let tag = String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !tag.isEmpty, !uniqueTags.contains(tag) else { continue }
+            uniqueTags.append(tag)
+        }
+
+        return uniqueTags
+    }
+
+    static func strippedContent(from text: String, removing tags: [String]) -> String {
+        let stripped = tags.reduce(text) { partial, tag in
+            partial.replacingOccurrences(of: "#\(tag)", with: "")
+        }
+
+        return stripped
+            .replacingOccurrences(of: "  ", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 enum AnniversaryKind: String, CaseIterable, Identifiable, Codable {
     case birthday
     case wedding

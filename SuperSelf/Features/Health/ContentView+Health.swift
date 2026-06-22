@@ -6,6 +6,9 @@ extension ContentView {
         let gradientColors: [Color] = isFasting ? [.blue, .cyan] : [.green, .mint]
         let overtimeAccent: Color = isFasting ? .green : .orange
         let reached = hasReachedCurrentGoal
+        let ringInterval = reached ? overtime : (isFasting ? elapsed : remaining)
+        let ringText = timerDisplayText(from: ringInterval)
+        let ringFontSize: CGFloat = ringText.count >= 8 ? 40 : (ringText.count >= 7 ? 36 : 34)
 
         let conclusion: String = isFasting ? "可以开吃了" : "该开始断食了"
         let subtitle: String = reached
@@ -58,15 +61,16 @@ extension ContentView {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
 
-                    Text(timeString(from: reached ? overtime : (isFasting ? elapsed : remaining)))
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                    Text(ringText)
+                        .font(.system(size: ringFontSize, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.6)
+                        .allowsTightening(true)
                         .lineLimit(1)
                         .foregroundStyle(reached ? overtimeAccent : .primary)
                 }
-                .padding(.horizontal, 36)
+                .padding(.horizontal, 28)
             }
             .frame(width: 230, height: 230)
             .padding(.vertical, 4)
@@ -957,7 +961,7 @@ extension ContentView {
             } else {
                 VStack(spacing: 10) {
                     ForEach(displayedWeightLogs) { log in
-                        WeightLogRow(log: log, weightText: weightText(log.weight), dateText: chineseDateTime(log.date), onOpen: {
+                        WeightLogRow(log: log, weightText: weightText(log.weight), dateText: chineseDateTime(log.date), weekdayText: chineseWeekday(log.date), onOpen: {
                             shouldFocusWeightLogNote = false
                             editingWeightLog = log
                         }, onDelete: {
