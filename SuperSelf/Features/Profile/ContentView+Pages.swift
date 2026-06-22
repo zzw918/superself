@@ -359,17 +359,31 @@ extension ContentView {
                             .buttonStyle(.plain)
                         }
                     } else {
-                        Button {
-                            beginTabEditMode()
-                        } label: {
-                            Image(systemName: "square.and.pencil")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 30, height: 30)
-                                .background(Color(.tertiarySystemFill))
-                                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        HStack(spacing: 8) {
+                            Button {
+                                isShowingSectionManagement = true
+                            } label: {
+                                Image(systemName: "gearshape")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 30, height: 30)
+                                    .background(Color(.tertiarySystemFill))
+                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                beginTabEditMode()
+                            } label: {
+                                Image(systemName: "square.and.pencil")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 30, height: 30)
+                                    .background(Color(.tertiarySystemFill))
+                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
 
@@ -378,12 +392,6 @@ extension ContentView {
                         .profileCardRow()
                 }
                 .onMove(perform: moveMainTabs)
-
-                profileFixedTabCard
-                    .profileCardRow()
-
-                sectionManagementEntryRow
-                    .profileCardRow()
 
                 profileSectionTitleRow("外观")
 
@@ -408,6 +416,9 @@ extension ContentView {
                 profileSectionNoteRow("数据保存在本地，并在 iCloud 可用时同步。", topInset: 0)
             }
             .listStyle(.plain)
+            .refreshable {
+                weatherStore.refresh()
+            }
             .scrollContentBackground(.hidden)
             .background(Color(.systemGroupedBackground))
             .navigationTitle("我的")
@@ -506,11 +517,10 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .contentShape(Rectangle())
         .onTapGesture {
-            if case .loaded = weatherStore.state {
-                isShowingWeatherForecastSheet = true
-            } else {
+            if case .idle = weatherStore.state {
                 weatherStore.refresh()
             }
+            isShowingWeatherForecastSheet = true
         }
     }
 
@@ -589,63 +599,6 @@ extension ContentView {
                     .stroke(Color.blue.opacity(0.35), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
             }
         }
-    }
-
-    var profileFixedTabCard: some View {
-        HStack(spacing: 14) {
-            profileIcon("person.crop.circle", tint: .gray)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("我的")
-                    .font(.headline)
-                Text("固定在最右侧")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 8)
-
-            Text("固定")
-                .font(.caption.bold())
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Color(.tertiarySystemFill), in: Capsule())
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-    }
-
-    var sectionManagementEntryRow: some View {
-        Button {
-            isShowingSectionManagement = true
-        } label: {
-            HStack(spacing: 14) {
-                profileIcon("square.grid.2x2", tint: .blue)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("模块管理")
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                    Text("调整各功能模块的顺序与显隐")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.bold())
-                    .foregroundStyle(.tertiary)
-            }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.background)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-        }
-        .buttonStyle(.plain)
     }
 
     var notificationSettingsRow: some View {

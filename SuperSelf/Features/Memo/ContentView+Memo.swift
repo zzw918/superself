@@ -24,6 +24,9 @@ extension ContentView {
                             },
                             onDelete: {
                                 deleteAnniversaryItem(item)
+                            },
+                            onTogglePin: {
+                                toggleAnniversaryItemPin(item)
                             }
                         )
                     }
@@ -164,6 +167,8 @@ extension ContentView {
                                 editingTodoTask = task
                             }, onDelete: {
                                 deleteTodoTask(task)
+                            }, onTogglePin: {
+                                toggleTodoTaskPin(task)
                             })
                         }
                     }
@@ -179,6 +184,8 @@ extension ContentView {
                                     editingTodoTask = task
                                 }, onDelete: {
                                     deleteTodoTask(task)
+                                }, onTogglePin: {
+                                    toggleTodoTaskPin(task)
                                 })
                             }
                         }
@@ -236,6 +243,9 @@ extension ContentView {
                             },
                             onDelete: {
                                 deleteMemoNote(note)
+                            },
+                            onTogglePin: {
+                                toggleMemoNotePin(note)
                             }
                         )
                     }
@@ -370,6 +380,8 @@ extension ContentView {
                                 editingWishlistItem = item
                             }, onDelete: {
                                 deleteWishlistItem(item)
+                            }, onTogglePin: {
+                                toggleWishlistItemPin(item)
                             })
                         }
                     }
@@ -385,6 +397,8 @@ extension ContentView {
                                     editingWishlistItem = item
                                 }, onDelete: {
                                     deleteWishlistItem(item)
+                                }, onTogglePin: {
+                                    toggleWishlistItemPin(item)
                                 })
                             }
                         }

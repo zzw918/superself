@@ -441,6 +441,13 @@ extension ContentView {
         persistTodoTasks()
     }
 
+    func toggleTodoTaskPin(_ task: TodoTask) {
+        guard let index = todoTasks.firstIndex(where: { $0.id == task.id }) else { return }
+        todoTasks[index].isPinned.toggle()
+        todoTasks[index].updatedAt = Date()
+        persistTodoTasks()
+    }
+
     func persistTodoTasks() {
         if let encodedTasks = try? JSONEncoder().encode(todoTasks) {
             todoTasksData = encodedTasks
@@ -486,6 +493,13 @@ extension ContentView {
         normalizeMemoNoteTagFilter()
         persistMemoNotes()
         deleteMemoNoteImages(fileNames: fileNames)
+    }
+
+    func toggleMemoNotePin(_ note: MemoNote) {
+        guard let index = memoNotes.firstIndex(where: { $0.id == note.id }) else { return }
+        memoNotes[index].isPinned.toggle()
+        memoNotes[index].updatedAt = Date()
+        persistMemoNotes()
     }
 
     func persistMemoNotes() {
@@ -632,6 +646,13 @@ extension ContentView {
         persistWishlistItems()
     }
 
+    func toggleWishlistItemPin(_ item: WishlistItem) {
+        guard let index = wishlistItems.firstIndex(where: { $0.id == item.id }) else { return }
+        wishlistItems[index].isPinned.toggle()
+        wishlistItems[index].updatedAt = Date()
+        persistWishlistItems()
+    }
+
     func addWishlistCategory(title: String, icon: String) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -750,6 +771,14 @@ extension ContentView {
         anniversaryItems[index].calendarKind = calendarKind
         anniversaryItems[index].date = date
         anniversaryItems[index].showsElapsedDays = showsElapsedDays
+        anniversaryItems[index].updatedAt = Date()
+        persistAnniversaryItems()
+    }
+
+    func toggleAnniversaryItemPin(_ item: AnniversaryItem) {
+        guard let index = anniversaryItems.firstIndex(where: { $0.id == item.id }) else { return }
+        anniversaryItems[index].isPinned.toggle()
+        anniversaryItems[index].updatedAt = Date()
         persistAnniversaryItems()
     }
 
@@ -1169,6 +1198,17 @@ extension ContentView {
         return "等待首次同步"
     }
 
+    var syncLastSyncText: String {
+        if isSyncing {
+            return "正在同步…"
+        }
+        guard lastICloudSyncAt > 0 else {
+            return "尚未同步"
+        }
+        let date = Date(timeIntervalSince1970: lastICloudSyncAt)
+        return "上次同步 \(syncDateTimeText(for: date))"
+    }
+
     var syncStatusIcon: String {
         if isSyncing {
             return "arrow.triangle.2.circlepath"
@@ -1199,6 +1239,7 @@ extension ContentView {
     func syncNow() {
         guard isICloudAvailable else {
             syncStatus = "未登录 iCloud，无法同步"
+            showSyncToast("未登录 iCloud，无法同步")
             return
         }
 
@@ -1212,6 +1253,28 @@ extension ContentView {
         }
         syncStatus = succeeded ? "同步完成" : "同步未完成，请稍后重试"
         isSyncing = false
+        showSyncToast(syncStatus)
+    }
+
+    func showSyncToast(_ message: String) {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+            syncToastMessage = message
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            guard syncToastMessage == message else { return }
+            withAnimation(.easeInOut(duration: 0.2)) {
+                syncToastMessage = nil
+            }
+        }
+    }
+
+    func syncDateTimeText(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = Calendar.current.isDate(date, equalTo: Date(), toGranularity: .year)
+            ? "M月d日 HH:mm"
+            : "yyyy年M月d日 HH:mm"
+        return formatter.string(from: date)
     }
 
     func persistSettingsToICloud() {
@@ -1277,7 +1340,13 @@ extension ContentView {
         var mergedItemsByID = Dictionary(uniqueKeysWithValues: wishlistItems.map { ($0.id, $0) })
 
         for item in cloudItems {
-            mergedItemsByID[item.id] = item
+            if let local = mergedItemsByID[item.id] {
+                let localDate = local.updatedAt ?? local.createdAt
+                let cloudDate = item.updatedAt ?? item.createdAt
+                mergedItemsByID[item.id] = cloudDate >= localDate ? item : local
+            } else {
+                mergedItemsByID[item.id] = item
+            }
         }
 
         wishlistItems = mergedItemsByID.values.sorted { $0.createdAt > $1.createdAt }
@@ -1305,7 +1374,11 @@ extension ContentView {
         var mergedItemsByID = Dictionary(uniqueKeysWithValues: anniversaryItems.map { ($0.id, $0) })
 
         for item in cloudItems {
-            mergedItemsByID[item.id] = item
+            if let local = mergedItemsByID[item.id] {
+                mergedItemsByID[item.id] = item.lastActivityAt >= local.lastActivityAt ? item : local
+            } else {
+                mergedItemsByID[item.id] = item
+            }
         }
 
         anniversaryItems = mergedItemsByID.values.sorted {

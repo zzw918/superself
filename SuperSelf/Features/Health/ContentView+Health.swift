@@ -265,7 +265,7 @@ extension ContentView {
                 Image(systemName: syncStatusIcon)
                     .font(.caption)
                     .foregroundStyle(syncStatusTint)
-                Text(syncStatusText)
+                Text(syncLastSyncText)
                     .font(.caption)
                     .foregroundStyle(syncStatusTint)
 

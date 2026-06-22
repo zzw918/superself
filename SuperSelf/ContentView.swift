@@ -142,6 +142,7 @@ struct ContentView: View {
     @State var didApplyColdStartSelection = false
     @State var syncStatus = "iCloud 同步准备中"
     @State var isSyncing = false
+    @State var syncToastMessage: String?
     @AppStorage("lastICloudSyncAt") var lastICloudSyncAt: Double = 0
     @State var isShowingWeightSheet = false
     @State var isShowingBodySettings = false
@@ -185,6 +186,19 @@ struct ContentView: View {
                 }
         }
         .preferredColorScheme(appearanceMode.wrappedValue.colorScheme)
+        .overlay(alignment: .top) {
+            if let syncToastMessage {
+                Label(syncToastMessage, systemImage: syncToastMessage.contains("完成") ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(syncToastMessage.contains("完成") ? .green : .orange)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .padding(.top, 12)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
         .onReceive(notificationRouter.$route.compactMap { $0 }) { route in
             handleAppRoute(route)
         }
@@ -311,11 +325,7 @@ struct ContentView: View {
             anniversaryAddSheet
         }
         .sheet(isPresented: $isShowingWeatherForecastSheet) {
-            if case .loaded(let info) = weatherStore.state {
-                WeatherForecastSheet(info: info) {
-                    weatherStore.refresh()
-                }
-            }
+            WeatherForecastSheet(weatherStore: weatherStore)
         }
         .sheet(isPresented: $isShowingStartTimeSheet) {
             startTimeSheet

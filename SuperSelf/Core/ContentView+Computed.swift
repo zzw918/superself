@@ -87,6 +87,10 @@ extension ContentView {
             .filter { !$0.isCompleted }
             .filter { task in todoFilter == nil || task.priority == todoFilter }
             .sorted { lhs, rhs in
+                if lhs.isPinned != rhs.isPinned {
+                    return lhs.isPinned
+                }
+                
                 let lhsPriorityIndex = TodoPriority.allCases.firstIndex(of: lhs.priority) ?? .max
                 let rhsPriorityIndex = TodoPriority.allCases.firstIndex(of: rhs.priority) ?? .max
 
@@ -135,6 +139,9 @@ extension ContentView {
                 noteTagFilter.map { note.tags.contains($0) } ?? true
             }
             .sorted { lhs, rhs in
+                if lhs.isPinned != rhs.isPinned {
+                    return lhs.isPinned
+                }
                 if lhs.lastActivityAt != rhs.lastActivityAt {
                     return lhs.lastActivityAt > rhs.lastActivityAt
                 }
@@ -164,7 +171,12 @@ extension ContentView {
     var openWishlistItems: [WishlistItem] {
         wishlistItems
             .filter { !$0.isCompleted }
-            .sorted { $0.createdAt > $1.createdAt }
+            .sorted { lhs, rhs in
+                if lhs.isPinned != rhs.isPinned {
+                    return lhs.isPinned
+                }
+                return lhs.createdAt > rhs.createdAt
+            }
     }
 
     var completedWishlistItems: [WishlistItem] {
@@ -212,6 +224,10 @@ extension ContentView {
 
     var sortedAnniversaryItems: [AnniversaryItem] {
         anniversaryItems.sorted { lhs, rhs in
+            if lhs.isPinned != rhs.isPinned {
+                return lhs.isPinned
+            }
+            
             let lhsDate = nextAnniversaryDate(for: lhs) ?? lhs.date
             let rhsDate = nextAnniversaryDate(for: rhs) ?? rhs.date
 

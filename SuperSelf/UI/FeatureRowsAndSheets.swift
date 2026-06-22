@@ -17,6 +17,7 @@ struct TodoTaskRow: View {
     let onToggle: () -> Void
     let onEdit: () -> Void
     var onDelete: (() -> Void)? = nil
+    var onTogglePin: (() -> Void)? = nil
 
     @State private var isShowingCompleteConfirm = false
     @State private var isCelebratingCompletion = false
@@ -40,6 +41,13 @@ struct TodoTaskRow: View {
                         .multilineTextAlignment(.leading)
 
                     HStack(spacing: 8) {
+                        if task.isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                                .rotationEffect(.degrees(45))
+                        }
+
                         TodoPriorityBadge(priority: task.priority)
 
                         if let dueDate = task.dueDate, !task.isCompleted, !isCelebratingCompletion {
@@ -90,13 +98,16 @@ struct TodoTaskRow: View {
         } message: {
             Text("「\(task.title)」会移入已完成列表。")
         }
-        .longPressDelete(
+        .id("\(task.id)-\(task.isPinned)")
+        .longPressActions(
             DeleteConfirmationContent(
                 title: "删除待办？",
                 message: "「\(task.title)」会被永久删除。",
                 confirmTitle: "删除"
             ),
-            onDelete: onDelete
+            onDelete: onDelete,
+            isPinned: task.isPinned,
+            onTogglePin: onTogglePin
         )
     }
 
@@ -185,6 +196,7 @@ struct WishlistRow: View {
     let onToggle: () -> Void
     let onEdit: () -> Void
     var onDelete: (() -> Void)? = nil
+    var onTogglePin: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 12) {
@@ -199,6 +211,13 @@ struct WishlistRow: View {
             Button(action: onEdit) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
+                        if item.isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                                .rotationEffect(.degrees(45))
+                        }
+
                         Text(item.title)
                             .font(.subheadline.weight(.medium))
                             .strikethrough(item.isCompleted)
@@ -230,13 +249,16 @@ struct WishlistRow: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.tertiarySystemGroupedBackground))
         )
-        .longPressDelete(
+        .id("\(item.id)-\(item.isPinned)")
+        .longPressActions(
             DeleteConfirmationContent(
                 title: "删除愿望？",
                 message: "「\(item.title)」会被永久删除。",
                 confirmTitle: "删除"
             ),
-            onDelete: onDelete
+            onDelete: onDelete,
+            isPinned: item.isPinned,
+            onTogglePin: onTogglePin
         )
     }
 }
@@ -248,6 +270,7 @@ struct MemoNoteCard: View {
     let onTagTap: (String) -> Void
     let onEdit: () -> Void
     var onDelete: (() -> Void)? = nil
+    var onTogglePin: (() -> Void)? = nil
     @State private var isShowingImagePreview = false
     @State private var selectedPreviewIndex = 0
     @State private var isExpanded = false
@@ -286,9 +309,20 @@ struct MemoNoteCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(dateText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack {
+                Text(dateText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                
+                Spacer()
+                
+                if note.isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .rotationEffect(.degrees(45))
+                }
+            }
 
             if !previewText.isEmpty || !note.tags.isEmpty {
                 combinedPreviewText
@@ -352,6 +386,17 @@ struct MemoNoteCard: View {
         )
         .contentShape(Rectangle())
         .onTapGesture(perform: onEdit)
+        .id("\(note.id)-\(note.isPinned)")
+        .longPressActions(
+            DeleteConfirmationContent(
+                title: "删除笔记？",
+                message: "这条笔记会被永久删除。",
+                confirmTitle: "删除"
+            ),
+            onDelete: onDelete,
+            isPinned: note.isPinned,
+            onTogglePin: onTogglePin
+        )
         .fullScreenCover(isPresented: $isShowingImagePreview) {
             ZStack(alignment: .topTrailing) {
                 Color.black.ignoresSafeArea()
@@ -379,14 +424,6 @@ struct MemoNoteCard: View {
                 .buttonStyle(.plain)
             }
         }
-        .longPressDelete(
-            DeleteConfirmationContent(
-                title: "删除笔记？",
-                message: "这条笔记会被永久删除。",
-                confirmTitle: "删除"
-            ),
-            onDelete: onDelete
-        )
     }
 }
 
@@ -398,6 +435,7 @@ struct AnniversaryRow: View {
     let elapsedText: String?
     let onEdit: () -> Void
     var onDelete: (() -> Void)? = nil
+    var onTogglePin: (() -> Void)? = nil
 
     private var isToday: Bool { (daysUntil ?? -1) == 0 }
 
@@ -405,10 +443,18 @@ struct AnniversaryRow: View {
         Button(action: onEdit) {
             HStack(alignment: .center, spacing: 14) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(item.title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.leading)
+                    HStack(spacing: 8) {
+                        if item.isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                                .rotationEffect(.degrees(45))
+                        }
+                        Text(item.title)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                    }
 
                     Text(dateText)
                         .font(.subheadline)
@@ -445,13 +491,16 @@ struct AnniversaryRow: View {
             )
         }
         .buttonStyle(.plain)
-        .longPressDelete(
+        .id("\(item.id)-\(item.isPinned)")
+        .longPressActions(
             DeleteConfirmationContent(
                 title: "删除纪念日？",
                 message: "「\(item.title)」会被永久删除。",
                 confirmTitle: "删除"
             ),
-            onDelete: onDelete
+            onDelete: onDelete,
+            isPinned: item.isPinned,
+            onTogglePin: onTogglePin
         )
     }
 
@@ -744,6 +793,10 @@ struct StockResearchEditorSheet: View {
         return "编辑于 \(metaDateText(item.updatedAt))"
     }
 
+    private var thesisEditorFont: UIFont {
+        .preferredFont(forTextStyle: .subheadline)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
@@ -768,26 +821,30 @@ struct StockResearchEditorSheet: View {
                         .padding(.horizontal)
                         .padding(.top)
 
-                        TextEditor(text: $thesis)
-                            .focused($isThesisFocused)
-                            .scrollContentBackground(.hidden)
-                            .frame(minHeight: 260)
-                            .padding(8)
-                            .background(Color(.secondarySystemGroupedBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                            .overlay(alignment: .topLeading) {
-                                if thesis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    Text("写下你对这只股票的理解：商业模式、护城河、估值、风险、跟踪点……")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                        .padding(.horizontal, 14)
-                                        .padding(.vertical, 16)
-                                        .allowsHitTesting(false)
+                        GeometryReader { proxy in
+                            TextEditor(text: $thesis)
+                                .font(.subheadline)
+                                .focused($isThesisFocused)
+                                .scrollContentBackground(.hidden)
+                                .frame(height: thesisEditorHeight(width: proxy.size.width))
+                                .padding(8)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .overlay(alignment: .topLeading) {
+                                    if thesis.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        Text("写下你对这只股票的理解：商业模式、护城河、估值、风险、跟踪点……")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                            .padding(.horizontal, 14)
+                                            .padding(.vertical, 16)
+                                            .allowsHitTesting(false)
+                                    }
                                 }
-                            }
-                            .padding(.horizontal)
-                            .padding(.bottom)
-                            .id(thesisAnchor)
+                        }
+                        .frame(height: thesisEditorHeight(width: UIScreen.main.bounds.width - 32))
+                        .padding(.horizontal)
+                        .padding(.bottom)
+                        .id(thesisAnchor)
 
                         VStack(spacing: 10) {
                             StockRatingPicker(title: "确定性", hint: "未来大概率不会亏", tint: .green, selection: $certainty)
@@ -862,6 +919,26 @@ struct StockResearchEditorSheet: View {
             ? "M月d日 HH:mm"
             : "yyyy年M月d日 HH:mm"
         return formatter.string(from: date)
+    }
+
+    private func thesisEditorHeight(width: CGFloat) -> CGFloat {
+        let horizontalPadding: CGFloat = 28
+        let verticalPadding: CGFloat = 28
+        let lineHeight = ceil(thesisEditorFont.lineHeight)
+        let textWidth = max(1, width - horizontalPadding)
+        let rows = max(5, thesisVisualLineCount(width: textWidth) + 2)
+        return CGFloat(rows) * lineHeight + verticalPadding
+    }
+
+    private func thesisVisualLineCount(width: CGFloat) -> Int {
+        let text = thesis.isEmpty ? " " : thesis
+        let boundingRect = (text as NSString).boundingRect(
+            with: CGSize(width: width, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: thesisEditorFont],
+            context: nil
+        )
+        return max(1, Int(ceil(boundingRect.height / max(1, thesisEditorFont.lineHeight))))
     }
 }
 
@@ -2752,6 +2829,25 @@ struct WishlistEditorSheet: View {
         return "更新于 \(metaDateText(updatedAt))"
     }
 
+    private var sortedCategories: [WishlistCategory] {
+        var sorted = categories
+        let isCurrentOther = sorted.first(where: { $0.id == item.categoryID })?.title == "其他"
+        
+        if let currentIndex = sorted.firstIndex(where: { $0.id == item.categoryID }) {
+            let currentCategory = sorted.remove(at: currentIndex)
+            sorted.insert(currentCategory, at: 0)
+        }
+        
+        if !isCurrentOther {
+            if let otherIndex = sorted.firstIndex(where: { $0.title == "其他" }) {
+                let otherCategory = sorted.remove(at: otherIndex)
+                sorted.append(otherCategory)
+            }
+        }
+        
+        return sorted
+    }
+
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
@@ -2762,7 +2858,7 @@ struct WishlistEditorSheet: View {
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(categories) { category in
+                            ForEach(sortedCategories) { category in
                                 Button {
                                     categoryID = category.id
                                 } label: {
@@ -3339,67 +3435,52 @@ struct WheelDatePicker: View {
 }
 
 struct WeatherForecastSheet: View {
-    let info: WeatherInfo
-    let onRefresh: () -> Void
+    @ObservedObject var weatherStore: WeatherStore
     @Environment(\.dismiss) private var dismiss
+    @State private var isShowingCitySearch = false
+    @State private var cityQuery = ""
+    @State private var cityResults: [WeatherCity] = []
+    @State private var isSearchingCities = false
+    @State private var citySearchTask: Task<Void, Never>?
+
+    private var info: WeatherInfo? {
+        if case .loaded(let info) = weatherStore.state {
+            return info
+        }
+        return nil
+    }
+
+    private var navigationTitle: String {
+        guard let info else { return "未来天气" }
+        return "\(info.cityName)未来天气"
+    }
+
+    private func globalMaxTemp(for info: WeatherInfo) -> Double {
+        info.dailyForecast.map { $0.maxTemperature }.max() ?? .greatestFiniteMagnitude
+    }
+
+    private func globalMinTemp(for info: WeatherInfo) -> Double {
+        info.dailyForecast.map { $0.minTemperature }.min() ?? -.greatestFiniteMagnitude
+    }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    ForEach(info.dailyForecast) { daily in
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(dateText(for: daily.date))
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(isToday(daily.date) ? .blue : .primary)
-                                Text(weekdayText(for: daily.date))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(width: 60, alignment: .leading)
-
-                            Image(systemName: daily.symbolName)
-                                .font(.title3)
-                                .symbolRenderingMode(.multicolor)
-                                .frame(width: 32)
-                                .foregroundStyle(isToday(daily.date) ? .blue : .primary)
-
-                            Text(daily.conditionText)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-
-                            HStack(spacing: 6) {
-                                Text(daily.minTemperatureText)
-                                    .font(.subheadline.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 36, alignment: .trailing)
-                                
-                                Capsule()
-                                    .fill(Color.gray.opacity(0.2))
-                                    .frame(width: 40, height: 4)
-                                
-                                Text(daily.maxTemperatureText)
-                                    .font(.subheadline.monospacedDigit().weight(.medium))
-                                    .frame(width: 36, alignment: .trailing)
-                            }
-                        }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 16)
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                }
-                .padding()
-            }
-            .refreshable {
-                onRefresh()
-            }
+            forecastContent
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("\(info.cityName)未来天气")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                            isShowingCitySearch.toggle()
+                        }
+                    } label: {
+                        Label(isShowingCitySearch ? "收起" : "城市", systemImage: isShowingCitySearch ? "xmark" : "location.magnifyingglass")
+                    }
+                    .font(.subheadline.bold())
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("完成") {
                         dismiss()
@@ -3408,8 +3489,310 @@ struct WeatherForecastSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .onChange(of: cityQuery) { _, newValue in
+            searchCities(newValue)
+        }
+        .onDisappear {
+            citySearchTask?.cancel()
+        }
+    }
+
+    @ViewBuilder
+    private var forecastContent: some View {
+        switch weatherStore.state {
+        case .loaded(let info):
+            ScrollView {
+                VStack(spacing: 16) {
+                    if isShowingCitySearch {
+                        citySearchPanel
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+
+                    ForEach(info.dailyForecast) { daily in
+                        forecastRow(for: daily, info: info)
+                    }
+                }
+                .padding()
+            }
+            .refreshable {
+                weatherStore.refresh()
+            }
+
+        case .loading, .idle:
+            ScrollView {
+                VStack(spacing: 16) {
+                    if isShowingCitySearch {
+                        citySearchPanel
+                    }
+
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("正在更新天气…")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 260)
+                }
+                .padding()
+            }
+
+        case .denied:
+            ScrollView {
+                VStack(spacing: 16) {
+                    if isShowingCitySearch {
+                        citySearchPanel
+                    }
+
+                    VStack(spacing: 12) {
+                        Image(systemName: "location.slash")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text("未开启定位")
+                            .font(.headline)
+                        Text("可以开启定位，或点左上角“城市”查看其他城市。")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 260)
+                }
+                .padding()
+            }
+
+        case .failed:
+            ScrollView {
+                VStack(spacing: 16) {
+                    if isShowingCitySearch {
+                        citySearchPanel
+                    }
+
+                    VStack(spacing: 12) {
+                        Image(systemName: "cloud.slash")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text("天气获取失败")
+                            .font(.headline)
+                        Button("重新获取") {
+                            weatherStore.refresh()
+                        }
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.blue)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 260)
+                }
+                .padding()
+            }
+        }
+    }
+
+    private var citySearchPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button {
+                weatherStore.useCurrentLocation()
+                collapseCitySearch()
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "location.fill")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.blue)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("当前位置")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text(weatherStore.isUsingCurrentLocation ? "正在使用定位天气" : "切回当前定位后的位置")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    if weatherStore.isUsingCurrentLocation {
+                        Image(systemName: "checkmark")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.blue)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("搜索城市，比如北京、上海、杭州", text: $cityQuery)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+            }
+            .font(.subheadline)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color(.tertiarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            if isSearchingCities {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("正在搜索…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            ForEach(cityResults.prefix(6)) { city in
+                Button {
+                    weatherStore.selectCity(city)
+                    collapseCitySearch()
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "mappin.circle.fill")
+                            .foregroundStyle(.blue)
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(city.name)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            if !city.detailName.isEmpty {
+                                Text(city.detailName)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Spacer()
+
+                        if weatherStore.selectedCity?.id == city.id {
+                            Image(systemName: "checkmark")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.blue)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if !cityQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               !isSearchingCities,
+               cityResults.isEmpty {
+                Text("没有找到匹配城市")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func searchCities(_ query: String) {
+        citySearchTask?.cancel()
+        citySearchTask = Task {
+            let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                await MainActor.run {
+                    cityResults = []
+                    isSearchingCities = false
+                }
+                return
+            }
+
+            await MainActor.run {
+                isSearchingCities = true
+            }
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+
+            let cities = await weatherStore.searchCities(matching: trimmed)
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                cityResults = cities
+                isSearchingCities = false
+            }
+        }
+    }
+
+    private func collapseCitySearch() {
+        citySearchTask?.cancel()
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+            isShowingCitySearch = false
+        }
+    }
+
+    private func forecastRow(for daily: DailyWeatherInfo, info: WeatherInfo) -> some View {
+        let isGlobalMax = daily.maxTemperature == globalMaxTemp(for: info)
+        let isGlobalMin = daily.minTemperature == globalMinTemp(for: info)
+
+        return HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(dateText(for: daily.date))
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(isToday(daily.date) ? .blue : .primary)
+
+                let weekday = weekdayText(for: daily.date)
+                if !weekday.isEmpty {
+                    Text(weekday)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 60, alignment: .leading)
+
+            weatherIcon(for: daily)
+                .frame(width: 32)
+                .foregroundStyle(isToday(daily.date) ? .blue : .primary)
+
+            Text(daily.conditionText)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 6) {
+                Text(daily.minTemperatureText)
+                    .font(.subheadline.monospacedDigit().weight(isGlobalMin ? .medium : .regular))
+                    .foregroundStyle(isGlobalMin ? .blue : .secondary)
+                    .frame(width: 36, alignment: .trailing)
+
+                Capsule()
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 40, height: 4)
+
+                Text(daily.maxTemperatureText)
+                    .font(.subheadline.monospacedDigit().weight(isGlobalMax ? .bold : .medium))
+                    .foregroundStyle(isGlobalMax ? .red : .primary)
+                    .frame(width: 36, alignment: .trailing)
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func weatherIcon(for daily: DailyWeatherInfo) -> some View {
+        let img = Image(systemName: daily.symbolName).font(.title3)
+        switch daily.weatherCode {
+        case 0:
+            img.symbolRenderingMode(.palette).foregroundStyle(.orange)
+        case 1, 2:
+            img.symbolRenderingMode(.palette).foregroundStyle(.gray, .orange)
+        case 3, 45, 48:
+            img.symbolRenderingMode(.palette).foregroundStyle(.gray)
+        case 51...67, 80...82:
+            img.symbolRenderingMode(.palette).foregroundStyle(.gray, .blue)
+        case 71...77, 85...86:
+            img.symbolRenderingMode(.palette).foregroundStyle(.gray, .cyan)
+        case 95...99:
+            img.symbolRenderingMode(.palette).foregroundStyle(.gray, .yellow, .blue)
+        default:
+            img.symbolRenderingMode(.palette).foregroundStyle(.gray)
+        }
     }
 
     private func isToday(_ date: Date) -> Bool {

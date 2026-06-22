@@ -1,6 +1,45 @@
 import Foundation
 import CoreLocation
 
+struct WeatherCity: Identifiable, Equatable {
+    var name: String
+    var latitude: Double
+    var longitude: Double
+    var country: String?
+    var admin1: String?
+    var admin2: String?
+    var admin3: String?
+    var admin4: String?
+    var featureCode: String?
+    var population: Int?
+
+    var id: String {
+        "\(name)-\(latitude)-\(longitude)"
+    }
+
+    var displayName: String {
+        [name, admin1, admin2, admin3, country]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
+    }
+
+    var detailName: String {
+        [admin1, admin2, admin3, country]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .deduplicated()
+            .joined(separator: " · ")
+    }
+}
+
+private extension Array where Element == String {
+    func deduplicated() -> [String] {
+        var seen: Set<String> = []
+        return filter { seen.insert($0).inserted }
+    }
+}
+
 struct DailyWeatherInfo: Equatable, Identifiable {
     let id = UUID()
     var date: Date
@@ -74,10 +113,15 @@ enum WeatherLoadState: Equatable {
 @MainActor
 final class WeatherStore: NSObject, ObservableObject {
     @Published var state: WeatherLoadState = .idle
+    @Published private(set) var selectedCity: WeatherCity?
 
     private let locationManager = CLLocationManager()
     private let geocoder = CLGeocoder()
     private var isRequesting = false
+
+    var isUsingCurrentLocation: Bool {
+        selectedCity == nil
+    }
 
     override init() {
         super.init()
@@ -86,6 +130,39 @@ final class WeatherStore: NSObject, ObservableObject {
     }
 
     func refresh() {
+        guard !isRequesting else { return }
+
+        if let selectedCity {
+            state = .loading
+            isRequesting = true
+            Task {
+                await loadWeather(for: selectedCity)
+                isRequesting = false
+            }
+            return
+        }
+
+        refreshCurrentLocation()
+    }
+
+    func useCurrentLocation() {
+        guard !isRequesting else { return }
+        selectedCity = nil
+        refreshCurrentLocation()
+    }
+
+    func selectCity(_ city: WeatherCity) {
+        guard !isRequesting else { return }
+        selectedCity = city
+        state = .loading
+        isRequesting = true
+        Task {
+            await loadWeather(for: city)
+            isRequesting = false
+        }
+    }
+
+    private func refreshCurrentLocation() {
         guard !isRequesting else { return }
 
         switch locationManager.authorizationStatus {
@@ -99,6 +176,17 @@ final class WeatherStore: NSObject, ObservableObject {
             isRequesting = true
             locationManager.requestLocation()
         }
+    }
+
+    private func loadWeather(for city: WeatherCity) async {
+        let coordinate = CLLocationCoordinate2D(latitude: city.latitude, longitude: city.longitude)
+        guard var info = await fetchWeather(for: coordinate) else {
+            state = .failed
+            return
+        }
+
+        info.cityName = city.name
+        state = .loaded(info)
     }
 
     private func loadWeather(for location: CLLocation) async {
@@ -206,6 +294,195 @@ final class WeatherStore: NSObject, ObservableObject {
         } catch {
             return nil
         }
+    }
+
+    private struct OpenMeteoGeocodingResponse: Decodable {
+        struct Result: Decodable {
+            let name: String
+            let latitude: Double
+            let longitude: Double
+            let country: String?
+            let admin1: String?
+            let admin2: String?
+            let admin3: String?
+            let admin4: String?
+            let feature_code: String?
+            let population: Int?
+        }
+
+        let results: [Result]?
+    }
+
+    func searchCities(matching query: String) async -> [WeatherCity] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+
+        var components = URLComponents(string: "https://geocoding-api.open-meteo.com/v1/search")
+        components?.queryItems = [
+            URLQueryItem(name: "name", value: trimmed),
+            URLQueryItem(name: "count", value: "12"),
+            URLQueryItem(name: "language", value: "zh"),
+            URLQueryItem(name: "format", value: "json")
+        ]
+
+        guard let url = components?.url else { return [] }
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let response = try JSONDecoder().decode(OpenMeteoGeocodingResponse.self, from: data)
+            let normalizedCities = normalizeCities(
+                (response.results ?? []).map {
+                    WeatherCity(
+                        name: $0.name,
+                        latitude: $0.latitude,
+                        longitude: $0.longitude,
+                        country: $0.country,
+                        admin1: $0.admin1,
+                        admin2: $0.admin2,
+                        admin3: $0.admin3,
+                        admin4: $0.admin4,
+                        featureCode: $0.feature_code,
+                        population: $0.population
+                    )
+                },
+                query: trimmed
+            )
+            if !normalizedCities.isEmpty {
+                return normalizedCities
+            }
+
+            return await searchCitiesWithSystemGeocoder(matching: trimmed)
+        } catch {
+            return await searchCitiesWithSystemGeocoder(matching: trimmed)
+        }
+    }
+
+    private func searchCitiesWithSystemGeocoder(matching query: String) async -> [WeatherCity] {
+        let placemarks = (try? await geocoder.geocodeAddressString(
+            query,
+            in: nil,
+            preferredLocale: Locale(identifier: "zh_CN")
+        )) ?? []
+
+        let cities = placemarks.compactMap { placemark -> WeatherCity? in
+            guard let location = placemark.location else { return nil }
+            let rawName = placemark.locality
+                ?? placemark.subAdministrativeArea
+                ?? placemark.administrativeArea
+                ?? placemark.name
+            guard let rawName, !rawName.isEmpty else { return nil }
+
+            return WeatherCity(
+                name: rawName,
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude,
+                country: placemark.country,
+                admin1: placemark.administrativeArea,
+                admin2: placemark.subAdministrativeArea,
+                admin3: placemark.locality == rawName ? placemark.subLocality : placemark.locality,
+                admin4: placemark.subLocality,
+                featureCode: "APPLE_GEOCODER",
+                population: nil
+            )
+        }
+
+        return normalizeCities(cities, query: query)
+    }
+
+    private func normalizeCities(_ cities: [WeatherCity], query: String) -> [WeatherCity] {
+        let filtered = cities
+            .filter { isCityOrCountyLevel($0, query: query) }
+            .sorted { lhs, rhs in
+                let lhsScore = citySearchScore(lhs, query: query)
+                let rhsScore = citySearchScore(rhs, query: query)
+                if lhsScore != rhsScore {
+                    return lhsScore > rhsScore
+                }
+                return (lhs.population ?? 0) > (rhs.population ?? 0)
+            }
+
+        var seen: Set<String> = []
+        return filtered.filter { city in
+            let key = [
+                city.name,
+                city.admin1,
+                city.admin2,
+                city.admin3,
+                city.country
+            ]
+                .compactMap { $0 }
+                .joined(separator: "-")
+            return seen.insert(key).inserted
+        }
+    }
+
+    private func isCityOrCountyLevel(_ city: WeatherCity, query: String) -> Bool {
+        let code = city.featureCode ?? ""
+        if code.hasPrefix("ADM") {
+            return ["ADM1", "ADM2", "ADM3"].contains(code)
+        }
+
+        let normalizedQuery = normalizedCityName(query)
+        let name = normalizedCityName(city.name)
+        let admin1 = normalizedCityName(city.admin1 ?? "")
+        let admin2 = normalizedCityName(city.admin2 ?? "")
+        let admin3 = normalizedCityName(city.admin3 ?? "")
+
+        if !admin1.isEmpty, name == admin1 { return true }
+        if !admin2.isEmpty, name == admin2 { return true }
+        if !admin3.isEmpty, name == admin3 { return true }
+
+        if name == normalizedQuery {
+            return admin1.contains(normalizedQuery)
+                || admin2.contains(normalizedQuery)
+                || admin3.contains(normalizedQuery)
+                || (city.population ?? 0) > 100_000
+        }
+
+        return hasCityOrCountySuffix(city.name)
+    }
+
+    private func citySearchScore(_ city: WeatherCity, query: String) -> Int {
+        let normalizedQuery = normalizedCityName(query)
+        let name = normalizedCityName(city.name)
+        let admin1 = normalizedCityName(city.admin1 ?? "")
+        let admin2 = normalizedCityName(city.admin2 ?? "")
+        let admin3 = normalizedCityName(city.admin3 ?? "")
+        let code = city.featureCode ?? ""
+
+        var score = 0
+        if name == normalizedQuery { score += 100 }
+        if admin1 == normalizedQuery { score += 80 }
+        if admin2 == normalizedQuery { score += 70 }
+        if admin3 == normalizedQuery { score += 60 }
+        if admin1.contains(normalizedQuery) { score += 40 }
+        if admin2.contains(normalizedQuery) { score += 35 }
+        if admin3.contains(normalizedQuery) { score += 30 }
+        if code == "ADM1" { score += 25 }
+        if code == "ADM2" { score += 20 }
+        if code == "ADM3" { score += 15 }
+        if city.country == "中国" { score += 5 }
+        return score
+    }
+
+    private func normalizedCityName(_ text: String) -> String {
+        text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "市", with: "")
+            .replacingOccurrences(of: "县", with: "")
+            .replacingOccurrences(of: "区", with: "")
+            .replacingOccurrences(of: "自治州", with: "")
+            .replacingOccurrences(of: "自治县", with: "")
+            .replacingOccurrences(of: "特别行政区", with: "")
+    }
+
+    private func hasCityOrCountySuffix(_ text: String) -> Bool {
+        text.hasSuffix("市")
+            || text.hasSuffix("县")
+            || text.hasSuffix("区")
+            || text.hasSuffix("自治州")
+            || text.hasSuffix("自治县")
+            || text.hasSuffix("特别行政区")
     }
 }
 

@@ -53,6 +53,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
     var completedAt: Date?
     var priority: TodoPriority = .importantNotUrgent
     var dueDate: Date?
+    var isPinned: Bool = false
 
     var isCompleted: Bool {
         completedAt != nil
@@ -64,7 +65,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, createdAt, updatedAt, completedAt, priority, dueDate
+        case id, title, createdAt, updatedAt, completedAt, priority, dueDate, isPinned
     }
 
     init(
@@ -74,7 +75,8 @@ struct TodoTask: Identifiable, Equatable, Codable {
         updatedAt: Date? = nil,
         completedAt: Date? = nil,
         priority: TodoPriority = .importantNotUrgent,
-        dueDate: Date? = nil
+        dueDate: Date? = nil,
+        isPinned: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -83,6 +85,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
         self.completedAt = completedAt
         self.priority = priority
         self.dueDate = dueDate
+        self.isPinned = isPinned
     }
 
     init(from decoder: Decoder) throws {
@@ -94,6 +97,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
         priority = try container.decodeIfPresent(TodoPriority.self, forKey: .priority) ?? .importantNotUrgent
         dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
     }
 }
 
@@ -183,6 +187,7 @@ struct WishlistItem: Identifiable, Equatable, Codable {
     var createdAt: Date
     var updatedAt: Date?
     var completedAt: Date?
+    var isPinned: Bool = false
 
     var isCompleted: Bool {
         completedAt != nil
@@ -194,7 +199,8 @@ struct WishlistItem: Identifiable, Equatable, Codable {
         categoryID: String,
         createdAt: Date,
         updatedAt: Date? = nil,
-        completedAt: Date? = nil
+        completedAt: Date? = nil,
+        isPinned: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -202,6 +208,7 @@ struct WishlistItem: Identifiable, Equatable, Codable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.completedAt = completedAt
+        self.isPinned = isPinned
     }
 
     enum CodingKeys: String, CodingKey {
@@ -212,6 +219,7 @@ struct WishlistItem: Identifiable, Equatable, Codable {
         case createdAt
         case updatedAt
         case completedAt
+        case isPinned
     }
 
     init(from decoder: Decoder) throws {
@@ -228,6 +236,7 @@ struct WishlistItem: Identifiable, Equatable, Codable {
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -237,6 +246,8 @@ struct WishlistItem: Identifiable, Equatable, Codable {
         try container.encode(categoryID, forKey: .categoryID)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(completedAt, forKey: .completedAt)
+        try container.encodeIfPresent(updatedAt, forKey: .updatedAt)
+        try container.encode(isPinned, forKey: .isPinned)
     }
 }
 
@@ -247,6 +258,7 @@ struct MemoNote: Identifiable, Equatable, Codable {
     var createdAt: Date
     var updatedAt: Date?
     var imageFileNames: [String] = []
+    var isPinned: Bool = false
 
     var lastActivityAt: Date {
         updatedAt ?? createdAt
@@ -259,6 +271,7 @@ struct MemoNote: Identifiable, Equatable, Codable {
         case createdAt
         case updatedAt
         case imageFileNames
+        case isPinned
     }
 
     init(
@@ -267,7 +280,8 @@ struct MemoNote: Identifiable, Equatable, Codable {
         tags: [String] = [],
         createdAt: Date,
         updatedAt: Date? = nil,
-        imageFileNames: [String] = []
+        imageFileNames: [String] = [],
+        isPinned: Bool = false
     ) {
         self.id = id
         self.content = content
@@ -275,6 +289,7 @@ struct MemoNote: Identifiable, Equatable, Codable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.imageFileNames = imageFileNames
+        self.isPinned = isPinned
     }
 
     init(from decoder: Decoder) throws {
@@ -287,6 +302,7 @@ struct MemoNote: Identifiable, Equatable, Codable {
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         imageFileNames = try container.decodeIfPresent([String].self, forKey: .imageFileNames) ?? []
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
     }
 
     static func extractTags(from text: String) -> [String] {
@@ -372,10 +388,16 @@ struct AnniversaryItem: Identifiable, Equatable, Codable {
     var calendarKind: AnniversaryCalendarKind
     var date: Date
     var createdAt: Date
+    var updatedAt: Date?
     var showsElapsedDays: Bool = false
+    var isPinned: Bool = false
+
+    var lastActivityAt: Date {
+        updatedAt ?? createdAt
+    }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, kind, calendarKind, date, createdAt, showsElapsedDays
+        case id, title, kind, calendarKind, date, createdAt, updatedAt, showsElapsedDays, isPinned
     }
 
     init(
@@ -385,7 +407,9 @@ struct AnniversaryItem: Identifiable, Equatable, Codable {
         calendarKind: AnniversaryCalendarKind,
         date: Date,
         createdAt: Date,
-        showsElapsedDays: Bool = false
+        updatedAt: Date? = nil,
+        showsElapsedDays: Bool = false,
+        isPinned: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -393,7 +417,9 @@ struct AnniversaryItem: Identifiable, Equatable, Codable {
         self.calendarKind = calendarKind
         self.date = date
         self.createdAt = createdAt
+        self.updatedAt = updatedAt
         self.showsElapsedDays = showsElapsedDays
+        self.isPinned = isPinned
     }
 
     init(from decoder: Decoder) throws {
@@ -404,7 +430,9 @@ struct AnniversaryItem: Identifiable, Equatable, Codable {
         calendarKind = try container.decode(AnniversaryCalendarKind.self, forKey: .calendarKind)
         date = try container.decode(Date.self, forKey: .date)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         showsElapsedDays = try container.decodeIfPresent(Bool.self, forKey: .showsElapsedDays) ?? false
+        isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
     }
 }
 
