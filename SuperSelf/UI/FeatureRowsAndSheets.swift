@@ -264,36 +264,47 @@ struct MemoNoteCard: View {
         previewText.count > 90 || previewText.filter { $0 == "\n" }.count >= 4
     }
 
+    private var combinedPreviewText: Text {
+        var result = Text("")
+        
+        if !note.tags.isEmpty {
+            for tag in note.tags {
+                if let encoded = tag.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) {
+                    result = result + Text(.init("[#\(tag)](memotag:\(encoded)) ")).font(.subheadline.bold())
+                } else {
+                    result = result + Text("#\(tag) ").font(.subheadline.bold()).foregroundColor(.blue)
+                }
+            }
+        }
+        
+        if !previewText.isEmpty {
+            result = result + Text(previewText).font(.subheadline).foregroundColor(.primary)
+        }
+        
+        return result
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(dateText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            if !note.tags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(note.tags, id: \.self) { tag in
-                            Button {
+            if !previewText.isEmpty || !note.tags.isEmpty {
+                combinedPreviewText
+                    .tint(.blue)
+                    .environment(\.openURL, OpenURLAction { url in
+                        if url.scheme == "memotag" {
+                            // url.path 会自动进行一定的 decode，但是这里为了保险起见，直接用 absoluteString 截取
+                            let prefix = "memotag:"
+                            if let encodedTag = url.absoluteString.components(separatedBy: prefix).last,
+                               let tag = encodedTag.removingPercentEncoding {
                                 onTagTap(tag)
-                            } label: {
-                                Text("#\(tag)")
-                                    .font(.caption.bold())
-                                    .foregroundStyle(.blue)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .background(Color.blue.opacity(0.10), in: Capsule())
+                                return .handled
                             }
-                            .buttonStyle(.plain)
                         }
-                    }
-                }
-            }
-
-            if !previewText.isEmpty {
-                Text(previewText)
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
+                        return .systemAction
+                    })
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .multilineTextAlignment(.leading)
                     .lineLimit(isExpanded ? nil : 5)
@@ -2160,7 +2171,8 @@ struct MemoNoteEditorSheet: View {
                                 .fill(Color(.secondarySystemGroupedBackground))
 
                             if contentInput.isEmpty {
-                                Text("写点内容，标签用左下角 # 添加")
+                                Text("随便写点什么吧")
+                                    .font(.subheadline)
                                     .foregroundStyle(.tertiary)
                                     .padding(.horizontal, 14)
                                     .padding(.top, showsCurrentTags ? 48 : 14)
@@ -2228,7 +2240,7 @@ struct MemoNoteEditorSheet: View {
                         .frame(minHeight: 180)
                     }
 
-                    if !suggestedTags.isEmpty {
+                    if !suggestedTags.isEmpty && selectedTags.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("常用标签")
                                 .font(.caption.bold())
@@ -2241,10 +2253,10 @@ struct MemoNoteEditorSheet: View {
                                             addTag(tag)
                                         } label: {
                                             Text("#\(tag)")
-                                                .font(.subheadline.weight(.semibold))
+                                                .font(.caption.weight(.medium))
                                                 .foregroundStyle(.blue)
-                                                .padding(.horizontal, 12)
-                                                .padding(.vertical, 8)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 6)
                                                 .background(Color.blue.opacity(0.10), in: Capsule())
                                         }
                                         .buttonStyle(.plain)
@@ -2356,66 +2368,115 @@ struct MemoNoteEditorSheet: View {
                 isFocused = true
             }
         }
-        .popover(isPresented: $isShowingTagPopover, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text(editingTagIndex == nil ? "添加标签" : "编辑标签")
-                    .font(.headline)
+        .sheet(isPresented: $isShowingTagPopover) {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack {
+                    Text(editingTagIndex == nil ? "添加标签" : "编辑标签")
+                        .font(.headline)
+                    
+                    Spacer()
+                    
+                    if editingTagIndex != nil {
+                        Button {
+                            removeEditingTag()
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.red)
+                                .padding(6)
+                                .background(Color.red.opacity(0.1), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
 
-                TextField("输入标签名称", text: $tagDraft)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                HStack(spacing: 8) {
+                    Text("#")
+                        .font(.headline)
+                        .foregroundStyle(.tertiary)
+                    
+                    TextField("输入标签名称", text: $tagDraft)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.done)
+                        .onSubmit {
+                            if !normalizedTag(tagDraft).isEmpty {
+                                commitTagEdit()
+                            }
+                        }
+                    
+                    if !tagDraft.isEmpty {
+                        Button {
+                            tagDraft = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                 if !suggestedTags.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(suggestedTags, id: \.self) { tag in
-                                Button {
-                                    tagDraft = tag
-                                    commitTagEdit()
-                                } label: {
-                                    Text("#\(tag)")
-                                        .font(.caption.bold())
-                                        .foregroundStyle(.blue)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
-                                        .background(Color.blue.opacity(0.10), in: Capsule())
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("常用标签")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(suggestedTags, id: \.self) { tag in
+                                    Button {
+                                        tagDraft = tag
+                                        commitTagEdit()
+                                    } label: {
+                                        Text("#\(tag)")
+                                            .font(.caption.bold())
+                                            .foregroundStyle(.blue)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .background(Color.blue.opacity(0.10), in: Capsule())
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                     }
                 }
 
-                HStack(spacing: 10) {
-                    if editingTagIndex != nil {
-                        Button("删除") {
-                            removeEditingTag()
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.red)
-                    }
-
-                    Spacer()
-
-                    Button("取消") {
+                HStack(spacing: 12) {
+                    Button {
                         dismissTagPopover()
+                    } label: {
+                        Text("取消")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
+                    .buttonStyle(.plain)
 
-                    Button("确定") {
+                    Button {
                         commitTagEdit()
+                    } label: {
+                        Text("确定")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(normalizedTag(tagDraft).isEmpty ? Color.blue.opacity(0.5) : Color.blue, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.blue)
+                    .buttonStyle(.plain)
                     .disabled(normalizedTag(tagDraft).isEmpty)
                 }
             }
-            .padding(18)
-            .frame(width: 320)
+            .padding(20)
+            .frame(maxWidth: .infinity)
+            .presentationDetents([.height(280)])
+            .presentationDragIndicator(.visible)
         }
         .onChange(of: contentInput) { oldValue, newValue in
             handlePotentialTagTrigger(oldValue: oldValue, newValue: newValue)
