@@ -3,21 +3,6 @@ import SwiftUI
 extension ContentView {
     var anniversaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Button {
-                isShowingAnniversarySheet = true
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus")
-                    Text("添加纪念日")
-                }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.blue)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            .buttonStyle(.plain)
-
             if anniversaryItems.isEmpty {
                 AppEmptyState(
                     title: "还没有纪念日",
@@ -159,22 +144,8 @@ extension ContentView {
 
     var todoTasksCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
-                todoFilterBar
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Button {
-                    todoAddInitialPriority = todoFilter ?? .notImportantNotUrgent
-                    isShowingTodoAddSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(Color.blue, in: Circle())
-                }
-                .buttonStyle(.plain)
-            }
+            todoFilterBar
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             if activeTodoTasks.isEmpty && completedTodoTasks.isEmpty {
                 AppEmptyState(
@@ -236,20 +207,9 @@ extension ContentView {
 
     var memoNotesCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
+            if !allMemoNoteTags.isEmpty {
                 noteTagFilterBar
                     .frame(maxWidth: .infinity, alignment: .leading)
-
-                Button {
-                    isShowingNoteAddSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(Color.blue, in: Circle())
-                }
-                .buttonStyle(.plain)
             }
 
             if sortedMemoNotes.isEmpty {
@@ -390,25 +350,8 @@ extension ContentView {
 
     var wishlistCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
-                wishlistFilterBar
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Button {
-                    wishlistInput = ""
-                    if let categoryID = wishlistFilter.categoryID {
-                        wishlistCategoryID = categoryID
-                    }
-                    isShowingWishlistAddSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 36, height: 36)
-                        .background(Color.blue, in: Circle())
-                }
-                .buttonStyle(.plain)
-            }
+            wishlistFilterBar
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             if filteredOpenWishlistItems.isEmpty && filteredCompletedWishlistItems.isEmpty {
                 AppEmptyState(

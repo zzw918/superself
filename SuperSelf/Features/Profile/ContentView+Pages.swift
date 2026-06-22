@@ -92,6 +92,34 @@ extension ContentView {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .padding(.top, visibleMemoSections.count > 1 ? 0 : 8)
+                .overlay(alignment: .bottomTrailing) {
+                    Button {
+                        switch memoSection {
+                        case .todo:
+                            todoAddInitialPriority = todoFilter ?? .notImportantNotUrgent
+                            isShowingTodoAddSheet = true
+                        case .note:
+                            isShowingNoteAddSheet = true
+                        case .wishlist:
+                            wishlistInput = ""
+                            if let categoryID = wishlistFilter.categoryID {
+                                wishlistCategoryID = categoryID
+                            }
+                            isShowingWishlistAddSheet = true
+                        case .anniversary:
+                            isShowingAnniversarySheet = true
+                        }
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.title3.weight(.medium))
+                            .foregroundStyle(.white)
+                            .frame(width: 48, height: 48)
+                            .background(Color.blue, in: Circle())
+                            .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 20)
+                }
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("备忘")
