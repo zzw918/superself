@@ -122,7 +122,7 @@ extension ContentView {
             memoSectionPrefs = migrateMemoSectionPreferences(prefs)
         }
         if let prefs = decodeSectionPreferences(FinanceSection.self, from: financeSectionPreferencesData) {
-            financeSectionPrefs = prefs.normalized
+            financeSectionPrefs = migrateFinanceSectionPreferences(prefs)
         }
         clampSectionSelections()
     }
@@ -158,6 +158,24 @@ extension ContentView {
 
         if !visibleSections.contains(.calendar) {
             visibleSections.append(.calendar)
+        }
+
+        return SectionPreferences(order: order, visibleSections: visibleSections).normalized
+    }
+
+    func migrateFinanceSectionPreferences(_ prefs: SectionPreferences<FinanceSection>) -> SectionPreferences<FinanceSection> {
+        var order = prefs.order
+        var visibleSections = prefs.visibleSections
+
+        if !order.contains(.expenseBook) {
+            order.insert(.expenseBook, at: 0)
+        } else if let expenseIndex = order.firstIndex(of: .expenseBook), expenseIndex != 0 {
+            order.remove(at: expenseIndex)
+            order.insert(.expenseBook, at: 0)
+        }
+
+        if !visibleSections.contains(.expenseBook) {
+            visibleSections.append(.expenseBook)
         }
 
         return SectionPreferences(order: order, visibleSections: visibleSections).normalized
@@ -313,6 +331,8 @@ extension ContentView {
         loadFinanceAssets()
         loadFinanceSnapshots()
         recoverFinanceAssetsFromSnapshotsIfNeeded()
+        loadExpenseCategories()
+        loadExpenseRecords()
         loadStockResearchItems()
         pullFromICloud()
         recoverFinanceAssetsFromSnapshotsIfNeeded()
@@ -818,6 +838,22 @@ extension ContentView {
         }
     }
 
+    func loadExpenseCategories() {
+        guard !expenseCategoriesData.isEmpty else { return }
+
+        if let decodedCategories = try? JSONDecoder().decode([ExpenseCategory].self, from: expenseCategoriesData) {
+            expenseCategories = normalizedExpenseCategories(decodedCategories)
+        }
+    }
+
+    func loadExpenseRecords() {
+        guard !expenseRecordsData.isEmpty else { return }
+
+        if let decodedRecords = try? JSONDecoder().decode([ExpenseRecord].self, from: expenseRecordsData) {
+            expenseRecords = decodedRecords
+        }
+    }
+
     func addFinanceAsset() {
         let trimmedAmount = financeAssetAmountInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedAmount = trimmedAmount.replacingOccurrences(of: ",", with: ".")
@@ -882,6 +918,103 @@ extension ContentView {
             financeSnapshotsData = encodedSnapshots
             cloudStore.set(encodedSnapshots, forKey: financeSnapshotsCloudKey)
             flushToICloud()
+        }
+    }
+
+    @discardableResult
+    func upsertExpenseCategory(title: String) -> ExpenseCategory? {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return nil }
+
+        if let existingCategory = expenseCategories.first(where: { $0.title.localizedCaseInsensitiveCompare(trimmedTitle) == .orderedSame }) {
+            return existingCategory
+        }
+
+        let category = ExpenseCategory(
+            id: "custom-\(UUID().uuidString.lowercased())",
+            title: trimmedTitle,
+            icon: "tag.fill",
+            isDefault: false,
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+        expenseCategories.append(category)
+        expenseCategories = normalizedExpenseCategories(expenseCategories)
+        persistExpenseCategories()
+        return category
+    }
+
+    func addExpenseRecord(amount: Double, categoryID: String, date: Date, note: String) {
+        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        let now = Date()
+
+        expenseRecords.insert(
+            ExpenseRecord(
+                amount: amount,
+                categoryID: categoryID,
+                date: date,
+                note: trimmedNote,
+                createdAt: now,
+                updatedAt: now
+            ),
+            at: 0
+        )
+        persistExpenseRecords()
+        isShowingExpenseRecordSheet = false
+    }
+
+    func updateExpenseRecord(_ record: ExpenseRecord, amount: Double, categoryID: String, date: Date, note: String) {
+        guard let index = expenseRecords.firstIndex(where: { $0.id == record.id }) else { return }
+
+        expenseRecords[index].amount = amount
+        expenseRecords[index].categoryID = categoryID
+        expenseRecords[index].date = date
+        expenseRecords[index].note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        expenseRecords[index].updatedAt = Date()
+        persistExpenseRecords()
+    }
+
+    func deleteExpenseRecord(_ record: ExpenseRecord) {
+        expenseRecords.removeAll { $0.id == record.id }
+        persistExpenseRecords()
+    }
+
+    func persistExpenseCategories() {
+        expenseCategories = normalizedExpenseCategories(expenseCategories)
+
+        if let encodedCategories = try? JSONEncoder().encode(expenseCategories) {
+            expenseCategoriesData = encodedCategories
+            cloudStore.set(encodedCategories, forKey: expenseCategoriesCloudKey)
+            flushToICloud()
+        }
+    }
+
+    func persistExpenseRecords() {
+        if let encodedRecords = try? JSONEncoder().encode(expenseRecords) {
+            expenseRecordsData = encodedRecords
+            cloudStore.set(encodedRecords, forKey: expenseRecordsCloudKey)
+            flushToICloud()
+        }
+    }
+
+    func normalizedExpenseCategories(_ categories: [ExpenseCategory]) -> [ExpenseCategory] {
+        var mergedByID = Dictionary(uniqueKeysWithValues: ExpenseCategory.defaultCategories.map { ($0.id, $0) })
+
+        for category in categories {
+            if let local = mergedByID[category.id] {
+                let localUpdatedAt = local.updatedAt ?? local.createdAt
+                let categoryUpdatedAt = category.updatedAt ?? category.createdAt
+                mergedByID[category.id] = categoryUpdatedAt >= localUpdatedAt ? category : local
+            } else {
+                mergedByID[category.id] = category
+            }
+        }
+
+        return mergedByID.values.sorted { lhs, rhs in
+            if lhs.isDefault != rhs.isDefault {
+                return lhs.isDefault
+            }
+            return (lhs.updatedAt ?? lhs.createdAt) > (rhs.updatedAt ?? rhs.createdAt)
         }
     }
 
@@ -1051,6 +1184,16 @@ extension ContentView {
             mergeFinanceSnapshots(cloudFinanceSnapshots)
         }
 
+        if let cloudExpenseCategoriesData = cloudStore.data(forKey: expenseCategoriesCloudKey),
+           let cloudExpenseCategories = try? JSONDecoder().decode([ExpenseCategory].self, from: cloudExpenseCategoriesData) {
+            mergeExpenseCategories(cloudExpenseCategories)
+        }
+
+        if let cloudExpenseRecordsData = cloudStore.data(forKey: expenseRecordsCloudKey),
+           let cloudExpenseRecords = try? JSONDecoder().decode([ExpenseRecord].self, from: cloudExpenseRecordsData) {
+            mergeExpenseRecords(cloudExpenseRecords)
+        }
+
         if let cloudStockResearchItemsData = cloudStore.data(forKey: stockResearchItemsCloudKey),
            let cloudStockResearchItems = try? JSONDecoder().decode([StockResearchItem].self, from: cloudStockResearchItemsData) {
             mergeStockResearchItems(cloudStockResearchItems)
@@ -1075,7 +1218,7 @@ extension ContentView {
 
         if let data = cloudStore.data(forKey: financeSectionPreferencesCloudKey),
            let prefs = try? JSONDecoder().decode(SectionPreferences<FinanceSection>.self, from: data) {
-            financeSectionPrefs = prefs.normalized
+            financeSectionPrefs = migrateFinanceSectionPreferences(prefs)
             financeSectionPreferencesData = (try? JSONEncoder().encode(financeSectionPrefs)) ?? financeSectionPreferencesData
         }
 
@@ -1153,6 +1296,14 @@ extension ContentView {
 
         if let encodedFinanceSnapshots = try? JSONEncoder().encode(financeSnapshots) {
             cloudStore.set(encodedFinanceSnapshots, forKey: financeSnapshotsCloudKey)
+        }
+
+        if let encodedExpenseCategories = try? JSONEncoder().encode(expenseCategories) {
+            cloudStore.set(encodedExpenseCategories, forKey: expenseCategoriesCloudKey)
+        }
+
+        if let encodedExpenseRecords = try? JSONEncoder().encode(expenseRecords) {
+            cloudStore.set(encodedExpenseRecords, forKey: expenseRecordsCloudKey)
         }
 
         if let encodedStockResearchItems = try? JSONEncoder().encode(stockResearchItems) {
@@ -1431,6 +1582,39 @@ extension ContentView {
 
         if let encodedSnapshots = try? JSONEncoder().encode(financeSnapshots) {
             financeSnapshotsData = encodedSnapshots
+        }
+    }
+
+    func mergeExpenseCategories(_ cloudCategories: [ExpenseCategory]) {
+        expenseCategories = normalizedExpenseCategories(expenseCategories + cloudCategories)
+
+        if let encodedCategories = try? JSONEncoder().encode(expenseCategories) {
+            expenseCategoriesData = encodedCategories
+        }
+    }
+
+    func mergeExpenseRecords(_ cloudRecords: [ExpenseRecord]) {
+        var mergedRecordsByID = Dictionary(uniqueKeysWithValues: expenseRecords.map { ($0.id, $0) })
+
+        for record in cloudRecords {
+            if let localRecord = mergedRecordsByID[record.id] {
+                let localUpdatedAt = localRecord.updatedAt ?? localRecord.createdAt
+                let cloudUpdatedAt = record.updatedAt ?? record.createdAt
+                mergedRecordsByID[record.id] = cloudUpdatedAt >= localUpdatedAt ? record : localRecord
+            } else {
+                mergedRecordsByID[record.id] = record
+            }
+        }
+
+        expenseRecords = mergedRecordsByID.values.sorted { lhs, rhs in
+            if lhs.date != rhs.date {
+                return lhs.date > rhs.date
+            }
+            return (lhs.updatedAt ?? lhs.createdAt) > (rhs.updatedAt ?? rhs.createdAt)
+        }
+
+        if let encodedRecords = try? JSONEncoder().encode(expenseRecords) {
+            expenseRecordsData = encodedRecords
         }
     }
 

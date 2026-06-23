@@ -531,6 +531,101 @@ struct FinanceSnapshot: Identifiable, Equatable, Codable {
     var assets: [FinanceAsset]
 }
 
+struct ExpenseCategory: Identifiable, Equatable, Hashable, Codable {
+    var id: String
+    var title: String
+    var icon: String
+    var isDefault: Bool = false
+    var createdAt: Date = Date()
+    var updatedAt: Date?
+
+    static let defaultCategories: [ExpenseCategory] = [
+        ExpenseCategory(id: "housing", title: "住房", icon: "house.fill", isDefault: true),
+        ExpenseCategory(id: "transport", title: "交通", icon: "car.fill", isDefault: true),
+        ExpenseCategory(id: "food", title: "吃饭", icon: "fork.knife", isDefault: true),
+        ExpenseCategory(id: "clothing", title: "衣服", icon: "tshirt.fill", isDefault: true),
+        ExpenseCategory(id: "phone", title: "话费", icon: "phone.fill", isDefault: true),
+        ExpenseCategory(id: "travel", title: "旅游", icon: "airplane", isDefault: true),
+        ExpenseCategory(id: "fun", title: "玩乐", icon: "gamecontroller.fill", isDefault: true),
+        ExpenseCategory(id: "other", title: "其他", icon: "ellipsis.circle.fill", isDefault: true)
+    ]
+
+    static let fallback = ExpenseCategory(id: "other", title: "其他", icon: "ellipsis.circle.fill", isDefault: true)
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, icon, isDefault, createdAt, updatedAt
+    }
+
+    init(
+        id: String,
+        title: String,
+        icon: String,
+        isDefault: Bool = false,
+        createdAt: Date = Date(),
+        updatedAt: Date? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.isDefault = isDefault
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        icon = try container.decodeIfPresent(String.self, forKey: .icon) ?? "tag.fill"
+        isDefault = try container.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
+}
+
+struct ExpenseRecord: Identifiable, Equatable, Codable {
+    var id = UUID()
+    var amount: Double
+    var categoryID: String
+    var date: Date
+    var note: String = ""
+    var createdAt: Date
+    var updatedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id, amount, categoryID, date, note, createdAt, updatedAt
+    }
+
+    init(
+        id: UUID = UUID(),
+        amount: Double,
+        categoryID: String,
+        date: Date,
+        note: String = "",
+        createdAt: Date,
+        updatedAt: Date? = nil
+    ) {
+        self.id = id
+        self.amount = amount
+        self.categoryID = categoryID
+        self.date = date
+        self.note = note
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        amount = try container.decode(Double.self, forKey: .amount)
+        categoryID = try container.decodeIfPresent(String.self, forKey: .categoryID) ?? ExpenseCategory.fallback.id
+        date = try container.decode(Date.self, forKey: .date)
+        note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? date
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+    }
+}
+
 enum StockRating: String, Codable, CaseIterable, Identifiable {
     case low
     case medium

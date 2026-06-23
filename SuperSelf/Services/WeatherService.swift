@@ -106,11 +106,11 @@ struct WeatherInfo: Equatable {
     static func condition(for code: Int) -> String {
         switch code {
         case 0: return "晴"
-        case 1: return "大致晴朗"
+        case 1: return "少云"
         case 2: return "多云"
         case 3: return "阴"
         case 45, 48: return "雾"
-        case 51, 53, 55: return "毛毛雨"
+        case 51, 53, 55: return "细雨"
         case 56, 57: return "冻雨"
         case 61, 63, 65: return "雨"
         case 66, 67: return "冻雨"

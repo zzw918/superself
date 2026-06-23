@@ -24,6 +24,8 @@ struct ContentView: View {
     let anniversaryItemsCloudKey = "anniversaryItems"
     let financeAssetsCloudKey = "financeAssets"
     let financeSnapshotsCloudKey = "financeSnapshots"
+    let expenseRecordsCloudKey = "expenseRecords"
+    let expenseCategoriesCloudKey = "expenseCategories"
     let stockResearchItemsCloudKey = "stockResearchItems"
     let mainTabPreferencesCloudKey = "mainTabPreferences"
     let healthSectionPreferencesCloudKey = "healthSectionPreferences"
@@ -49,6 +51,8 @@ struct ContentView: View {
     @AppStorage("anniversaryItems") var anniversaryItemsData = Data()
     @AppStorage("financeAssets") var financeAssetsData = Data()
     @AppStorage("financeSnapshots") var financeSnapshotsData = Data()
+    @AppStorage("expenseRecords") var expenseRecordsData = Data()
+    @AppStorage("expenseCategories") var expenseCategoriesData = Data()
     @AppStorage("stockResearchItems") var stockResearchItemsData = Data()
     @AppStorage("mainTabPreferences") var mainTabPreferencesData = Data()
     @AppStorage("healthSectionPreferences") var healthSectionPreferencesData = Data()
@@ -102,6 +106,8 @@ struct ContentView: View {
     @State var anniversaryShowsElapsedDays = false
     @State var financeAssets: [FinanceAsset] = []
     @State var financeSnapshots: [FinanceSnapshot] = []
+    @State var expenseRecords: [ExpenseRecord] = []
+    @State var expenseCategories: [ExpenseCategory] = ExpenseCategory.defaultCategories
     @State var financeAssetNameInput = ""
     @State var financeAssetAmountInput = ""
     @State var financeAssetNoteInput = ""
@@ -124,6 +130,7 @@ struct ContentView: View {
     @State var healthSectionPrefs = SectionPreferences<HealthSection>()
     @State var memoSectionPrefs = SectionPreferences<MemoSection>()
     @State var financeSectionPrefs = SectionPreferences<FinanceSection>()
+    @State var expenseTrendGranularity: WeightTrendGranularity = .day
     @State var stockResearchItems: [StockResearchItem] = []
     @State var stockNameInput = ""
     @State var stockSearchText = ""
@@ -131,6 +138,7 @@ struct ContentView: View {
     @State var stockGrowthFilter: StockRating?
     @State var stockAttentionFilter: StockRating?
     @State var editingFinanceAsset: FinanceAsset?
+    @State var editingExpenseRecord: ExpenseRecord?
     @State var editingStockResearchItem: StockResearchItem?
     @State var editingTodoTask: TodoTask?
     @State var editingMemoNote: MemoNote?
@@ -151,6 +159,7 @@ struct ContentView: View {
     @State var isShowingWeightSheet = false
     @State var isShowingBodySettings = false
     @State var isShowingFinanceAssetSheet = false
+    @State var isShowingExpenseRecordSheet = false
     @State var isShowingAnniversarySheet = false
     @State var isShowingStartTimeSheet = false
     @State var startTimeDraft = Date()
@@ -331,6 +340,12 @@ struct ContentView: View {
             FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newName, newKind, newAmount, newNote in
                 updateFinanceAsset(asset, name: newName, kind: newKind, amount: newAmount, note: newNote)
             }
+        }
+        .sheet(isPresented: $isShowingExpenseRecordSheet) {
+            expenseRecordEditorSheet()
+        }
+        .sheet(item: $editingExpenseRecord) { record in
+            expenseRecordEditorSheet(record: record)
         }
         .sheet(item: $editingStockResearchItem) { item in
             StockResearchEditorSheet(

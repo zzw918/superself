@@ -117,6 +117,13 @@ extension ContentView {
                     }
                 }
             }
+            .contentShape(Rectangle())
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 18, coordinateSpace: .local)
+                    .onEnded { value in
+                        handleMemoCalendarGridSwipe(value)
+                    }
+            )
 
             HStack(alignment: .top, spacing: 10) {
                 memoCalendarSelectedLeadingIcon(for: selectedAnniversaryItems)
@@ -630,6 +637,18 @@ extension ContentView {
                 memoCalendarSelectedDate = monthStart
             }
         }
+    }
+
+    func handleMemoCalendarGridSwipe(_ value: DragGesture.Value) {
+        let horizontalOffset = value.translation.width
+        let verticalOffset = value.translation.height
+
+        guard abs(horizontalOffset) > abs(verticalOffset),
+              abs(horizontalOffset) > 42 else {
+            return
+        }
+
+        moveMemoCalendarMonth(by: horizontalOffset < 0 ? 1 : -1)
     }
 
     var anniversaryCard: some View {

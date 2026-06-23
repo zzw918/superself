@@ -512,6 +512,174 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
+    var expenseBookSection: some View {
+        VStack(spacing: 20) {
+            expenseSummaryCard
+            expenseTrendCard
+            expenseRecordsCard
+        }
+    }
+
+    var expenseSummaryCard: some View {
+        HStack(spacing: 10) {
+            SummaryPill(title: "今日", value: currencyText(expenseTodayTotal), color: .teal)
+            SummaryPill(title: "本月", value: currencyText(expenseMonthTotal), color: .cyan)
+            SummaryPill(title: "本年", value: currencyText(expenseYearTotal), color: .blue)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var expenseTrendCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("支出趋势")
+                    .font(.title3.bold())
+
+                Spacer()
+            }
+
+            AppSegmentedControl(
+                options: WeightTrendGranularity.allCases,
+                selection: $expenseTrendGranularity,
+                title: \.title,
+                compact: true
+            )
+
+            if expenseRecords.isEmpty {
+                AppEmptyState(
+                    title: "还没有支出趋势",
+                    systemImage: "chart.line.uptrend.xyaxis",
+                    description: "录入支出后，会自动生成每日、每周、每月趋势。"
+                )
+                .frame(maxWidth: .infinity, minHeight: 150)
+            } else {
+                ExpenseTrendView(
+                    points: expenseTrendPoints,
+                    amountText: currencyText,
+                    granularity: expenseTrendGranularity
+                )
+                .frame(height: 220)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var expenseRecordsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("支出明细")
+                        .font(.title3.bold())
+                    Text("\(expenseRecords.count) 笔")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button {
+                    isShowingExpenseRecordSheet = true
+                } label: {
+                    AppIconCircleButton(
+                        icon: "plus",
+                        tint: .blue,
+                        size: 32,
+                        iconFont: .subheadline.weight(.bold)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+
+            if expenseRecords.isEmpty {
+                AppEmptyState(
+                    title: "还没有记账",
+                    systemImage: "list.bullet.clipboard",
+                    description: "先记录一笔支出，住房、交通、吃饭这些分类都已经准备好了。"
+                )
+                .frame(maxWidth: .infinity, minHeight: 150)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(sortedExpenseRecords) { record in
+                        ExpenseRecordRow(
+                            record: record,
+                            category: expenseCategory(for: record),
+                            amountText: currencyText(record.amount),
+                            dateText: chineseDateTime(record.date),
+                            weekdayText: chineseWeekday(record.date),
+                            tint: expenseCategoryTint(expenseCategory(for: record)),
+                            onOpen: {
+                                editingExpenseRecord = record
+                            },
+                            onDelete: {
+                                deleteExpenseRecord(record)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    func expenseRecordEditorSheet(record: ExpenseRecord? = nil) -> some View {
+        ExpenseRecordEditorSheet(
+            record: record,
+            categories: sortedExpenseCategories,
+            selectedTint: expenseCategoryTint(expenseCategory(for: record ?? ExpenseRecord(
+                amount: 0,
+                categoryID: sortedExpenseCategories.first?.id ?? ExpenseCategory.fallback.id,
+                date: Date(),
+                createdAt: Date()
+            ))),
+            onCancel: {
+                editingExpenseRecord = nil
+                isShowingExpenseRecordSheet = false
+            },
+            onAddCategory: { title in
+                upsertExpenseCategory(title: title)
+            },
+            onSave: { amount, categoryID, date, note in
+                if let record {
+                    updateExpenseRecord(record, amount: amount, categoryID: categoryID, date: date, note: note)
+                    editingExpenseRecord = nil
+                } else {
+                    addExpenseRecord(amount: amount, categoryID: categoryID, date: date, note: note)
+                }
+            }
+        )
+        .presentationDetents([.large])
+    }
+
+    func expenseCategoryTint(_ category: ExpenseCategory) -> Color {
+        switch category.id {
+        case "housing":
+            return .indigo
+        case "transport":
+            return .blue
+        case "food":
+            return .orange
+        case "clothing":
+            return .pink
+        case "phone":
+            return .mint
+        case "travel":
+            return .cyan
+        case "fun":
+            return .purple
+        default:
+            return .teal
+        }
+    }
+
     var financeAssetPrivacyButton: some View {
         Button {
             handleFinanceAssetPrivacyTap()
@@ -727,5 +895,375 @@ struct StockRatingFilterRow: View {
                 }
             }
         }
+    }
+}
+
+struct ExpenseRecordRow: View {
+    let record: ExpenseRecord
+    let category: ExpenseCategory
+    let amountText: String
+    let dateText: String
+    let weekdayText: String
+    let tint: Color
+    let onOpen: () -> Void
+    let onDelete: (() -> Void)?
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: 12) {
+                Image(systemName: category.icon)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 40, height: 40)
+                    .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text(category.title)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+
+                        Text(weekdayText)
+                            .font(.caption.bold())
+                            .foregroundStyle(tint)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(tint.opacity(0.10), in: Capsule())
+                    }
+
+                    Text(dateText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if !record.note.isEmpty {
+                        Text(record.note)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+
+                Spacer()
+
+                HStack(spacing: 6) {
+                    Text("-\(amountText)")
+                        .font(.headline.bold())
+                        .foregroundStyle(.primary)
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(.tertiarySystemGroupedBackground))
+            )
+        }
+        .buttonStyle(.plain)
+        .longPressDelete(
+            DeleteConfirmationContent(
+                title: "删除这笔支出？",
+                message: "这条支出记录会被永久删除。",
+                confirmTitle: "删除"
+            ),
+            onDelete: onDelete
+        )
+    }
+}
+
+struct ExpenseRecordEditorSheet: View {
+    let record: ExpenseRecord?
+    let categories: [ExpenseCategory]
+    let selectedTint: Color
+    let onCancel: () -> Void
+    let onAddCategory: (String) -> ExpenseCategory?
+    let onSave: (Double, String, Date, String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var amountInput: String
+    @State private var selectedCategoryID: String
+    @State private var selectedDate: Date
+    @State private var noteInput: String
+    @State private var customCategoryInput = ""
+    @State private var isShowingCustomCategoryInput = false
+
+    init(
+        record: ExpenseRecord? = nil,
+        categories: [ExpenseCategory],
+        selectedTint: Color,
+        onCancel: @escaping () -> Void,
+        onAddCategory: @escaping (String) -> ExpenseCategory?,
+        onSave: @escaping (Double, String, Date, String) -> Void
+    ) {
+        self.record = record
+        self.categories = categories
+        self.selectedTint = selectedTint
+        self.onCancel = onCancel
+        self.onAddCategory = onAddCategory
+        self.onSave = onSave
+        _amountInput = State(initialValue: record.map { String(format: "%.0f", $0.amount) } ?? "")
+        _selectedCategoryID = State(initialValue: record?.categoryID ?? categories.first?.id ?? ExpenseCategory.fallback.id)
+        _selectedDate = State(initialValue: record?.date ?? Date())
+        _noteInput = State(initialValue: record?.note ?? "")
+    }
+
+    var selectedCategory: ExpenseCategory {
+        categories.first(where: { $0.id == selectedCategoryID }) ?? ExpenseCategory.fallback
+    }
+
+    var tint: Color {
+        .blue
+    }
+
+    var chipBackgroundColor: Color {
+        Color(.secondarySystemGroupedBackground)
+    }
+
+    var chipBorderColor: Color {
+        Color(.separator).opacity(0.08)
+    }
+
+    var normalizedAmount: Double? {
+        let trimmed = amountInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = trimmed.replacingOccurrences(of: ",", with: ".")
+        return Double(normalized)
+    }
+
+    var canSave: Bool {
+        guard let normalizedAmount else { return false }
+        return normalizedAmount > 0 && !selectedCategoryID.isEmpty
+    }
+
+    var quickDateOptions: [(title: String, date: Date)] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return [
+            ("今天", today),
+            ("昨天", calendar.date(byAdding: .day, value: -1, to: today) ?? today),
+            ("前天", calendar.date(byAdding: .day, value: -2, to: today) ?? today)
+        ]
+    }
+
+    var mondayFirstCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "zh_CN")
+        calendar.timeZone = .current
+        calendar.firstWeekday = 2
+        return calendar
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("支出金额")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+
+                        ModernInputField(
+                            placeholder: "输入这笔支出",
+                            text: $amountInput,
+                            icon: "yensign.circle.fill",
+                            tint: .blue,
+                            keyboardType: .decimalPad
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("支出说明")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+
+                        ZStack(alignment: .topLeading) {
+                            if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text("可选，记一下这笔支出花在了什么地方")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.tertiary)
+                                    .padding(.top, 14)
+                                    .padding(.horizontal, 14)
+                            }
+
+                            TextEditor(text: $noteInput)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 88)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                        }
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("支出分类")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(categories) { category in
+                                    let isSelected = selectedCategoryID == category.id
+                                    Button {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                            selectedCategoryID = category.id
+                                        }
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: category.icon)
+                                                .font(.footnote.weight(.semibold))
+                                            Text(category.title)
+                                                .font(.footnote.weight(.medium))
+                                        }
+                                        .foregroundStyle(isSelected ? .white : .primary.opacity(0.82))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(chipBackgroundColor),
+                                            in: Capsule()
+                                        )
+                                        .overlay {
+                                            Capsule()
+                                                .stroke(isSelected ? tint.opacity(0.16) : chipBorderColor, lineWidth: 1)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+
+                                Button {
+                                    withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                        isShowingCustomCategoryInput.toggle()
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "plus")
+                                            .font(.footnote.weight(.semibold))
+                                        Text("自定义")
+                                            .font(.footnote.weight(.medium))
+                                    }
+                                    .foregroundStyle(isShowingCustomCategoryInput ? .white : .primary.opacity(0.82))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(
+                                        isShowingCustomCategoryInput ? AnyShapeStyle(tint) : AnyShapeStyle(chipBackgroundColor),
+                                        in: Capsule()
+                                    )
+                                    .overlay {
+                                        Capsule()
+                                            .stroke(isShowingCustomCategoryInput ? tint.opacity(0.16) : chipBorderColor, lineWidth: 1)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.vertical, 2)
+                        }
+
+                        if isShowingCustomCategoryInput {
+                            HStack(spacing: 10) {
+                                ModernInputField(
+                                    placeholder: "新增自定义分类",
+                                    text: $customCategoryInput,
+                                    icon: "tag.fill",
+                                    tint: tint
+                                )
+
+                                Button("添加") {
+                                    guard let newCategory = onAddCategory(customCategoryInput) else { return }
+                                    selectedCategoryID = newCategory.id
+                                    customCategoryInput = ""
+                                    withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                        isShowingCustomCategoryInput = false
+                                    }
+                                }
+                                .buttonStyle(AppSecondaryButtonStyle(tint: tint))
+                                .disabled(customCategoryInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            }
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("支出日期")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+
+                        HStack(spacing: 8) {
+                            ForEach(quickDateOptions.indices, id: \.self) { index in
+                                let option = quickDateOptions[index]
+                                let isSelected = Calendar.current.isDate(selectedDate, inSameDayAs: option.date)
+
+                                Button {
+                                    withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                        selectedDate = option.date
+                                    }
+                                } label: {
+                                    Text(option.title)
+                                        .font(.footnote.weight(.medium))
+                                        .foregroundStyle(isSelected ? .white : .secondary)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            isSelected ? AnyShapeStyle(tint) : AnyShapeStyle(chipBackgroundColor),
+                                            in: Capsule()
+                                        )
+                                        .overlay {
+                                            Capsule()
+                                                .stroke(isSelected ? tint.opacity(0.16) : chipBorderColor, lineWidth: 1)
+                                        }
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            Spacer(minLength: 8)
+
+                            DatePicker(
+                                "",
+                                selection: $selectedDate,
+                                displayedComponents: [.date]
+                            )
+                            .labelsHidden()
+                            .datePickerStyle(.compact)
+                            .environment(\.locale, Locale(identifier: "zh_CN"))
+                            .environment(\.calendar, mondayFirstCalendar)
+                        }
+                    }
+
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle(record == nil ? "记一笔支出" : "编辑支出")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        onCancel()
+                        dismiss()
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(record == nil ? "保存" : "更新") {
+                        guard let normalizedAmount else { return }
+                        onSave(normalizedAmount, selectedCategoryID, selectedDate, noteInput)
+                        dismiss()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(tint)
+                    .disabled(!canSave)
+                }
+            }
+        }
+    }
+
+    func tintForCategory(_ category: ExpenseCategory) -> Color {
+        tint
     }
 }

@@ -22,6 +22,17 @@ struct TodoTaskRow: View {
     @State private var isShowingCompleteConfirm = false
     @State private var isCelebratingCompletion = false
 
+    private var completedDateText: String? {
+        guard let completedAt = task.completedAt,
+              task.isCompleted,
+              !isCelebratingCompletion else { return nil }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: completedAt)
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             Button(action: handleToggleTap) {
@@ -52,6 +63,18 @@ struct TodoTaskRow: View {
 
                         if let dueDate = task.dueDate, !task.isCompleted, !isCelebratingCompletion {
                             TodoDueBadge(dueDate: dueDate)
+                        }
+
+                        if let completedDateText {
+                            HStack(spacing: 4) {
+                                Image(systemName: "calendar")
+                                Text(completedDateText)
+                            }
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.green.opacity(0.82))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Color.green.opacity(0.10), in: Capsule())
                         }
                     }
                 }
@@ -3502,7 +3525,7 @@ struct WeatherForecastPage: View {
                         isShowingCitySearch.toggle()
                     }
                 } label: {
-                    Label(isShowingCitySearch ? "收起" : "城市", systemImage: isShowingCitySearch ? "xmark" : "location.magnifyingglass")
+                    Label(isShowingCitySearch ? "收起" : "城市", systemImage: isShowingCitySearch ? "xmark" : "mappin.and.ellipse")
                 }
                 .font(.subheadline.bold())
             }
@@ -3843,13 +3866,16 @@ struct WeatherForecastPage: View {
                     .frame(width: 28, height: 28)
                     .background(Color.orange.opacity(0.12), in: Circle())
 
-                VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("日出日落")
                         .font(.subheadline.bold())
+
                     Text(isToday(daily.date) ? "今天" : dateText(for: daily.date))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                Spacer(minLength: 0)
             }
 
             HStack(spacing: 12) {

@@ -169,6 +169,7 @@ enum MemoSection: String, CaseIterable, Identifiable, Codable {
 }
 
 enum FinanceSection: String, CaseIterable, Identifiable, Codable {
+    case expenseBook
     case assetRecord
     case stockResearch
 
@@ -177,9 +178,11 @@ enum FinanceSection: String, CaseIterable, Identifiable, Codable {
     var title: String {
         switch self {
         case .assetRecord:
-            return "资产记录"
+            return "资产"
+        case .expenseBook:
+            return "记账"
         case .stockResearch:
-            return "股票研究"
+            return "股票"
         }
     }
 
@@ -187,6 +190,8 @@ enum FinanceSection: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .assetRecord:
             return "wallet.pass"
+        case .expenseBook:
+            return "list.bullet.clipboard"
         case .stockResearch:
             return "chart.line.text.clipboard"
         }
@@ -196,6 +201,8 @@ enum FinanceSection: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .assetRecord:
             return "资产分布与趋势"
+        case .expenseBook:
+            return "记录每笔支出"
         case .stockResearch:
             return "个股研究笔记"
         }

@@ -129,6 +129,187 @@ struct FinanceTrendView: View {
     }
 }
 
+struct ExpenseTrendView: View {
+    let points: [FinanceTrendPoint]
+    let amountText: (Double) -> String
+    let granularity: WeightTrendGranularity
+
+    @State private var selectedPointID: String?
+
+    var selectedPoint: FinanceTrendPoint? {
+        guard let selectedPointID else { return points.last }
+        return points.first { $0.id == selectedPointID } ?? points.last
+    }
+
+    var minAmount: Double { points.map(\.amount).min() ?? 0 }
+    var maxAmount: Double { points.map(\.amount).max() ?? 1 }
+
+    var yDomain: ClosedRange<Double> {
+        let padding = max((maxAmount - minAmount) * 0.25, maxAmount * 0.08, 10)
+        let lower = max(0, minAmount - padding)
+        return lower...(maxAmount + padding)
+    }
+
+    var xDomain: ClosedRange<Date> {
+        let dates = points.map(\.date).sorted()
+        guard let first = dates.first, let last = dates.last else {
+            let now = Date()
+            return now...now.addingTimeInterval(1)
+        }
+        let span = last.timeIntervalSince(first)
+        let pad = max(span * 0.08, 12 * 3600)
+        return first.addingTimeInterval(-pad)...last.addingTimeInterval(pad)
+    }
+
+    var axisDates: [Date] {
+        switch granularity {
+        case .day, .month:
+            return points.map(\.date)
+        case .week:
+            let dates = points.enumerated().compactMap { index, point in
+                (index.isMultiple(of: 2) || index == points.count - 1) ? point.date : nil
+            }
+            return Array(NSOrderedSet(array: dates)) as? [Date] ?? dates
+        }
+    }
+
+    var headerLabel: String {
+        guard let point = selectedPoint else { return "" }
+
+        switch granularity {
+        case .day, .week:
+            if let monthPart = point.topLabel.split(separator: "年").last {
+                return String(monthPart).trimmingCharacters(in: .whitespaces)
+            }
+            return point.topLabel
+        case .month:
+            return point.bottomLabel
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(headerLabel)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
+
+            Chart {
+                ForEach(points) { point in
+                    AreaMark(
+                        x: .value("日期", point.date),
+                        y: .value("支出", point.amount)
+                    )
+                    .interpolationMethod(.monotone)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.blue.opacity(0.22), Color.blue.opacity(0.03)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                    LineMark(
+                        x: .value("日期", point.date),
+                        y: .value("支出", point.amount)
+                    )
+                    .interpolationMethod(.monotone)
+                    .foregroundStyle(Color.blue.gradient)
+                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                }
+
+                if let point = selectedPoint {
+                    PointMark(
+                        x: .value("日期", point.date),
+                        y: .value("支出", point.amount)
+                    )
+                    .foregroundStyle(.blue)
+                    .symbolSize(84)
+                    .annotation(position: .top, alignment: .center, spacing: 6, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                        Text(amountText(point.amount))
+                            .font(.caption2.bold())
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.blue, in: Capsule())
+                    }
+                }
+            }
+            .chartYScale(domain: yDomain)
+            .chartXScale(domain: xDomain)
+            .chartYAxis {
+                AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
+                    AxisGridLine().foregroundStyle(Color(.separator).opacity(0.4))
+                    AxisValueLabel {
+                        if let amount = value.as(Double.self) {
+                            Text(compactAmountText(amount))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .chartXAxis {
+                AxisMarks(values: axisDates) { value in
+                    AxisValueLabel {
+                        if let date = value.as(Date.self) {
+                            Text(axisLabel(for: date))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .chartOverlay { proxy in
+                GeometryReader { geo in
+                    Rectangle()
+                        .fill(.clear)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            SpatialTapGesture()
+                                .onEnded { tap in
+                                    guard let plotFrame = proxy.plotFrame else { return }
+                                    let xPosition = tap.location.x - geo[plotFrame].origin.x
+                                    guard let date: Date = proxy.value(atX: xPosition) else { return }
+                                    selectedPointID = nearestPoint(to: date)?.id
+                                }
+                        )
+                }
+            }
+        }
+    }
+
+    func axisLabel(for date: Date) -> String {
+        guard let point = nearestPoint(to: date) else { return "" }
+        switch granularity {
+        case .day:
+            return point.bottomLabel.replacingOccurrences(of: "日", with: "")
+        case .week:
+            return compactMonthDayText(point.date)
+        case .month:
+            return point.bottomLabel
+        }
+    }
+
+    func compactMonthDayText(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M/d"
+        return formatter.string(from: date)
+    }
+
+    func nearestPoint(to date: Date) -> FinanceTrendPoint? {
+        points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
+    }
+
+    func compactAmountText(_ amount: Double) -> String {
+        if abs(amount) >= 10_000 {
+            return String(format: "%.1f万", amount / 10_000)
+        }
+        return String(format: "%.0f", amount)
+    }
+}
+
 struct FinanceDistributionView: View {
     let points: [FinanceDistributionPoint]
     let amountText: (Double) -> String

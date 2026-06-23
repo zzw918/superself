@@ -339,6 +339,146 @@ extension ContentView {
         return "\(sign)\(currencyText(change))"
     }
 
+    var sortedExpenseCategories: [ExpenseCategory] {
+        let defaultIndexByID = Dictionary(
+            uniqueKeysWithValues: ExpenseCategory.defaultCategories.enumerated().map { ($1.id, $0) }
+        )
+
+        return expenseCategories.sorted { lhs, rhs in
+            if lhs.isDefault != rhs.isDefault {
+                return lhs.isDefault
+            }
+
+            if lhs.isDefault, rhs.isDefault {
+                return (defaultIndexByID[lhs.id] ?? .max) < (defaultIndexByID[rhs.id] ?? .max)
+            }
+
+            let lhsUpdated = lhs.updatedAt ?? lhs.createdAt
+            let rhsUpdated = rhs.updatedAt ?? rhs.createdAt
+            if lhsUpdated != rhsUpdated {
+                return lhsUpdated > rhsUpdated
+            }
+            return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
+        }
+    }
+
+    var sortedExpenseRecords: [ExpenseRecord] {
+        expenseRecords.sorted { lhs, rhs in
+            if lhs.date != rhs.date {
+                return lhs.date > rhs.date
+            }
+            return (lhs.updatedAt ?? lhs.createdAt) > (rhs.updatedAt ?? rhs.createdAt)
+        }
+    }
+
+    func expenseCategory(for record: ExpenseRecord) -> ExpenseCategory {
+        expenseCategories.first(where: { $0.id == record.categoryID }) ?? ExpenseCategory.fallback
+    }
+
+    var expenseTodayTotal: Double {
+        let calendar = Calendar.current
+        return expenseRecords
+            .filter { calendar.isDateInToday($0.date) }
+            .map(\.amount)
+            .reduce(0, +)
+    }
+
+    var expenseWeekTotal: Double {
+        let calendar = Calendar.current
+        guard let interval = calendar.dateInterval(of: .weekOfYear, for: now) else { return 0 }
+        return expenseRecords
+            .filter { interval.contains($0.date) }
+            .map(\.amount)
+            .reduce(0, +)
+    }
+
+    var expenseMonthTotal: Double {
+        let calendar = Calendar.current
+        guard let interval = calendar.dateInterval(of: .month, for: now) else { return 0 }
+        return expenseRecords
+            .filter { interval.contains($0.date) }
+            .map(\.amount)
+            .reduce(0, +)
+    }
+
+    var expenseYearTotal: Double {
+        let calendar = Calendar.current
+        guard let interval = calendar.dateInterval(of: .year, for: now) else { return 0 }
+        return expenseRecords
+            .filter { interval.contains($0.date) }
+            .map(\.amount)
+            .reduce(0, +)
+    }
+
+    var expenseTrendPoints: [FinanceTrendPoint] {
+        switch expenseTrendGranularity {
+        case .day:
+            return dailyExpenseTrendPoints
+        case .week:
+            return weeklyExpenseTrendPoints
+        case .month:
+            return monthlyExpenseSpendTrendPoints
+        }
+    }
+
+    private var dailyExpenseTrendPoints: [FinanceTrendPoint] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: now)
+        let totals = Dictionary(grouping: expenseRecords) { calendar.startOfDay(for: $0.date) }
+            .mapValues { $0.map(\.amount).reduce(0, +) }
+
+        return stride(from: 6, through: 0, by: -1).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: -offset, to: today) else { return nil }
+            return FinanceTrendPoint(
+                date: date,
+                amount: totals[date] ?? 0,
+                topLabel: chineseYearMonth(date),
+                bottomLabel: chineseDay(date)
+            )
+        }
+    }
+
+    private var weeklyExpenseTrendPoints: [FinanceTrendPoint] {
+        let calendar = Calendar.current
+        let intervals = Dictionary(grouping: expenseRecords) {
+            calendar.dateInterval(of: .weekOfYear, for: $0.date)?.start ?? calendar.startOfDay(for: $0.date)
+        }
+        .mapValues { $0.map(\.amount).reduce(0, +) }
+
+        guard let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start else { return [] }
+
+        return stride(from: 6, through: 0, by: -1).compactMap { offset in
+            guard let startDate = calendar.date(byAdding: .weekOfYear, value: -offset, to: currentWeekStart),
+                  let endDate = calendar.date(byAdding: .day, value: 6, to: startDate) else { return nil }
+            return FinanceTrendPoint(
+                date: startDate,
+                amount: intervals[startDate] ?? 0,
+                topLabel: "\(chineseMonthDay(startDate)) - \(chineseMonthDay(endDate))",
+                bottomLabel: "7天"
+            )
+        }
+    }
+
+    private var monthlyExpenseSpendTrendPoints: [FinanceTrendPoint] {
+        let calendar = Calendar.current
+        let intervals = Dictionary(grouping: expenseRecords) {
+            calendar.dateInterval(of: .month, for: $0.date)?.start ?? calendar.startOfDay(for: $0.date)
+        }
+        .mapValues { $0.map(\.amount).reduce(0, +) }
+
+        guard let currentMonthStart = calendar.dateInterval(of: .month, for: now)?.start else { return [] }
+
+        return stride(from: 5, through: 0, by: -1).compactMap { offset in
+            guard let startDate = calendar.date(byAdding: .month, value: -offset, to: currentMonthStart) else { return nil }
+            return FinanceTrendPoint(
+                date: startDate,
+                amount: intervals[startDate] ?? 0,
+                topLabel: chineseYear(startDate),
+                bottomLabel: chineseMonth(startDate)
+            )
+        }
+    }
+
     var sortedStockResearchItems: [StockResearchItem] {
         stockResearchItems.sorted { lhs, rhs in
             if lhs.isPinned != rhs.isPinned {

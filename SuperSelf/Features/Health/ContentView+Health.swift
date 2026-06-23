@@ -261,25 +261,37 @@ extension ContentView {
                 Spacer(minLength: 8)
             }
 
-            if let syncToastMessage {
-                let isSuccess = syncToastMessage.contains("完成")
-                Label(syncToastMessage, systemImage: isSuccess ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(isSuccess ? .green : .orange)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(isSuccess ? Color.green.opacity(0.12) : Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-
             HStack(spacing: 8) {
-                Image(systemName: syncStatusIcon)
-                    .font(.caption)
-                    .foregroundStyle(syncStatusTint)
-                Text(syncLastSyncText)
-                    .font(.caption)
-                    .foregroundStyle(syncStatusTint)
+                Group {
+                    if let syncToastMessage {
+                        let isSuccess = syncToastMessage.contains("完成") || syncToastMessage.contains("已同步")
+
+                        Label(syncToastMessage, systemImage: isSuccess ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(isSuccess ? .green : .orange)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(
+                                isSuccess ? Color.green.opacity(0.10) : Color.orange.opacity(0.10),
+                                in: Capsule()
+                            )
+                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    } else {
+                        HStack(spacing: 8) {
+                            Image(systemName: syncStatusIcon)
+                                .font(.caption)
+                                .foregroundStyle(syncStatusTint)
+                            Text(syncLastSyncText)
+                                .font(.caption)
+                                .foregroundStyle(syncStatusTint)
+                        }
+                        .transition(.opacity)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: 32, alignment: .leading)
 
                 Spacer()
 

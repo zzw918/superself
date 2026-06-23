@@ -13,6 +13,59 @@ struct CalculatorHistoryItem: Identifiable, Equatable {
     let result: String
 }
 
+enum CalculatorButtonKind {
+    case number
+    case utility
+    case destructive
+    case operation
+    case equals
+}
+
+struct CalculatorKeyButtonStyle: ButtonStyle {
+    let background: Color
+    let foreground: Color
+    var borderColor: Color = .clear
+    var shadowColor: Color = .clear
+
+    func makeBody(configuration: Configuration) -> some View {
+        let isPressed = configuration.isPressed
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+
+        configuration.label
+            .foregroundStyle(foreground.opacity(isPressed ? 0.64 : 1))
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(
+                shape
+                    .fill(isPressed ? background.opacity(0.82) : background)
+            )
+            .overlay {
+                shape
+                    .fill(.black.opacity(isPressed ? 0.08 : 0))
+            }
+            .overlay {
+                shape
+                    .fill(.white.opacity(isPressed ? 0 : 0.06))
+            }
+            .overlay {
+                shape
+                    .stroke(borderColor.opacity(isPressed ? 0.4 : 1), lineWidth: borderColor == .clear ? 0 : 1)
+            }
+            .overlay {
+                shape
+                    .stroke(.white.opacity(isPressed ? 0.08 : 0.24), lineWidth: 0.8)
+                    .blur(radius: isPressed ? 0 : 0.2)
+                    .mask(shape)
+            }
+            .shadow(color: shadowColor.opacity(isPressed ? 0.01 : 0.2), radius: isPressed ? 0.8 : 10, y: isPressed ? 0 : 5)
+            .shadow(color: .black.opacity(isPressed ? 0.12 : 0), radius: isPressed ? 1.2 : 0, y: isPressed ? 0.6 : 0)
+            .scaleEffect(isPressed ? 0.88 : 1)
+            .offset(y: isPressed ? 2.8 : 0)
+            .saturation(isPressed ? 1.08 : 1)
+            .animation(.spring(response: 0.16, dampingFraction: 0.68), value: isPressed)
+    }
+}
+
 extension ContentView {
     var healthPage: some View {
         NavigationStack {
@@ -201,6 +254,8 @@ extension ContentView {
         switch section {
         case .assetRecord:
             financeAssetRecordSection
+        case .expenseBook:
+            expenseBookSection
         case .stockResearch:
             stockResearchSection
         }
@@ -392,7 +447,11 @@ extension ContentView {
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.secondary)
                                     .frame(width: 30, height: 30)
-                                    .background(Color(.tertiarySystemFill))
+                                    .background(Color(.secondarySystemFill).opacity(0.55))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                            .stroke(Color(.separator).opacity(0.08), lineWidth: 1)
+                                    }
                                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                             }
                             .buttonStyle(.plain)
@@ -404,7 +463,11 @@ extension ContentView {
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.secondary)
                                     .frame(width: 30, height: 30)
-                                    .background(Color(.tertiarySystemFill))
+                                    .background(Color(.secondarySystemFill).opacity(0.55))
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                            .stroke(Color(.separator).opacity(0.08), lineWidth: 1)
+                                    }
                                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                             }
                             .buttonStyle(.plain)
@@ -592,17 +655,16 @@ extension ContentView {
     }
 
     var calculatorPage: some View {
-        List {
-            calculatorCard
-                .profileCardRow()
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 16) {
+                calculatorCard
 
-            if !calculatorHistory.isEmpty {
-                calculatorHistoryCard
-                    .profileCardRow()
+                if !calculatorHistory.isEmpty {
+                    calculatorHistoryCard
+                }
             }
+            .padding()
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground))
         .navigationTitle("计算器")
         .navigationBarTitleDisplayMode(.inline)
@@ -613,7 +675,9 @@ extension ContentView {
 
     var calculatorCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .trailing, spacing: 6) {
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 4) {
                 if calculatorShowsResolvedExpression {
                     Text(calculatorStatusText)
                         .font(.system(size: 18, weight: .semibold, design: .rounded))
@@ -630,67 +694,88 @@ extension ContentView {
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .lineLimit(1)
                     .minimumScaleFactor(0.45)
+                    .contentTransition(.numericText())
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.vertical, 8)
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .animation(.spring(response: 0.26, dampingFraction: 0.88), value: calculatorPrimaryDisplayText)
+
+            Spacer(minLength: 24)
 
             VStack(spacing: 10) {
                 HStack(spacing: 10) {
-                    calculatorButton("C", background: Color.red.opacity(0.14), foreground: .red) {
+                    calculatorButton("C", kind: .destructive) {
                         calculatorClear()
                     }
-                    calculatorButton("⌫", background: Color(.tertiarySystemFill), foreground: .primary) {
+                    calculatorButton("⌫", kind: .utility) {
                         calculatorBackspace()
                     }
-                    calculatorButton("%", background: Color(.tertiarySystemFill), foreground: .primary) {
+                    calculatorButton("%", kind: .utility) {
                         calculatorApplyPercent()
                     }
-                    calculatorButton(CalculatorOperation.divide.rawValue, background: Color.blue, foreground: .white) {
+                    calculatorButton(
+                        CalculatorOperation.divide.rawValue,
+                        kind: .operation,
+                        isSelected: isCalculatorOperationSelected(.divide)
+                    ) {
                         calculatorPerformOperation(.divide)
                     }
                 }
 
                 HStack(spacing: 10) {
-                    calculatorButton("7") { calculatorTapDigit("7") }
-                    calculatorButton("8") { calculatorTapDigit("8") }
-                    calculatorButton("9") { calculatorTapDigit("9") }
-                    calculatorButton(CalculatorOperation.multiply.rawValue, background: Color.blue, foreground: .white) {
+                    calculatorButton("7", kind: .number) { calculatorTapDigit("7") }
+                    calculatorButton("8", kind: .number) { calculatorTapDigit("8") }
+                    calculatorButton("9", kind: .number) { calculatorTapDigit("9") }
+                    calculatorButton(
+                        CalculatorOperation.multiply.rawValue,
+                        kind: .operation,
+                        isSelected: isCalculatorOperationSelected(.multiply)
+                    ) {
                         calculatorPerformOperation(.multiply)
                     }
                 }
 
                 HStack(spacing: 10) {
-                    calculatorButton("4") { calculatorTapDigit("4") }
-                    calculatorButton("5") { calculatorTapDigit("5") }
-                    calculatorButton("6") { calculatorTapDigit("6") }
-                    calculatorButton(CalculatorOperation.subtract.rawValue, background: Color.blue, foreground: .white) {
+                    calculatorButton("4", kind: .number) { calculatorTapDigit("4") }
+                    calculatorButton("5", kind: .number) { calculatorTapDigit("5") }
+                    calculatorButton("6", kind: .number) { calculatorTapDigit("6") }
+                    calculatorButton(
+                        CalculatorOperation.subtract.rawValue,
+                        kind: .operation,
+                        isSelected: isCalculatorOperationSelected(.subtract)
+                    ) {
                         calculatorPerformOperation(.subtract)
                     }
                 }
 
                 HStack(spacing: 10) {
-                    calculatorButton("1") { calculatorTapDigit("1") }
-                    calculatorButton("2") { calculatorTapDigit("2") }
-                    calculatorButton("3") { calculatorTapDigit("3") }
-                    calculatorButton(CalculatorOperation.add.rawValue, background: Color.blue, foreground: .white) {
+                    calculatorButton("1", kind: .number) { calculatorTapDigit("1") }
+                    calculatorButton("2", kind: .number) { calculatorTapDigit("2") }
+                    calculatorButton("3", kind: .number) { calculatorTapDigit("3") }
+                    calculatorButton(
+                        CalculatorOperation.add.rawValue,
+                        kind: .operation,
+                        isSelected: isCalculatorOperationSelected(.add)
+                    ) {
                         calculatorPerformOperation(.add)
                     }
                 }
 
                 HStack(spacing: 10) {
-                    calculatorButton("±", background: Color(.tertiarySystemFill), foreground: .primary) {
+                    calculatorButton("±", kind: .utility) {
                         calculatorToggleSign()
                     }
-                    calculatorButton("0") { calculatorTapDigit("0") }
-                    calculatorButton(".") { calculatorTapDecimal() }
-                    calculatorButton("=", background: Color.green, foreground: .white) {
+                    calculatorButton("0", kind: .number) { calculatorTapDigit("0") }
+                    calculatorButton(".", kind: .number) { calculatorTapDecimal() }
+                    calculatorButton("=", kind: .equals) {
                         calculatorCalculateResult()
                     }
                 }
             }
         }
         .padding()
+        .frame(maxWidth: .infinity, minHeight: 540, alignment: .bottom)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
@@ -777,19 +862,55 @@ extension ContentView {
 
     func calculatorButton(
         _ title: String,
-        background: Color = Color(.secondarySystemGroupedBackground),
-        foreground: Color = .primary,
+        kind: CalculatorButtonKind = .number,
+        isSelected: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        let background: Color
+        let foreground: Color
+        let borderColor: Color
+        let shadowColor: Color
+
+        switch kind {
+        case .number:
+            background = Color(.systemBackground)
+            foreground = .primary
+            borderColor = Color(.separator).opacity(0.16)
+            shadowColor = Color.black.opacity(0.08)
+        case .utility:
+            background = Color(.tertiarySystemFill)
+            foreground = .primary
+            borderColor = .clear
+            shadowColor = Color.black.opacity(0.05)
+        case .destructive:
+            background = Color.red.opacity(0.14)
+            foreground = .red
+            borderColor = .clear
+            shadowColor = Color.red.opacity(0.08)
+        case .operation:
+            background = isSelected ? Color.blue.opacity(0.18) : Color.blue
+            foreground = isSelected ? .blue : .white
+            borderColor = isSelected ? Color.blue.opacity(0.28) : .clear
+            shadowColor = Color.blue.opacity(isSelected ? 0.10 : 0.20)
+        case .equals:
+            background = Color.green
+            foreground = .white
+            borderColor = .clear
+            shadowColor = Color.green.opacity(0.20)
+        }
+
+        return Button(action: action) {
             Text(title)
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
-                .foregroundStyle(foreground)
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .background(background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(
+            CalculatorKeyButtonStyle(
+                background: background,
+                foreground: foreground,
+                borderColor: borderColor,
+                shadowColor: shadowColor
+            )
+        )
     }
 
     func calculatorTapDigit(_ digit: String) {
@@ -1012,6 +1133,10 @@ extension ContentView {
         } else {
             calculatorStatusText = "\(calculatorFormattedValue(storedValue))\(pendingOperation.rawValue)\(calculatorDisplay)"
         }
+    }
+
+    func isCalculatorOperationSelected(_ operation: CalculatorOperation) -> Bool {
+        calculatorPendingOperation == operation && !calculatorShowsResolvedExpression
     }
 
     func calculatorFormattedValue(_ value: Double) -> String {
