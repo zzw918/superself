@@ -550,7 +550,7 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay {
             NavigationLink {
-                WeatherForecastPage(weatherStore: weatherStore)
+                AnyView(WeatherForecastPage(weatherStore: weatherStore))
             } label: {
                 EmptyView()
             }
@@ -583,7 +583,7 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay {
             NavigationLink {
-                calculatorPage
+                AnyView(calculatorPage)
             } label: {
                 EmptyView()
             }
@@ -1100,7 +1100,7 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay {
             NavigationLink {
-                notificationSettingsPage
+                AnyView(notificationSettingsPage)
             } label: {
                 EmptyView()
             }
@@ -1137,7 +1137,7 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay {
             NavigationLink {
-                securitySettingsPage
+                AnyView(securitySettingsPage)
             } label: {
                 EmptyView()
             }
@@ -1341,7 +1341,7 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay {
             NavigationLink {
-                appearanceSettingsPage
+                AnyView(appearanceSettingsPage)
             } label: {
                 EmptyView()
             }

@@ -453,15 +453,14 @@ struct ContentView: View {
         }
     }
 
-    @ViewBuilder
-    func mainTabContent(for tab: MainAppTab) -> some View {
+    func mainTabContent(for tab: MainAppTab) -> AnyView {
         switch tab {
         case .health:
-            healthPage
+            return AnyView(healthPage)
         case .todo:
-            memoPage
+            return AnyView(memoPage)
         case .finance:
-            financePage
+            return AnyView(financePage)
         }
     }
 }
