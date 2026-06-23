@@ -261,6 +261,18 @@ extension ContentView {
                 Spacer(minLength: 8)
             }
 
+            if let syncToastMessage {
+                let isSuccess = syncToastMessage.contains("完成")
+                Label(syncToastMessage, systemImage: isSuccess ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(isSuccess ? .green : .orange)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(isSuccess ? Color.green.opacity(0.12) : Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
             HStack(spacing: 8) {
                 Image(systemName: syncStatusIcon)
                     .font(.caption)

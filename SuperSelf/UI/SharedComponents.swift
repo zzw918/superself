@@ -232,11 +232,12 @@ struct AppUnderlineTabs<Option: Identifiable & Hashable>: View {
     let options: [Option]
     @Binding var selection: Option
     let title: (Option) -> String
+    var spacing: CGFloat = 24
 
     @Namespace private var underlineNamespace
 
     var body: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: spacing) {
             ForEach(options) { option in
                 let isSelected = selection == option
                 Button {

@@ -148,6 +148,18 @@ extension ContentView {
             visibleSections.append(.note)
         }
 
+        if !order.contains(.calendar) {
+            if let anniversaryIndex = order.firstIndex(of: .anniversary) {
+                order.insert(.calendar, at: anniversaryIndex + 1)
+            } else {
+                order.append(.calendar)
+            }
+        }
+
+        if !visibleSections.contains(.calendar) {
+            visibleSections.append(.calendar)
+        }
+
         return SectionPreferences(order: order, visibleSections: visibleSections).normalized
     }
 

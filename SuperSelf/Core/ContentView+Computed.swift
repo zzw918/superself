@@ -134,9 +134,17 @@ extension ContentView {
     }
 
     var sortedMemoNotes: [MemoNote] {
-        memoNotes
+        let searchText = noteSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedSearchText = searchText.replacingOccurrences(of: "#", with: "")
+        return memoNotes
             .filter { note in
                 noteTagFilter.map { note.tags.contains($0) } ?? true
+            }
+            .filter { note in
+                guard !searchText.isEmpty else { return true }
+                return note.content.localizedCaseInsensitiveContains(searchText)
+                    || note.content.localizedCaseInsensitiveContains(normalizedSearchText)
+                    || note.tags.contains { $0.localizedCaseInsensitiveContains(normalizedSearchText) }
             }
             .sorted { lhs, rhs in
                 if lhs.isPinned != rhs.isPinned {

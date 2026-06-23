@@ -1,7 +1,7 @@
 import Foundation
 import CoreLocation
 
-struct WeatherCity: Identifiable, Equatable {
+struct WeatherCity: Identifiable, Equatable, Codable {
     var name: String
     var latitude: Double
     var longitude: Double
@@ -114,10 +114,12 @@ enum WeatherLoadState: Equatable {
 final class WeatherStore: NSObject, ObservableObject {
     @Published var state: WeatherLoadState = .idle
     @Published private(set) var selectedCity: WeatherCity?
+    @Published private(set) var recentCities: [WeatherCity] = []
 
     private let locationManager = CLLocationManager()
     private let geocoder = CLGeocoder()
     private var isRequesting = false
+    private let recentCitiesKey = "weatherRecentCities"
 
     var isUsingCurrentLocation: Bool {
         selectedCity == nil
@@ -127,6 +129,7 @@ final class WeatherStore: NSObject, ObservableObject {
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyKilometer
+        loadRecentCities()
     }
 
     func refresh() {
@@ -154,12 +157,33 @@ final class WeatherStore: NSObject, ObservableObject {
     func selectCity(_ city: WeatherCity) {
         guard !isRequesting else { return }
         selectedCity = city
+        rememberCity(city)
         state = .loading
         isRequesting = true
         Task {
             await loadWeather(for: city)
             isRequesting = false
         }
+    }
+
+    private func rememberCity(_ city: WeatherCity) {
+        recentCities.removeAll { $0.id == city.id }
+        recentCities.insert(city, at: 0)
+        recentCities = Array(recentCities.prefix(6))
+        persistRecentCities()
+    }
+
+    private func loadRecentCities() {
+        guard let data = UserDefaults.standard.data(forKey: recentCitiesKey),
+              let decoded = try? JSONDecoder().decode([WeatherCity].self, from: data) else {
+            return
+        }
+        recentCities = Array(decoded.prefix(6))
+    }
+
+    private func persistRecentCities() {
+        guard let data = try? JSONEncoder().encode(recentCities) else { return }
+        UserDefaults.standard.set(data, forKey: recentCitiesKey)
     }
 
     private func refreshCurrentLocation() {

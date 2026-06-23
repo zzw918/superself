@@ -118,6 +118,7 @@ enum MemoSection: String, CaseIterable, Identifiable, Codable {
     case note
     case wishlist
     case anniversary
+    case calendar
 
     var id: String { rawValue }
 
@@ -131,6 +132,8 @@ enum MemoSection: String, CaseIterable, Identifiable, Codable {
             return "愿望"
         case .anniversary:
             return "纪念日"
+        case .calendar:
+            return "日历"
         }
     }
 
@@ -144,6 +147,8 @@ enum MemoSection: String, CaseIterable, Identifiable, Codable {
             return "sparkles"
         case .anniversary:
             return "calendar.badge.clock"
+        case .calendar:
+            return "calendar"
         }
     }
 
@@ -157,6 +162,8 @@ enum MemoSection: String, CaseIterable, Identifiable, Codable {
             return "想做想要的事"
         case .anniversary:
             return "重要日子倒数"
+        case .calendar:
+            return "查看月历和日期"
         }
     }
 }

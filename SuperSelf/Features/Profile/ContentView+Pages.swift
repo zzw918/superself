@@ -93,32 +93,36 @@ extension ContentView {
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .padding(.top, visibleMemoSections.count > 1 ? 0 : 8)
                 .overlay(alignment: .bottomTrailing) {
-                    Button {
-                        switch memoSection {
-                        case .todo:
-                            todoAddInitialPriority = todoFilter ?? .notImportantNotUrgent
-                            isShowingTodoAddSheet = true
-                        case .note:
-                            isShowingNoteAddSheet = true
-                        case .wishlist:
-                            wishlistInput = ""
-                            if let categoryID = wishlistFilter.categoryID {
-                                wishlistCategoryID = categoryID
+                    if memoSection != .calendar {
+                        Button {
+                            switch memoSection {
+                            case .todo:
+                                todoAddInitialPriority = todoFilter ?? .notImportantNotUrgent
+                                isShowingTodoAddSheet = true
+                            case .note:
+                                isShowingNoteAddSheet = true
+                            case .wishlist:
+                                wishlistInput = ""
+                                if let categoryID = wishlistFilter.categoryID {
+                                    wishlistCategoryID = categoryID
+                                }
+                                isShowingWishlistAddSheet = true
+                            case .anniversary:
+                                isShowingAnniversarySheet = true
+                            case .calendar:
+                                break
                             }
-                            isShowingWishlistAddSheet = true
-                        case .anniversary:
-                            isShowingAnniversarySheet = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.title3.weight(.medium))
+                                .foregroundStyle(.white)
+                                .frame(width: 48, height: 48)
+                                .background(Color.blue, in: Circle())
+                                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
                         }
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.title3.weight(.medium))
-                            .foregroundStyle(.white)
-                            .frame(width: 48, height: 48)
-                            .background(Color.blue, in: Circle())
-                            .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
                     }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 20)
                 }
             }
             .background(Color(.systemGroupedBackground))
@@ -139,6 +143,8 @@ extension ContentView {
             wishlistCard
         case .anniversary:
             anniversaryCard
+        case .calendar:
+            memoCalendarCard
         }
     }
 
@@ -146,7 +152,8 @@ extension ContentView {
         AppUnderlineTabs(
             options: visibleMemoSections,
             selection: $memoSection,
-            title: \.title
+            title: \.title,
+            spacing: 14
         )
     }
 
@@ -434,11 +441,11 @@ extension ContentView {
 
     @ViewBuilder
     var weatherCard: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 12) {
             switch weatherStore.state {
             case .loaded(let info):
                 ZStack {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: weatherGradient(for: info.weatherCode),
@@ -447,38 +454,46 @@ extension ContentView {
                             )
                         )
                     Image(systemName: info.symbolName)
-                        .font(.system(size: 32))
+                        .font(.system(size: 26))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.white)
                         .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
                 }
-                .frame(width: 64, height: 64)
+                .frame(width: 54, height: 54)
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(info.cityName)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        .lineLimit(1)
+
+                    HStack(alignment: .center, spacing: 6) {
                         Text(info.temperatureText)
-                            .font(.system(size: 34, weight: .bold))
+                            .font(.system(size: 30, weight: .bold))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+                            .fixedSize(horizontal: true, vertical: false)
+
                         Text(info.conditionText)
-                            .font(.headline)
+                            .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer(minLength: 8)
-
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     weatherMetricRow(title: "体感", value: "\(Int(info.apparentTemperature.rounded()))°")
                     weatherMetricRow(title: "湿度", value: "\(info.humidity)%")
                     weatherMetricRow(title: "风速", value: "\(Int(info.windSpeed.rounded())) km/h")
                 }
+                .layoutPriority(1)
                 
                 Image(systemName: "chevron.right")
                     .font(.caption.bold())
                     .foregroundStyle(.tertiary)
-                    .padding(.leading, 4)
 
             case .loading, .idle:
                 ProgressView()

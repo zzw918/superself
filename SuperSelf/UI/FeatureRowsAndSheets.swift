@@ -408,6 +408,10 @@ struct MemoNoteCard: View {
                             .scaledToFit()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .padding(20)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                isShowingImagePreview = false
+                            }
                             .tag(index)
                     }
                 }
@@ -2234,6 +2238,10 @@ struct MemoNoteEditorSheet: View {
         selectedImageDatas.compactMap(UIImage.init(data:))
     }
 
+    private var contentEditorFont: UIFont {
+        .preferredFont(forTextStyle: .subheadline)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -2243,26 +2251,7 @@ struct MemoNoteEditorSheet: View {
                             .font(.caption.bold())
                             .foregroundStyle(.secondary)
 
-                        ZStack(alignment: .topLeading) {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Color(.secondarySystemGroupedBackground))
-
-                            if contentInput.isEmpty {
-                                Text("随便写点什么吧")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.tertiary)
-                                    .padding(.horizontal, 14)
-                                    .padding(.top, showsCurrentTags ? 48 : 14)
-                            }
-
-                            TextEditor(text: $contentInput)
-                                .scrollContentBackground(.hidden)
-                                .frame(minHeight: 180)
-                                .padding(.horizontal, 10)
-                                .padding(.top, showsCurrentTags ? 42 : 8)
-                                .padding(.bottom, 38)
-                                .focused($isFocused)
-
+                        VStack(alignment: .leading, spacing: 10) {
                             if showsCurrentTags {
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 8) {
@@ -2284,8 +2273,58 @@ struct MemoNoteEditorSheet: View {
                                             .buttonStyle(.plain)
                                         }
                                     }
-                                    .padding(.horizontal, 12)
-                                    .padding(.top, 10)
+                                }
+                            }
+
+                            GeometryReader { proxy in
+                                ZStack(alignment: .topLeading) {
+                                    if contentInput.isEmpty {
+                                        Text("随便写点什么吧")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.tertiary)
+                                            .padding(.horizontal, 4)
+                                            .padding(.top, 8)
+                                    }
+
+                                    TextEditor(text: $contentInput)
+                                        .font(.subheadline)
+                                        .scrollContentBackground(.hidden)
+                                        .frame(height: contentEditorHeight(width: proxy.size.width))
+                                        .padding(.horizontal, -4)
+                                        .focused($isFocused)
+                                }
+                            }
+                            .frame(height: contentEditorHeight(width: UIScreen.main.bounds.width - 64))
+
+                            if !selectedImageDatas.isEmpty {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 10) {
+                                        ForEach(Array(previewImages.enumerated()), id: \.offset) { index, uiImage in
+                                            ZStack(alignment: .topTrailing) {
+                                                Button {
+                                                    selectedPreviewIndex = index
+                                                    isShowingImagePreview = true
+                                                } label: {
+                                                    Image(uiImage: uiImage)
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                        .frame(width: 92, height: 92)
+                                                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                                }
+                                                .buttonStyle(.plain)
+
+                                                Button {
+                                                    selectedImageDatas.remove(at: index)
+                                                } label: {
+                                                    Image(systemName: "xmark.circle.fill")
+                                                        .font(.title3)
+                                                        .foregroundStyle(.white, .black.opacity(0.45))
+                                                        .padding(6)
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
@@ -2310,11 +2349,10 @@ struct MemoNoteEditorSheet: View {
                                 }
                                 .buttonStyle(.plain)
                             }
-                            .padding(.leading, 12)
-                            .padding(.bottom, 10)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                         }
-                        .frame(minHeight: 180)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
 
                     if !suggestedTags.isEmpty && selectedTags.isEmpty {
@@ -2340,40 +2378,6 @@ struct MemoNoteEditorSheet: View {
                                     }
                                 }
                                 .padding(.vertical, 2)
-                            }
-                        }
-                    }
-
-                    if !selectedImageDatas.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 10) {
-                                    ForEach(Array(previewImages.enumerated()), id: \.offset) { index, uiImage in
-                                        ZStack(alignment: .topTrailing) {
-                                            Button {
-                                                selectedPreviewIndex = index
-                                                isShowingImagePreview = true
-                                            } label: {
-                                                Image(uiImage: uiImage)
-                                                    .resizable()
-                                                    .scaledToFill()
-                                                    .frame(width: 100, height: 100)
-                                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                            }
-                                            .buttonStyle(.plain)
-
-                                            Button {
-                                                selectedImageDatas.remove(at: index)
-                                            } label: {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .font(.title3)
-                                                    .foregroundStyle(.white, .black.opacity(0.45))
-                                                    .padding(6)
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
@@ -2424,6 +2428,10 @@ struct MemoNoteEditorSheet: View {
                             .scaledToFit()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .padding(20)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                isShowingImagePreview = false
+                            }
                             .tag(index)
                     }
                 }
@@ -2636,6 +2644,26 @@ struct MemoNoteEditorSheet: View {
             contentInput = sanitized
         }
         presentTagPopover()
+    }
+
+    private func contentEditorHeight(width: CGFloat) -> CGFloat {
+        let horizontalPadding: CGFloat = 12
+        let verticalPadding: CGFloat = 18
+        let lineHeight = ceil(contentEditorFont.lineHeight)
+        let textWidth = max(1, width - horizontalPadding)
+        let rows = max(3, contentVisualLineCount(width: textWidth))
+        return CGFloat(rows) * lineHeight + verticalPadding
+    }
+
+    private func contentVisualLineCount(width: CGFloat) -> Int {
+        let text = contentInput.isEmpty ? " " : contentInput
+        let boundingRect = (text as NSString).boundingRect(
+            with: CGSize(width: width, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: [.font: contentEditorFont],
+            context: nil
+        )
+        return max(1, Int(ceil(boundingRect.height / max(1, contentEditorFont.lineHeight))))
     }
 
     private func metaDateText(_ date: Date) -> String {
@@ -3455,12 +3483,12 @@ struct WeatherForecastSheet: View {
         return "\(info.cityName)未来天气"
     }
 
-    private func globalMaxTemp(for info: WeatherInfo) -> Double {
-        info.dailyForecast.map { $0.maxTemperature }.max() ?? .greatestFiniteMagnitude
+    private func globalMaxTemp(for info: WeatherInfo) -> Int {
+        info.dailyForecast.map { Int($0.maxTemperature.rounded()) }.max() ?? Int.min
     }
 
-    private func globalMinTemp(for info: WeatherInfo) -> Double {
-        info.dailyForecast.map { $0.minTemperature }.min() ?? -.greatestFiniteMagnitude
+    private func globalMinTemp(for info: WeatherInfo) -> Int {
+        info.dailyForecast.map { Int($0.minTemperature.rounded()) }.min() ?? Int.max
     }
 
     var body: some View {
@@ -3620,6 +3648,40 @@ struct WeatherForecastSheet: View {
             }
             .buttonStyle(.plain)
 
+            if !weatherStore.recentCities.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("最近选择")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(weatherStore.recentCities) { city in
+                                Button {
+                                    weatherStore.selectCity(city)
+                                    collapseCitySearch()
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Text(city.name)
+
+                                        if weatherStore.selectedCity?.id == city.id {
+                                            Image(systemName: "checkmark")
+                                                .font(.caption.bold())
+                                        }
+                                    }
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(weatherStore.selectedCity?.id == city.id ? .white : .blue)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(weatherStore.selectedCity?.id == city.id ? Color.blue : Color.blue.opacity(0.10), in: Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+            }
+
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
@@ -3725,8 +3787,8 @@ struct WeatherForecastSheet: View {
     }
 
     private func forecastRow(for daily: DailyWeatherInfo, info: WeatherInfo) -> some View {
-        let isGlobalMax = daily.maxTemperature == globalMaxTemp(for: info)
-        let isGlobalMin = daily.minTemperature == globalMinTemp(for: info)
+        let isGlobalMax = Int(daily.maxTemperature.rounded()) == globalMaxTemp(for: info)
+        let isGlobalMin = Int(daily.minTemperature.rounded()) == globalMinTemp(for: info)
 
         return HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {

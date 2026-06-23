@@ -79,12 +79,16 @@ struct ContentView: View {
     @State var wishlistItems: [WishlistItem] = []
     @State var wishlistCategories: [WishlistCategory] = WishlistCategory.defaultCategories
     @State var anniversaryItems: [AnniversaryItem] = []
+    @State var memoCalendarMonth = Date()
+    @State var memoCalendarSelectedDate = Calendar.current.startOfDay(for: Date())
     @State var todoInput = ""
     @State var todoPriorityInput: TodoPriority = .importantNotUrgent
     @State var todoFilter: TodoPriority? = nil
     @State var todoAddInitialPriority: TodoPriority?
     @State var isShowingTodoAddSheet = false
     @State var noteTagFilter: String?
+    @State var noteSearchText = ""
+    @State var isNoteSearchExpanded = false
     @State var isShowingNoteAddSheet = false
     @State var wishlistInput = ""
     @State var wishlistCategoryID = WishlistCategory.defaultCategories[0].id
@@ -159,6 +163,7 @@ struct ContentView: View {
     @State var isShowingEndFastingConfirm = false
     @FocusState var focusedWeightSheetField: WeightSheetField?
     @FocusState var isAnniversaryTitleFocused: Bool
+    @FocusState var isNoteSearchFocused: Bool
 
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -186,19 +191,6 @@ struct ContentView: View {
                 }
         }
         .preferredColorScheme(appearanceMode.wrappedValue.colorScheme)
-        .overlay(alignment: .top) {
-            if let syncToastMessage {
-                Label(syncToastMessage, systemImage: syncToastMessage.contains("完成") ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(syncToastMessage.contains("完成") ? .green : .orange)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-                    .padding(.top, 12)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-        }
         .onReceive(notificationRouter.$route.compactMap { $0 }) { route in
             handleAppRoute(route)
         }
