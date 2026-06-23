@@ -17,19 +17,49 @@ struct WeatherCity: Identifiable, Equatable, Codable {
         "\(name)-\(latitude)-\(longitude)"
     }
 
+    var presentedName: String {
+        if isCountyLevelName(name) {
+            return name
+        }
+
+        let candidates = [admin4, admin3, admin2]
+            .compactMap { $0 }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        if let countyLike = candidates.first(where: { isCountyLevelName($0) }) {
+            return countyLike
+        }
+
+        return name
+    }
+
     var displayName: String {
-        [name, admin1, admin2, admin3, country]
+        [presentedName, admin1, name, admin2, admin3, country]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
+            .filter { $0 != presentedName }
+            .deduplicated()
             .joined(separator: " · ")
     }
 
     var detailName: String {
-        [admin1, admin2, admin3, country]
+        [admin1, name, admin2, admin3, country]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
+            .filter { $0 != presentedName }
             .deduplicated()
             .joined(separator: " · ")
+    }
+
+    private func isCountyLevelName(_ text: String) -> Bool {
+        text.hasSuffix("县")
+            || text.hasSuffix("区")
+            || text.hasSuffix("旗")
+            || text.hasSuffix("自治县")
+            || text.hasSuffix("自治旗")
+            || text.hasSuffix("林区")
+            || text.hasSuffix("特区")
     }
 }
 
@@ -46,6 +76,8 @@ struct DailyWeatherInfo: Equatable, Identifiable {
     var weatherCode: Int
     var maxTemperature: Double
     var minTemperature: Double
+    var sunrise: Date?
+    var sunset: Date?
     
     var symbolName: String { WeatherInfo.symbol(for: weatherCode) }
     var conditionText: String { WeatherInfo.condition(for: weatherCode) }
@@ -61,6 +93,10 @@ struct WeatherInfo: Equatable {
     var weatherCode: Int
     var cityName: String
     var dailyForecast: [DailyWeatherInfo] = []
+    
+    var todayForecast: DailyWeatherInfo? {
+        dailyForecast.first(where: { Calendar.current.isDateInToday($0.date) }) ?? dailyForecast.first
+    }
 
     var symbolName: String { WeatherInfo.symbol(for: weatherCode) }
     var conditionText: String { WeatherInfo.condition(for: weatherCode) }
@@ -209,7 +245,7 @@ final class WeatherStore: NSObject, ObservableObject {
             return
         }
 
-        info.cityName = city.name
+        info.cityName = city.presentedName
         state = .loaded(info)
     }
 
@@ -264,6 +300,8 @@ final class WeatherStore: NSObject, ObservableObject {
             let weather_code: [Int]
             let temperature_2m_max: [Double]
             let temperature_2m_min: [Double]
+            let sunrise: [String]?
+            let sunset: [String]?
         }
         let current: Current
         let daily: Daily?
@@ -275,7 +313,7 @@ final class WeatherStore: NSObject, ObservableObject {
             URLQueryItem(name: "latitude", value: String(coordinate.latitude)),
             URLQueryItem(name: "longitude", value: String(coordinate.longitude)),
             URLQueryItem(name: "current", value: "temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code"),
-            URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min"),
+            URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset"),
             URLQueryItem(name: "timezone", value: "auto"),
             URLQueryItem(name: "forecast_days", value: "10")
         ]
@@ -292,6 +330,11 @@ final class WeatherStore: NSObject, ObservableObject {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "yyyy-MM-dd"
                 dateFormatter.timeZone = TimeZone.current
+
+                let timeFormatter = DateFormatter()
+                timeFormatter.locale = Locale(identifier: "en_US_POSIX")
+                timeFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+                timeFormatter.timeZone = TimeZone.current
                 
                 let count = min(daily.time.count, min(daily.weather_code.count, min(daily.temperature_2m_max.count, daily.temperature_2m_min.count)))
                 for i in 0..<count {
@@ -300,7 +343,9 @@ final class WeatherStore: NSObject, ObservableObject {
                             date: date,
                             weatherCode: daily.weather_code[i],
                             maxTemperature: daily.temperature_2m_max[i],
-                            minTemperature: daily.temperature_2m_min[i]
+                            minTemperature: daily.temperature_2m_min[i],
+                            sunrise: daily.sunrise.flatMap { i < $0.count ? timeFormatter.date(from: $0[i]) : nil },
+                            sunset: daily.sunset.flatMap { i < $0.count ? timeFormatter.date(from: $0[i]) : nil }
                         ))
                     }
                 }
@@ -442,8 +487,8 @@ final class WeatherStore: NSObject, ObservableObject {
 
     private func isCityOrCountyLevel(_ city: WeatherCity, query: String) -> Bool {
         let code = city.featureCode ?? ""
-        if code.hasPrefix("ADM") {
-            return ["ADM1", "ADM2", "ADM3"].contains(code)
+        if isPreferredAdministrativeFeatureCode(code) {
+            return true
         }
 
         let normalizedQuery = normalizedCityName(query)
@@ -455,6 +500,10 @@ final class WeatherStore: NSObject, ObservableObject {
         if !admin1.isEmpty, name == admin1 { return true }
         if !admin2.isEmpty, name == admin2 { return true }
         if !admin3.isEmpty, name == admin3 { return true }
+
+        if code == "APPLE_GEOCODER", name == normalizedQuery {
+            return !admin1.isEmpty || !admin2.isEmpty || !admin3.isEmpty
+        }
 
         if name == normalizedQuery {
             return admin1.contains(normalizedQuery)
@@ -485,8 +534,21 @@ final class WeatherStore: NSObject, ObservableObject {
         if code == "ADM1" { score += 25 }
         if code == "ADM2" { score += 20 }
         if code == "ADM3" { score += 15 }
+        if code == "PPLC" { score += 24 }
+        if code == "PPLA" { score += 22 }
+        if code == "PPLA2" { score += 20 }
+        if code == "PPLA3" { score += 18 }
+        if code == "PPLA4" { score += 16 }
+        if code == "APPLE_GEOCODER" { score += 10 }
         if city.country == "中国" { score += 5 }
         return score
+    }
+
+    private func isPreferredAdministrativeFeatureCode(_ code: String) -> Bool {
+        [
+            "ADM1", "ADM2", "ADM3",
+            "PPLC", "PPLA", "PPLA2", "PPLA3", "PPLA4"
+        ].contains(code)
     }
 
     private func normalizedCityName(_ text: String) -> String {

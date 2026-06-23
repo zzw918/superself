@@ -152,11 +152,16 @@ struct ContentView: View {
     @State var isShowingBodySettings = false
     @State var isShowingFinanceAssetSheet = false
     @State var isShowingAnniversarySheet = false
-    @State var isShowingWeatherForecastSheet = false
     @State var isShowingStartTimeSheet = false
     @State var startTimeDraft = Date()
     @State var isShowingPlanSheet = false
     @State var isShowingStockAddAlert = false
+    @State var calculatorDisplay = "0"
+    @State var calculatorStoredValue: Double?
+    @State var calculatorPendingOperation: CalculatorOperation?
+    @State var calculatorIsEnteringNewNumber = false
+    @State var calculatorStatusText = ""
+    @State var calculatorHistory: [CalculatorHistoryItem] = []
     @State var trendGranularity: WeightTrendGranularity = .day
     @State var visibleWeightHistoryDays = 10
     @State var didShowWeightSaveFeedback = false
@@ -315,9 +320,6 @@ struct ContentView: View {
         }
         .sheet(isPresented: $isShowingAnniversarySheet) {
             anniversaryAddSheet
-        }
-        .sheet(isPresented: $isShowingWeatherForecastSheet) {
-            WeatherForecastSheet(weatherStore: weatherStore)
         }
         .sheet(isPresented: $isShowingStartTimeSheet) {
             startTimeSheet

@@ -236,8 +236,16 @@ struct AppUnderlineTabs<Option: Identifiable & Hashable>: View {
 
     @Namespace private var underlineNamespace
 
+    private var usesCompactLayout: Bool {
+        options.count >= 5
+    }
+
+    private var effectiveSpacing: CGFloat {
+        usesCompactLayout ? min(spacing, 10) : spacing
+    }
+
     var body: some View {
-        HStack(spacing: spacing) {
+        HStack(spacing: effectiveSpacing) {
             ForEach(options) { option in
                 let isSelected = selection == option
                 Button {
@@ -247,8 +255,10 @@ struct AppUnderlineTabs<Option: Identifiable & Hashable>: View {
                 } label: {
                     VStack(spacing: 6) {
                         Text(title(option))
-                            .font(isSelected ? .title3.bold() : .title3.weight(.medium))
+                            .font(tabFont(isSelected: isSelected))
                             .foregroundStyle(isSelected ? .primary : .secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
 
                         ZStack {
                             Capsule()
@@ -262,13 +272,19 @@ struct AppUnderlineTabs<Option: Identifiable & Hashable>: View {
                             }
                         }
                     }
+                    .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
-
-            Spacer(minLength: 0)
         }
+    }
+
+    private func tabFont(isSelected: Bool) -> Font {
+        if usesCompactLayout {
+            return isSelected ? .headline.bold() : .headline.weight(.medium)
+        }
+        return isSelected ? .title3.bold() : .title3.weight(.medium)
     }
 }
 

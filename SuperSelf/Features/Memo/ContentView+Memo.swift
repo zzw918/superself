@@ -1,9 +1,55 @@
 import SwiftUI
 
+enum MemoCalendarSpecialDayKind {
+    case holiday
+    case solarTerm
+}
+
+struct MemoCalendarSpecialDay {
+    let name: String
+    let kind: MemoCalendarSpecialDayKind
+    let description: String
+}
+
+struct MemoCalendarSolarTermRule {
+    let name: String
+    let month: Int
+    let century20: Double
+    let century21: Double
+}
+
 extension ContentView {
+    static let memoCalendarSolarTermRules: [MemoCalendarSolarTermRule] = [
+        .init(name: "小寒", month: 1, century20: 6.11, century21: 5.4055),
+        .init(name: "大寒", month: 1, century20: 20.84, century21: 20.12),
+        .init(name: "立春", month: 2, century20: 4.6295, century21: 3.87),
+        .init(name: "雨水", month: 2, century20: 19.4599, century21: 18.73),
+        .init(name: "惊蛰", month: 3, century20: 6.3826, century21: 5.63),
+        .init(name: "春分", month: 3, century20: 21.4155, century21: 20.646),
+        .init(name: "清明", month: 4, century20: 5.59, century21: 4.81),
+        .init(name: "谷雨", month: 4, century20: 20.888, century21: 20.1),
+        .init(name: "立夏", month: 5, century20: 6.318, century21: 5.52),
+        .init(name: "小满", month: 5, century20: 21.86, century21: 21.04),
+        .init(name: "芒种", month: 6, century20: 6.5, century21: 5.678),
+        .init(name: "夏至", month: 6, century20: 22.2, century21: 21.37),
+        .init(name: "小暑", month: 7, century20: 7.928, century21: 7.108),
+        .init(name: "大暑", month: 7, century20: 23.65, century21: 22.83),
+        .init(name: "立秋", month: 8, century20: 8.35, century21: 7.5),
+        .init(name: "处暑", month: 8, century20: 23.95, century21: 23.13),
+        .init(name: "白露", month: 9, century20: 8.44, century21: 7.646),
+        .init(name: "秋分", month: 9, century20: 23.822, century21: 23.042),
+        .init(name: "寒露", month: 10, century20: 9.098, century21: 8.318),
+        .init(name: "霜降", month: 10, century20: 24.218, century21: 23.438),
+        .init(name: "立冬", month: 11, century20: 8.218, century21: 7.438),
+        .init(name: "小雪", month: 11, century20: 23.08, century21: 22.36),
+        .init(name: "大雪", month: 12, century20: 7.9, century21: 7.18),
+        .init(name: "冬至", month: 12, century20: 22.6, century21: 21.94)
+    ]
+
     var memoCalendarCard: some View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
         let selectedAnniversaryItems = memoCalendarAnniversaryItems(on: memoCalendarSelectedDate)
+        let selectedSpecialDay = memoCalendarSpecialDay(for: memoCalendarSelectedDate)
 
         return VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
@@ -73,11 +119,7 @@ extension ContentView {
             }
 
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: selectedAnniversaryItems.isEmpty ? "calendar" : "calendar.badge.heart")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.blue)
-                    .frame(width: 30, height: 30)
-                    .background(Color.blue.opacity(0.10), in: Circle())
+                memoCalendarSelectedLeadingIcon(for: selectedAnniversaryItems)
 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -97,6 +139,37 @@ extension ContentView {
                     Text(memoCalendarSelectedLunarDateText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+
+                    if let selectedSpecialDay {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: memoCalendarSpecialDayIconName(for: selectedSpecialDay))
+                                .font(.subheadline.bold())
+                                .foregroundStyle(memoCalendarSpecialDayTint(for: selectedSpecialDay))
+                                .frame(width: 28, height: 28)
+                                .background(
+                                    memoCalendarSpecialDayTint(for: selectedSpecialDay).opacity(0.12),
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                )
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(selectedSpecialDay.name)
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(memoCalendarSpecialDayTint(for: selectedSpecialDay))
+
+                                Text(selectedSpecialDay.description)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            memoCalendarSpecialDayTint(for: selectedSpecialDay).opacity(0.08),
+                            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        )
+                    }
 
                     if !selectedAnniversaryItems.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
@@ -136,9 +209,14 @@ extension ContentView {
         let isToday = calendar.isDateInToday(date)
         let isSelected = calendar.isDate(date, inSameDayAs: memoCalendarSelectedDate)
         let isWeekend = memoCalendarIsWeekend(date)
-        let holiday = memoCalendarHolidayText(for: date)
+        let specialDay = memoCalendarSpecialDay(for: date)
         let anniversaryItems = memoCalendarAnniversaryItems(on: date)
-        let dayLabel = memoCalendarDayLabel(holiday: holiday, anniversaryItems: anniversaryItems)
+        let dayLabel = memoCalendarDayLabel(specialDay: specialDay, anniversaryItems: anniversaryItems)
+        let dayLabelTint = memoCalendarDayLabelTint(
+            isSelected: isSelected,
+            isAnniversary: !anniversaryItems.isEmpty,
+            specialDay: specialDay
+        )
 
         return Button {
             withAnimation(.spring(response: 0.24, dampingFraction: 0.9)) {
@@ -157,16 +235,19 @@ extension ContentView {
                             .font(.system(size: 9, weight: .semibold))
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
-                            .foregroundStyle(isSelected ? .white.opacity(0.92) : .red)
+                            .foregroundStyle(dayLabelTint)
                     } else {
                         Text(dayLabel)
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 8, weight: .bold))
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                             .foregroundStyle(isSelected ? .blue : .white)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(isSelected ? Color.white.opacity(0.92) : Color.blue, in: Capsule())
+                            .padding(.horizontal, 3)
+                            .padding(.vertical, 1.5)
+                            .background(
+                                isSelected ? Color.white.opacity(0.92) : Color.blue,
+                                in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            )
                     }
                 } else {
                     Circle()
@@ -205,14 +286,14 @@ extension ContentView {
         return weekday == 1 || weekday == 7
     }
 
-    func memoCalendarDayLabel(holiday: String?, anniversaryItems: [AnniversaryItem]) -> String? {
+    func memoCalendarDayLabel(specialDay: MemoCalendarSpecialDay?, anniversaryItems: [AnniversaryItem]) -> String? {
         if let firstAnniversary = anniversaryItems.first {
             if anniversaryItems.count > 1 {
                 return "\(firstAnniversary.title)+\(anniversaryItems.count - 1)"
             }
             return firstAnniversary.title
         }
-        return holiday
+        return specialDay?.name
     }
 
     func memoCalendarAnniversaryItems(on date: Date) -> [AnniversaryItem] {
@@ -249,7 +330,7 @@ extension ContentView {
         }
     }
 
-    func memoCalendarHolidayText(for date: Date) -> String? {
+    func memoCalendarSpecialDay(for date: Date) -> MemoCalendarSpecialDay? {
         let calendar = Calendar.current
         let components = calendar.dateComponents([.year, .month, .day], from: date)
         guard let year = components.year,
@@ -260,13 +341,13 @@ extension ContentView {
 
         switch (month, day) {
         case (1, 1):
-            return "元旦"
+            return .init(name: "元旦", kind: .holiday, description: "新一年的开始，适合给这一年定个轻一点的计划。")
         case (4, memoCalendarQingmingDay(for: year)):
-            return "清明"
+            return .init(name: "清明", kind: .holiday, description: "清明既是节气，也是传统节日，常见于祭扫追思与踏青出游。")
         case (5, 1):
-            return "劳动"
+            return .init(name: "劳动", kind: .holiday, description: "劳动节，通常是法定假期，适合安排休息、出行或整理生活节奏。")
         case (10, 1):
-            return "国庆"
+            return .init(name: "国庆", kind: .holiday, description: "国庆节是法定节假日，通常会开启国庆假期，也是出行高峰。")
         default:
             break
         }
@@ -274,35 +355,117 @@ extension ContentView {
         var chineseCalendar = Calendar(identifier: .chinese)
         chineseCalendar.locale = Locale(identifier: "zh_CN")
         let lunarComponents = chineseCalendar.dateComponents([.month, .day, .isLeapMonth], from: date)
-        guard lunarComponents.isLeapMonth != true,
-              let lunarMonth = lunarComponents.month,
-              let lunarDay = lunarComponents.day else {
-            return nil
+        if lunarComponents.isLeapMonth != true,
+           let lunarMonth = lunarComponents.month,
+           let lunarDay = lunarComponents.day {
+            switch (lunarMonth, lunarDay) {
+            case (1, 1):
+                return .init(name: "春节", kind: .holiday, description: "春节是最重要的传统节日，常用于团圆、拜年和开启新年生活。")
+            case (1, 15):
+                return .init(name: "元宵", kind: .holiday, description: "元宵节常见习俗有赏灯、猜灯谜、吃元宵，意味着春节尾声。")
+            case (5, 5):
+                return .init(name: "端午", kind: .holiday, description: "端午节是传统节日，常见习俗有吃粽子、赛龙舟，也属于法定节假日。")
+            case (7, 7):
+                return .init(name: "七夕", kind: .holiday, description: "七夕是中国传统节日，常被视作带有浪漫意味的民俗节日。")
+            case (8, 15):
+                return .init(name: "中秋", kind: .holiday, description: "中秋节强调团圆与赏月，也是常见的法定节假日。")
+            case (9, 9):
+                return .init(name: "重阳", kind: .holiday, description: "重阳节有登高、赏秋、敬老等传统含义。")
+            case (12, 8):
+                return .init(name: "腊八", kind: .holiday, description: "腊八通常被看作年节序幕之一，民俗上有喝腊八粥的习惯。")
+            default:
+                break
+            }
         }
 
-        switch (lunarMonth, lunarDay) {
-        case (1, 1):
-            return "春节"
-        case (1, 15):
-            return "元宵"
-        case (5, 5):
-            return "端午"
-        case (7, 7):
-            return "七夕"
-        case (8, 15):
-            return "中秋"
-        case (9, 9):
-            return "重阳"
-        case (12, 8):
-            return "腊八"
-        default:
-            return nil
-        }
+        return memoCalendarSolarTerm(for: date)
     }
 
     func memoCalendarQingmingDay(for year: Int) -> Int {
         let shortYear = year % 100
         return Int(Double(shortYear) * 0.2422 + 4.81) - Int(Double(shortYear - 1) / 4.0)
+    }
+
+    func memoCalendarSolarTerm(for date: Date) -> MemoCalendarSpecialDay? {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let year = components.year,
+              let month = components.month,
+              let day = components.day,
+              let rule = Self.memoCalendarSolarTermRules.first(where: {
+                  $0.month == month && memoCalendarSolarTermDay(for: year, rule: $0) == day
+              }) else {
+            return nil
+        }
+
+        return .init(
+            name: rule.name,
+            kind: .solarTerm,
+            description: memoCalendarSolarTermDescription(for: rule.name)
+        )
+    }
+
+    func memoCalendarSolarTermDay(for year: Int, rule: MemoCalendarSolarTermRule) -> Int {
+        let shortYear = year % 100
+        let centuryValue = year >= 2001 ? rule.century21 : rule.century20
+        let leapAdjustedYear = rule.month <= 2 ? shortYear - 1 : shortYear
+        let leapAdjustment = Int(Double(max(leapAdjustedYear, 0)) / 4.0)
+        return Int(Double(shortYear) * 0.2422 + centuryValue) - leapAdjustment
+    }
+
+    func memoCalendarSolarTermDescription(for name: String) -> String {
+        switch name {
+        case "小寒":
+            return "小寒意味着进入严冬时段，天气偏冷，注意保暖和作息稳定。"
+        case "大寒":
+            return "大寒通常是一年中寒意较重的阶段，适合收敛节奏、养精蓄锐。"
+        case "立春":
+            return "立春表示春季开始，气温会逐步回升，万物进入新一轮生长。"
+        case "雨水":
+            return "雨水之后降水渐多，空气湿润，春天的感觉会更明显。"
+        case "惊蛰":
+            return "惊蛰象征春雷始动、万物萌发，常被视作春耕准备节点。"
+        case "春分":
+            return "春分昼夜接近均分，春意更盛，体感通常比前期更舒展。"
+        case "清明":
+            return "清明也是节气，往往天气转暖，适合踏青出游和整理春日安排。"
+        case "谷雨":
+            return "谷雨意味着春季后段雨水增多，对农作物生长尤其关键。"
+        case "立夏":
+            return "立夏表示夏季开始，气温和日照会进一步增强。"
+        case "小满":
+            return "小满意味着作物籽粒渐满但未全熟，通常也提示天气渐热。"
+        case "芒种":
+            return "芒种适合抢收抢种，是农时较忙的节气之一。"
+        case "夏至":
+            return "夏至是一年中白昼较长的时段之一，之后天气通常会更热。"
+        case "小暑":
+            return "小暑说明盛夏已近，闷热感会逐步增强。"
+        case "大暑":
+            return "大暑常是一年里体感最热的阶段之一，注意补水和休息。"
+        case "立秋":
+            return "立秋表示节气上进入秋季，但很多地区暑气仍未明显消退。"
+        case "处暑":
+            return "处暑意味着暑气开始收敛，早晚体感通常会慢慢转凉。"
+        case "白露":
+            return "白露之后昼夜温差会更明显，清晨常有露水。"
+        case "秋分":
+            return "秋分昼夜接近均分，天气往往更适合户外活动。"
+        case "寒露":
+            return "寒露意味着秋意更深，露水渐寒，体感会明显偏凉。"
+        case "霜降":
+            return "霜降常意味着秋季尾声，冷空气活动会更频繁。"
+        case "立冬":
+            return "立冬表示冬季开始，适合逐步切换到更保暖的生活节奏。"
+        case "小雪":
+            return "小雪代表天气进一步转冷，部分地区开始出现降雪迹象。"
+        case "大雪":
+            return "大雪意味着仲冬加深，寒冷和降雪概率都会提升。"
+        case "冬至":
+            return "冬至是一年中白昼较短的节点之一，也常被视作重要节令。"
+        default:
+            return "这是一个重要节气，反映季节变化和自然节律。"
+        }
     }
 
     var memoCalendarDates: [Date?] {
@@ -356,6 +519,78 @@ extension ContentView {
 
     var memoCalendarSelectedDistanceText: String {
         memoCalendarDistanceText(from: Date(), to: memoCalendarSelectedDate)
+    }
+
+    func memoCalendarDayLabelTint(
+        isSelected: Bool,
+        isAnniversary: Bool,
+        specialDay: MemoCalendarSpecialDay?
+    ) -> Color {
+        if isAnniversary {
+            return isSelected ? .blue : .white
+        }
+        if isSelected {
+            return .white.opacity(0.92)
+        }
+        switch specialDay?.kind {
+        case .holiday:
+            return .red
+        case .solarTerm:
+            return .blue
+        case nil:
+            return .secondary
+        }
+    }
+
+    func memoCalendarSpecialDayTint(for specialDay: MemoCalendarSpecialDay) -> Color {
+        switch specialDay.kind {
+        case .holiday:
+            return .red
+        case .solarTerm:
+            return .blue
+        }
+    }
+
+    func memoCalendarSpecialDayIconName(for specialDay: MemoCalendarSpecialDay) -> String {
+        switch specialDay.kind {
+        case .holiday:
+            return "flag.fill"
+        case .solarTerm:
+            return "leaf.fill"
+        }
+    }
+
+    func memoCalendarSelectedIconName(for anniversaryItems: [AnniversaryItem]) -> String {
+        anniversaryItems.first?.kind.icon ?? "calendar"
+    }
+
+    func memoCalendarSelectedIconTint(for anniversaryItems: [AnniversaryItem]) -> Color {
+        switch anniversaryItems.first?.kind {
+        case .birthday:
+            return .orange
+        case .wedding:
+            return .pink
+        case .other:
+            return .blue
+        case nil:
+            return .blue
+        }
+    }
+
+    @ViewBuilder
+    func memoCalendarSelectedLeadingIcon(for anniversaryItems: [AnniversaryItem]) -> some View {
+        if !anniversaryItems.isEmpty {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(.red)
+                .frame(width: 34, height: 34)
+        } else {
+            Image(systemName: "calendar")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.blue)
+                .frame(width: 30, height: 30)
+                .background(Color.blue.opacity(0.10), in: Circle())
+        }
     }
 
     var memoCalendarSelectedDistanceTint: Color {

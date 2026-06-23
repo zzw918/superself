@@ -1,5 +1,18 @@
 import SwiftUI
 
+enum CalculatorOperation: String {
+    case add = "+"
+    case subtract = "-"
+    case multiply = "×"
+    case divide = "÷"
+}
+
+struct CalculatorHistoryItem: Identifiable, Equatable {
+    let id = UUID()
+    let expression: String
+    let result: String
+}
+
 extension ContentView {
     var healthPage: some View {
         NavigationStack {
@@ -338,6 +351,11 @@ extension ContentView {
                 weatherCard
                     .profileCardRow()
 
+                profileSectionTitleRow("小工具")
+
+                calculatorRow
+                    .profileCardRow()
+
                 profileSectionTitleRow("功能管理") {
                     if isEditingTabs {
                         HStack(spacing: 8) {
@@ -530,13 +548,201 @@ extension ContentView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if case .idle = weatherStore.state {
-                weatherStore.refresh()
+        .overlay {
+            NavigationLink {
+                WeatherForecastPage(weatherStore: weatherStore)
+            } label: {
+                EmptyView()
             }
-            isShowingWeatherForecastSheet = true
+            .opacity(0)
         }
+    }
+
+    var calculatorRow: some View {
+        HStack(spacing: 14) {
+            profileIcon("plus.forwardslash.minus", tint: .green)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("计算器")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("简单四则计算，随手算一下就够用")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            NavigationLink {
+                calculatorPage
+            } label: {
+                EmptyView()
+            }
+            .opacity(0)
+        }
+    }
+
+    var calculatorPage: some View {
+        List {
+            calculatorCard
+                .profileCardRow()
+
+            if !calculatorHistory.isEmpty {
+                calculatorHistoryCard
+                    .profileCardRow()
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("计算器")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            calculatorResetSession()
+        }
+    }
+
+    var calculatorCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .trailing, spacing: 6) {
+                if calculatorShowsResolvedExpression {
+                    Text(calculatorStatusText)
+                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+
+                Text(calculatorPrimaryDisplayText)
+                    .font(.system(size: calculatorShowsResolvedExpression ? 34 : 54, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.45)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    calculatorButton("C", background: Color.red.opacity(0.14), foreground: .red) {
+                        calculatorClear()
+                    }
+                    calculatorButton("⌫", background: Color(.tertiarySystemFill), foreground: .primary) {
+                        calculatorBackspace()
+                    }
+                    calculatorButton("%", background: Color(.tertiarySystemFill), foreground: .primary) {
+                        calculatorApplyPercent()
+                    }
+                    calculatorButton(CalculatorOperation.divide.rawValue, background: Color.blue, foreground: .white) {
+                        calculatorPerformOperation(.divide)
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    calculatorButton("7") { calculatorTapDigit("7") }
+                    calculatorButton("8") { calculatorTapDigit("8") }
+                    calculatorButton("9") { calculatorTapDigit("9") }
+                    calculatorButton(CalculatorOperation.multiply.rawValue, background: Color.blue, foreground: .white) {
+                        calculatorPerformOperation(.multiply)
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    calculatorButton("4") { calculatorTapDigit("4") }
+                    calculatorButton("5") { calculatorTapDigit("5") }
+                    calculatorButton("6") { calculatorTapDigit("6") }
+                    calculatorButton(CalculatorOperation.subtract.rawValue, background: Color.blue, foreground: .white) {
+                        calculatorPerformOperation(.subtract)
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    calculatorButton("1") { calculatorTapDigit("1") }
+                    calculatorButton("2") { calculatorTapDigit("2") }
+                    calculatorButton("3") { calculatorTapDigit("3") }
+                    calculatorButton(CalculatorOperation.add.rawValue, background: Color.blue, foreground: .white) {
+                        calculatorPerformOperation(.add)
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    calculatorButton("±", background: Color(.tertiarySystemFill), foreground: .primary) {
+                        calculatorToggleSign()
+                    }
+                    calculatorButton("0") { calculatorTapDigit("0") }
+                    calculatorButton(".") { calculatorTapDecimal() }
+                    calculatorButton("=", background: Color.green, foreground: .white) {
+                        calculatorCalculateResult()
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var calculatorHistoryCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("历史计算")
+                    .font(.headline)
+
+                Spacer(minLength: 8)
+
+                Button("清空") {
+                    calculatorHistory.removeAll()
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.blue)
+                .buttonStyle(.plain)
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(calculatorHistory.prefix(10).enumerated()), id: \.element.id) { index, item in
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(item.expression)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+
+                        Text(item.result)
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .monospacedDigit()
+                            .frame(width: 72, alignment: .trailing)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    .padding(.vertical, 14)
+
+                    if index < min(calculatorHistory.count, 10) - 1 {
+                        Divider()
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
     func weatherMetricRow(title: String, value: String) -> some View {
@@ -567,6 +773,255 @@ extension ContentView {
         default:
             return [Color(red: 0.64, green: 0.69, blue: 0.73), Color(red: 0.45, green: 0.49, blue: 0.53)]
         }
+    }
+
+    func calculatorButton(
+        _ title: String,
+        background: Color = Color(.secondarySystemGroupedBackground),
+        foreground: Color = .primary,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 22, weight: .semibold, design: .rounded))
+                .foregroundStyle(foreground)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    func calculatorTapDigit(_ digit: String) {
+        if calculatorDisplay == "错误" {
+            calculatorClear()
+        }
+
+        if calculatorShouldStartFreshInput {
+            calculatorDisplay = "0"
+            calculatorStatusText = ""
+        }
+
+        if calculatorIsEnteringNewNumber || calculatorDisplay == "0" {
+            calculatorDisplay = digit
+            calculatorIsEnteringNewNumber = false
+            calculatorSyncExpression()
+            return
+        }
+
+        calculatorDisplay.append(digit)
+        calculatorSyncExpression()
+    }
+
+    func calculatorTapDecimal() {
+        if calculatorDisplay == "错误" {
+            calculatorClear()
+        }
+
+        if calculatorShouldStartFreshInput {
+            calculatorDisplay = "0"
+            calculatorStatusText = ""
+        }
+
+        if calculatorIsEnteringNewNumber {
+            calculatorDisplay = "0."
+            calculatorIsEnteringNewNumber = false
+            calculatorSyncExpression()
+            return
+        }
+
+        if !calculatorDisplay.contains(".") {
+            calculatorDisplay.append(".")
+            calculatorSyncExpression()
+        }
+    }
+
+    func calculatorToggleSign() {
+        guard let value = calculatorCurrentValue else {
+            calculatorClear()
+            return
+        }
+
+        calculatorDisplay = calculatorFormattedValue(-value)
+        calculatorSyncExpression()
+    }
+
+    func calculatorApplyPercent() {
+        guard let value = calculatorCurrentValue else {
+            calculatorClear()
+            return
+        }
+
+        let originalDisplay = calculatorDisplay
+        calculatorDisplay = calculatorFormattedValue(value / 100)
+
+        if let storedValue = calculatorStoredValue, let pendingOperation = calculatorPendingOperation {
+            calculatorStatusText = "\(calculatorFormattedValue(storedValue))\(pendingOperation.rawValue)\(originalDisplay)%"
+        } else {
+            calculatorStatusText = "\(originalDisplay)%"
+        }
+    }
+
+    func calculatorBackspace() {
+        if calculatorDisplay == "错误" {
+            calculatorClear()
+            return
+        }
+
+        if calculatorIsEnteringNewNumber {
+            calculatorDisplay = "0"
+            calculatorIsEnteringNewNumber = false
+            return
+        }
+
+        guard !calculatorDisplay.isEmpty else {
+            calculatorDisplay = "0"
+            return
+        }
+
+        calculatorDisplay.removeLast()
+        if calculatorDisplay.isEmpty || calculatorDisplay == "-" {
+            calculatorDisplay = "0"
+        }
+        calculatorSyncExpression()
+    }
+
+    func calculatorClear() {
+        calculatorDisplay = "0"
+        calculatorStoredValue = nil
+        calculatorPendingOperation = nil
+        calculatorIsEnteringNewNumber = false
+        calculatorStatusText = ""
+    }
+
+    func calculatorResetSession() {
+        calculatorClear()
+    }
+
+    func calculatorPerformOperation(_ operation: CalculatorOperation) {
+        guard let currentValue = calculatorCurrentValue else {
+            calculatorClear()
+            return
+        }
+
+        if let storedValue = calculatorStoredValue, let pendingOperation = calculatorPendingOperation {
+            if calculatorIsEnteringNewNumber {
+                calculatorPendingOperation = operation
+                calculatorStatusText = "\(calculatorFormattedValue(storedValue))\(operation.rawValue)"
+                return
+            }
+
+            guard let result = calculatorEvaluate(lhs: storedValue, rhs: currentValue, operation: pendingOperation) else {
+                calculatorShowError("除数不能为 0")
+                return
+            }
+
+            calculatorDisplay = calculatorFormattedValue(result)
+            calculatorStoredValue = result
+        } else {
+            calculatorStoredValue = currentValue
+        }
+
+        let baseValue = calculatorStoredValue ?? currentValue
+        calculatorPendingOperation = operation
+        calculatorIsEnteringNewNumber = true
+        calculatorStatusText = "\(calculatorFormattedValue(baseValue))\(operation.rawValue)"
+    }
+
+    func calculatorCalculateResult() {
+        guard let pendingOperation = calculatorPendingOperation,
+              let storedValue = calculatorStoredValue,
+              let currentValue = calculatorCurrentValue else {
+            return
+        }
+
+        let rhsText = calculatorIsEnteringNewNumber ? calculatorFormattedValue(storedValue) : calculatorDisplay
+        let rhs = calculatorIsEnteringNewNumber ? storedValue : currentValue
+        guard let result = calculatorEvaluate(lhs: storedValue, rhs: rhs, operation: pendingOperation) else {
+            calculatorShowError("除数不能为 0")
+            return
+        }
+
+        let expression = "\(calculatorFormattedValue(storedValue))\(pendingOperation.rawValue)\(rhsText)="
+        let resultText = calculatorFormattedValue(result)
+        calculatorStatusText = expression
+        calculatorDisplay = resultText
+        calculatorHistory.insert(
+            CalculatorHistoryItem(expression: expression, result: resultText),
+            at: 0
+        )
+        calculatorStoredValue = nil
+        calculatorPendingOperation = nil
+        calculatorIsEnteringNewNumber = false
+    }
+
+    func calculatorEvaluate(lhs: Double, rhs: Double, operation: CalculatorOperation) -> Double? {
+        switch operation {
+        case .add:
+            return lhs + rhs
+        case .subtract:
+            return lhs - rhs
+        case .multiply:
+            return lhs * rhs
+        case .divide:
+            guard rhs != 0 else { return nil }
+            return lhs / rhs
+        }
+    }
+
+    func calculatorShowError(_ text: String) {
+        calculatorDisplay = "错误"
+        calculatorStoredValue = nil
+        calculatorPendingOperation = nil
+        calculatorIsEnteringNewNumber = true
+        calculatorStatusText = text
+    }
+
+    var calculatorCurrentValue: Double? {
+        Double(calculatorDisplay)
+    }
+
+    var calculatorShouldStartFreshInput: Bool {
+        calculatorStoredValue == nil
+            && calculatorPendingOperation == nil
+            && calculatorStatusText.hasSuffix("=")
+    }
+
+    var calculatorShowsResolvedExpression: Bool {
+        calculatorStatusText.hasSuffix("=")
+    }
+
+    var calculatorPrimaryDisplayText: String {
+        if calculatorShowsResolvedExpression || calculatorStatusText.isEmpty {
+            return calculatorDisplay
+        }
+        return calculatorStatusText
+    }
+
+    func calculatorSyncExpression() {
+        guard let storedValue = calculatorStoredValue,
+              let pendingOperation = calculatorPendingOperation else {
+            if calculatorDisplay != "错误", !calculatorStatusText.hasSuffix("=") {
+                calculatorStatusText = ""
+            }
+            return
+        }
+
+        if calculatorIsEnteringNewNumber {
+            calculatorStatusText = "\(calculatorFormattedValue(storedValue))\(pendingOperation.rawValue)"
+        } else {
+            calculatorStatusText = "\(calculatorFormattedValue(storedValue))\(pendingOperation.rawValue)\(calculatorDisplay)"
+        }
+    }
+
+    func calculatorFormattedValue(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = false
+        formatter.maximumFractionDigits = 8
+        formatter.minimumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: value)) ?? "0"
     }
 
     func profileTabCard(_ tab: MainAppTab) -> some View {

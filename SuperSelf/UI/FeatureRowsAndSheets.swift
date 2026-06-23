@@ -3462,9 +3462,8 @@ struct WheelDatePicker: View {
     }
 }
 
-struct WeatherForecastSheet: View {
+struct WeatherForecastPage: View {
     @ObservedObject var weatherStore: WeatherStore
-    @Environment(\.dismiss) private var dismiss
     @State private var isShowingCitySearch = false
     @State private var cityQuery = ""
     @State private var cityResults: [WeatherCity] = []
@@ -3492,33 +3491,27 @@ struct WeatherForecastSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            forecastContent
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle(navigationTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
-                            isShowingCitySearch.toggle()
-                        }
-                    } label: {
-                        Label(isShowingCitySearch ? "收起" : "城市", systemImage: isShowingCitySearch ? "xmark" : "location.magnifyingglass")
+        forecastContent
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle(navigationTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                        isShowingCitySearch.toggle()
                     }
-                    .font(.subheadline.bold())
+                } label: {
+                    Label(isShowingCitySearch ? "收起" : "城市", systemImage: isShowingCitySearch ? "xmark" : "location.magnifyingglass")
                 }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") {
-                        dismiss()
-                    }
-                    .font(.subheadline.bold())
-                }
+                .font(.subheadline.bold())
             }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .onAppear {
+            if case .idle = weatherStore.state {
+                weatherStore.refresh()
+            }
+        }
         .onChange(of: cityQuery) { _, newValue in
             searchCities(newValue)
         }
@@ -3536,6 +3529,11 @@ struct WeatherForecastSheet: View {
                     if isShowingCitySearch {
                         citySearchPanel
                             .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+
+                    if let sunCardInfo = info.todayForecast,
+                       sunCardInfo.sunrise != nil || sunCardInfo.sunset != nil {
+                        sunriseSunsetCard(for: sunCardInfo)
                     }
 
                     ForEach(info.dailyForecast) { daily in
@@ -3662,7 +3660,7 @@ struct WeatherForecastSheet: View {
                                     collapseCitySearch()
                                 } label: {
                                     HStack(spacing: 6) {
-                                        Text(city.name)
+                                        Text(city.presentedName)
 
                                         if weatherStore.selectedCity?.id == city.id {
                                             Image(systemName: "checkmark")
@@ -3715,7 +3713,7 @@ struct WeatherForecastSheet: View {
                             .frame(width: 24)
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(city.name)
+                            Text(city.presentedName)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.primary)
                             if !city.detailName.isEmpty {
@@ -3836,6 +3834,68 @@ struct WeatherForecastSheet: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
+    private func sunriseSunsetCard(for daily: DailyWeatherInfo) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: "sun.max.fill")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.orange)
+                    .frame(width: 28, height: 28)
+                    .background(Color.orange.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("日出日落")
+                        .font(.subheadline.bold())
+                    Text(isToday(daily.date) ? "今天" : dateText(for: daily.date))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            HStack(spacing: 12) {
+                weatherSunPhaseItem(
+                    title: "日出",
+                    time: daily.sunrise,
+                    icon: "sunrise.fill",
+                    tint: .orange
+                )
+
+                weatherSunPhaseItem(
+                    title: "日落",
+                    time: daily.sunset,
+                    icon: "sunset.fill",
+                    tint: .indigo
+                )
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func weatherSunPhaseItem(title: String, time: Date?, icon: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.caption.bold())
+                Text(title)
+                    .font(.caption.bold())
+            }
+            .foregroundStyle(tint)
+
+            Text(weatherSunTimeText(time))
+                .font(.title3.bold())
+                .monospacedDigit()
+                .foregroundStyle(.primary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.tertiarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
     @ViewBuilder
     private func weatherIcon(for daily: DailyWeatherInfo) -> some View {
         let img = Image(systemName: daily.symbolName).font(.title3)
@@ -3872,12 +3932,17 @@ struct WeatherForecastSheet: View {
     }
 
     private func weekdayText(for date: Date) -> String {
-        if Calendar.current.isDateInToday(date) {
-            return ""
-        }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "zh_CN")
         formatter.dateFormat = "EEE"
+        return formatter.string(from: date)
+    }
+
+    private func weatherSunTimeText(_ date: Date?) -> String {
+        guard let date else { return "--:--" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "HH:mm"
         return formatter.string(from: date)
     }
 }
