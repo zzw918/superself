@@ -247,6 +247,17 @@ extension ContentView {
         return formatter.string(from: NSNumber(value: amount)) ?? String(format: "¥%.0f", amount)
     }
 
+    func fullCurrencyText(_ amount: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "CNY"
+        formatter.currencySymbol = "¥"
+        formatter.usesGroupingSeparator = false
+        formatter.maximumFractionDigits = 0
+        formatter.roundingMode = .halfUp
+        return formatter.string(from: NSNumber(value: amount)) ?? String(format: "¥%.0f", amount)
+    }
+
     func financeDistributionColor(at index: Int) -> Color {
         let colors: [Color] = [
             .blue,

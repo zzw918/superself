@@ -73,6 +73,7 @@ struct ContentView: View {
     @StateObject var weatherStore = WeatherStore()
     @ObservedObject var notificationRouter = NotificationRouter.shared
     @State var selectedTabID = MainAppTab.health.rawValue
+    @State var profileNavigationResetID = UUID()
     @State var now = Date()
     @State var weightInput = ""
     @State var noteInput = ""
@@ -85,6 +86,8 @@ struct ContentView: View {
     @State var anniversaryItems: [AnniversaryItem] = []
     @State var memoCalendarMonth = Date()
     @State var memoCalendarSelectedDate = Calendar.current.startOfDay(for: Date())
+    @State var memoCalendarSwipeOffset: CGFloat = 0
+    @State var isMemoCalendarSwipeAnimating = false
     @State var todoInput = ""
     @State var todoPriorityInput: TodoPriority = .importantNotUrgent
     @State var todoFilter: TodoPriority? = nil
@@ -171,6 +174,8 @@ struct ContentView: View {
     @State var calculatorIsEnteringNewNumber = false
     @State var calculatorStatusText = ""
     @State var calculatorHistory: [CalculatorHistoryItem] = []
+    @State var calculatorFlashedKey: String?
+    @State var calculatorFlashToken = 0
     @State var trendGranularity: WeightTrendGranularity = .day
     @State var visibleWeightHistoryDays = 10
     @State var didShowWeightSaveFeedback = false

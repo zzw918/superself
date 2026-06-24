@@ -24,24 +24,27 @@ enum CalculatorButtonKind {
 struct CalculatorKeyButtonStyle: ButtonStyle {
     let background: Color
     let foreground: Color
+    let pressedBackground: Color
+    let pressedForeground: Color
     var borderColor: Color = .clear
     var shadowColor: Color = .clear
+    var forcePressed: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
-        let isPressed = configuration.isPressed
+        let isPressed = configuration.isPressed || forcePressed
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
 
         configuration.label
-            .foregroundStyle(foreground.opacity(isPressed ? 0.64 : 1))
+            .foregroundStyle(isPressed ? pressedForeground : foreground)
             .frame(maxWidth: .infinity)
             .frame(height: 52)
             .background(
                 shape
-                    .fill(isPressed ? background.opacity(0.82) : background)
+                    .fill(isPressed ? pressedBackground : background)
             )
             .overlay {
                 shape
-                    .fill(.black.opacity(isPressed ? 0.08 : 0))
+                    .fill(.black.opacity(isPressed ? 0.04 : 0))
             }
             .overlay {
                 shape
@@ -62,7 +65,7 @@ struct CalculatorKeyButtonStyle: ButtonStyle {
             .scaleEffect(isPressed ? 0.88 : 1)
             .offset(y: isPressed ? 2.8 : 0)
             .saturation(isPressed ? 1.08 : 1)
-            .animation(.spring(response: 0.16, dampingFraction: 0.68), value: isPressed)
+            .animation(.spring(response: 0.12, dampingFraction: 0.62), value: isPressed)
     }
 }
 
@@ -210,7 +213,7 @@ extension ContentView {
         case .anniversary:
             anniversaryCard
         case .calendar:
-            memoCalendarCard
+            memoCalendarSection
         }
     }
 
@@ -517,7 +520,12 @@ extension ContentView {
                     weatherStore.refresh()
                 }
             }
+            .onChange(of: selectedTabID) { oldValue, newValue in
+                guard oldValue == "profile", newValue != "profile" else { return }
+                profileNavigationResetID = UUID()
+            }
         }
+        .id(profileNavigationResetID)
     }
 
     @ViewBuilder
@@ -868,6 +876,8 @@ extension ContentView {
     ) -> some View {
         let background: Color
         let foreground: Color
+        let pressedBackground: Color
+        let pressedForeground: Color
         let borderColor: Color
         let shadowColor: Color
 
@@ -875,31 +885,44 @@ extension ContentView {
         case .number:
             background = Color(.systemBackground)
             foreground = .primary
+            pressedBackground = Color.blue.opacity(0.18)
+            pressedForeground = .blue
             borderColor = Color(.separator).opacity(0.16)
             shadowColor = Color.black.opacity(0.08)
         case .utility:
             background = Color(.tertiarySystemFill)
             foreground = .primary
+            pressedBackground = Color(.systemGray4)
+            pressedForeground = .primary
             borderColor = .clear
             shadowColor = Color.black.opacity(0.05)
         case .destructive:
             background = Color.red.opacity(0.14)
             foreground = .red
+            pressedBackground = Color.red.opacity(0.28)
+            pressedForeground = .red
             borderColor = .clear
             shadowColor = Color.red.opacity(0.08)
         case .operation:
             background = isSelected ? Color.blue.opacity(0.18) : Color.blue
             foreground = isSelected ? .blue : .white
+            pressedBackground = isSelected ? Color.blue.opacity(0.28) : Color.blue.opacity(0.78)
+            pressedForeground = isSelected ? .blue : .white
             borderColor = isSelected ? Color.blue.opacity(0.28) : .clear
             shadowColor = Color.blue.opacity(isSelected ? 0.10 : 0.20)
         case .equals:
             background = Color.green
             foreground = .white
+            pressedBackground = Color.green.opacity(0.78)
+            pressedForeground = .white
             borderColor = .clear
             shadowColor = Color.green.opacity(0.20)
         }
 
-        return Button(action: action) {
+        return Button {
+            calculatorFlashKey(title)
+            action()
+        } label: {
             Text(title)
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
         }
@@ -907,10 +930,27 @@ extension ContentView {
             CalculatorKeyButtonStyle(
                 background: background,
                 foreground: foreground,
+                pressedBackground: pressedBackground,
+                pressedForeground: pressedForeground,
                 borderColor: borderColor,
-                shadowColor: shadowColor
+                shadowColor: shadowColor,
+                forcePressed: calculatorFlashedKey == title
             )
         )
+    }
+
+    func calculatorFlashKey(_ key: String) {
+        calculatorFlashToken += 1
+        let token = calculatorFlashToken
+        if calculatorFlashedKey != nil {
+            calculatorFlashedKey = nil
+        }
+        calculatorFlashedKey = key
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            if calculatorFlashToken == token {
+                calculatorFlashedKey = nil
+            }
+        }
     }
 
     func calculatorTapDigit(_ digit: String) {

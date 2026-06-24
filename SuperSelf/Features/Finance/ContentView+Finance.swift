@@ -522,9 +522,9 @@ extension ContentView {
 
     var expenseSummaryCard: some View {
         HStack(spacing: 10) {
-            SummaryPill(title: "今日", value: currencyText(expenseTodayTotal), color: .teal)
-            SummaryPill(title: "本月", value: currencyText(expenseMonthTotal), color: .cyan)
-            SummaryPill(title: "本年", value: currencyText(expenseYearTotal), color: .blue)
+            SummaryPill(title: "今日", value: fullCurrencyText(expenseTodayTotal), color: .teal)
+            SummaryPill(title: "本月", value: fullCurrencyText(expenseMonthTotal), color: .cyan)
+            SummaryPill(title: "本年", value: fullCurrencyText(expenseYearTotal), color: .blue)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)

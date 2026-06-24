@@ -18,6 +18,23 @@ struct MemoCalendarSolarTermRule {
     let century21: Double
 }
 
+struct MemoCalendarReminderItem: Identifiable {
+    enum Kind {
+        case todo
+        case anniversary
+    }
+
+    let id: String
+    let kind: Kind
+    let title: String
+    let subtitle: String
+    let extraText: String?
+    let countdownText: String
+    let date: Date
+    let icon: String
+    let tint: Color
+}
+
 extension ContentView {
     static let memoCalendarSolarTermRules: [MemoCalendarSolarTermRule] = [
         .init(name: "小寒", month: 1, century20: 6.11, century21: 5.4055),
@@ -46,11 +63,15 @@ extension ContentView {
         .init(name: "冬至", month: 12, century20: 22.6, century21: 21.94)
     ]
 
-    var memoCalendarCard: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
-        let selectedAnniversaryItems = memoCalendarAnniversaryItems(on: memoCalendarSelectedDate)
-        let selectedSpecialDay = memoCalendarSpecialDay(for: memoCalendarSelectedDate)
+    var memoCalendarSection: some View {
+        VStack(spacing: 20) {
+            memoCalendarCard
+            memoCalendarSelectedDetailCard
+            memoCalendarUpcomingRemindersCard
+        }
+    }
 
+    var memoCalendarCard: some View {
         return VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 Button {
@@ -100,48 +121,112 @@ extension ContentView {
                 .buttonStyle(.plain)
             }
 
-            LazyVGrid(columns: columns, spacing: 10) {
+            memoCalendarPager
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var memoCalendarPager: some View {
+        let pagerDragGesture = DragGesture(minimumDistance: 4, coordinateSpace: .local)
+            .onChanged { value in
+                handleMemoCalendarSwipeChanged(value)
+            }
+            .onEnded { value in
+                handleMemoCalendarSwipeEnded(value)
+            }
+
+        return VStack(spacing: 10) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 10) {
                 ForEach(Array(memoCalendarWeekdays.enumerated()), id: \.offset) { index, weekday in
                     Text(weekday)
                         .font(.caption.bold())
                         .foregroundStyle(index >= 5 ? .red : .secondary)
                         .frame(maxWidth: .infinity)
                 }
+            }
 
-                ForEach(Array(memoCalendarDates.enumerated()), id: \.offset) { _, date in
-                    if let date {
-                        memoCalendarDayCell(date)
-                    } else {
-                        Color.clear
-                            .frame(height: 54)
+            GeometryReader { proxy in
+                let pageWidth = proxy.size.width
+
+                HStack(spacing: 0) {
+                    ForEach(memoCalendarPagerMonths, id: \.timeIntervalSinceReferenceDate) { month in
+                        memoCalendarMonthGrid(for: month)
+                            .frame(width: pageWidth)
                     }
                 }
+                .offset(x: -pageWidth + memoCalendarSwipeOffset)
+                .animation(
+                    isMemoCalendarSwipeAnimating
+                        ? .spring(response: 0.24, dampingFraction: 0.86)
+                        : nil,
+                    value: memoCalendarSwipeOffset
+                )
+                .frame(width: pageWidth, alignment: .leading)
+                .clipped()
             }
-            .contentShape(Rectangle())
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 18, coordinateSpace: .local)
-                    .onEnded { value in
-                        handleMemoCalendarGridSwipe(value)
-                    }
-            )
+            .frame(height: memoCalendarPagerHeight)
+            .clipped()
+        }
+        .contentShape(Rectangle())
+        .highPriorityGesture(pagerDragGesture)
+    }
 
-            HStack(alignment: .top, spacing: 10) {
+    var memoCalendarPagerMonths: [Date] {
+        [-1, 0, 1].compactMap { offset in
+            Calendar.current.date(byAdding: .month, value: offset, to: memoCalendarMonth)
+        }
+    }
+
+    var memoCalendarPagerHeight: CGFloat {
+        let maxCount = memoCalendarPagerMonths
+            .map { memoCalendarDates(for: $0).count / 7 }
+            .max() ?? 6
+        return CGFloat(maxCount) * 54 + CGFloat(max(0, maxCount - 1)) * 10
+    }
+
+    @ViewBuilder
+    func memoCalendarMonthGrid(for month: Date) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 10) {
+            ForEach(Array(memoCalendarDates(for: month).enumerated()), id: \.offset) { _, date in
+                if let date {
+                    memoCalendarDayCell(date)
+                } else {
+                    Color.clear
+                        .frame(height: 54)
+                }
+            }
+        }
+    }
+
+    var memoCalendarSelectedDetailCard: some View {
+        let selectedAnniversaryItems = memoCalendarAnniversaryItems(on: memoCalendarSelectedDate)
+        let selectedSpecialDay = memoCalendarSpecialDay(for: memoCalendarSelectedDate)
+        let selectedTodoItems = memoCalendarTodoItems(on: memoCalendarSelectedDate)
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("当天详情")
+                    .font(.headline.bold())
+
+                Spacer()
+
+                Text(memoCalendarSelectedDistanceText)
+                    .font(.caption.bold())
+                    .foregroundStyle(memoCalendarSelectedDistanceTint)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(memoCalendarSelectedDistanceTint.opacity(0.12), in: Capsule())
+            }
+
+            HStack(alignment: .top, spacing: 12) {
                 memoCalendarSelectedLeadingIcon(for: selectedAnniversaryItems)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(memoCalendarSelectedFullDateText)
-                            .font(.subheadline.bold())
-
-                        Spacer(minLength: 8)
-
-                        Text(memoCalendarSelectedDistanceText)
-                            .font(.caption.bold())
-                            .foregroundStyle(memoCalendarSelectedDistanceTint)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(memoCalendarSelectedDistanceTint.opacity(0.12), in: Capsule())
-                    }
+                    Text(memoCalendarSelectedFullDateText)
+                        .font(.subheadline.bold())
 
                     Text(memoCalendarSelectedLunarDateText)
                         .font(.caption)
@@ -181,13 +266,18 @@ extension ContentView {
                     if !selectedAnniversaryItems.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
                             ForEach(selectedAnniversaryItems.prefix(3)) { item in
-                                HStack(spacing: 6) {
+                                HStack(spacing: 8) {
                                     Image(systemName: item.kind.icon)
                                         .font(.caption.bold())
                                     Text(item.title)
                                         .font(.subheadline.weight(.semibold))
                                         .lineLimit(1)
                                     Spacer(minLength: 0)
+                                    if item.showsElapsedDays {
+                                        Text(elapsedDaysText(for: item))
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(.blue)
+                                    }
                                 }
                                 .foregroundStyle(.blue)
                             }
@@ -197,13 +287,123 @@ extension ContentView {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(Color.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
+
+                    if !selectedTodoItems.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(selectedTodoItems.prefix(3)) { task in
+                                HStack(spacing: 8) {
+                                    Image(systemName: "checklist")
+                                        .font(.caption.bold())
+                                    Text(task.title)
+                                        .font(.subheadline.weight(.semibold))
+                                        .lineLimit(1)
+                                    Spacer(minLength: 0)
+                                    Text("截止")
+                                        .font(.caption2.weight(.semibold))
+                                }
+                                .foregroundStyle(.orange)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+
+                    if selectedSpecialDay == nil && selectedAnniversaryItems.isEmpty && selectedTodoItems.isEmpty {
+                        Text("这一天暂时没有节日、节气、纪念日或截止任务，适合留给普通但也值得记住的一天。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    var memoCalendarUpcomingRemindersCard: some View {
+        let upcomingItems = Array(memoCalendarUpcomingReminderItems.prefix(5))
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("近期提醒")
+                    .font(.headline.bold())
 
                 Spacer()
+
+                if !upcomingItems.isEmpty {
+                    Text("最近 \(upcomingItems.count) 项")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(12)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            if upcomingItems.isEmpty {
+                AppEmptyState(
+                    title: "还没有近期提醒",
+                    systemImage: "calendar.badge.clock",
+                    description: "有截止日期的 TODO 和纪念日都会出现在这里。"
+                )
+                .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(upcomingItems) { item in
+                        HStack(spacing: 12) {
+                            if item.kind == .anniversary {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundStyle(.red)
+                                    .frame(width: 38, height: 38)
+                            } else {
+                                Image(systemName: item.icon)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(item.tint)
+                                    .frame(width: 38, height: 38)
+                                    .background(
+                                        item.tint.opacity(0.10),
+                                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    )
+                            }
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(item.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+
+                                Text(item.subtitle)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                if let extraText = item.extraText {
+                                    Text(extraText)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            Spacer(minLength: 8)
+
+                            Text(item.countdownText)
+                                .font(.caption.bold())
+                                .foregroundStyle(item.tint)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    item.tint.opacity(0.10),
+                                    in: Capsule()
+                                )
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                }
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -218,10 +418,16 @@ extension ContentView {
         let isWeekend = memoCalendarIsWeekend(date)
         let specialDay = memoCalendarSpecialDay(for: date)
         let anniversaryItems = memoCalendarAnniversaryItems(on: date)
-        let dayLabel = memoCalendarDayLabel(specialDay: specialDay, anniversaryItems: anniversaryItems)
+        let todoItems = memoCalendarTodoItems(on: date)
+        let dayLabel = memoCalendarDayLabel(
+            specialDay: specialDay,
+            anniversaryItems: anniversaryItems,
+            todoItems: todoItems
+        )
         let dayLabelTint = memoCalendarDayLabelTint(
             isSelected: isSelected,
             isAnniversary: !anniversaryItems.isEmpty,
+            hasTodo: !todoItems.isEmpty,
             specialDay: specialDay
         )
 
@@ -271,6 +477,9 @@ extension ContentView {
                 } else if !anniversaryItems.isEmpty {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Color.blue.opacity(0.08))
+                } else if !todoItems.isEmpty {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.orange.opacity(0.08))
                 } else {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Color(.secondarySystemGroupedBackground))
@@ -293,14 +502,47 @@ extension ContentView {
         return weekday == 1 || weekday == 7
     }
 
-    func memoCalendarDayLabel(specialDay: MemoCalendarSpecialDay?, anniversaryItems: [AnniversaryItem]) -> String? {
+    func memoCalendarDayLabel(
+        specialDay: MemoCalendarSpecialDay?,
+        anniversaryItems: [AnniversaryItem],
+        todoItems: [TodoTask]
+    ) -> String? {
         if let firstAnniversary = anniversaryItems.first {
             if anniversaryItems.count > 1 {
                 return "\(firstAnniversary.title)+\(anniversaryItems.count - 1)"
             }
             return firstAnniversary.title
         }
+        if let firstTodo = todoItems.first {
+            if todoItems.count > 1 {
+                return "TODO+\(todoItems.count - 1)"
+            }
+            return firstTodo.title.count <= 4 ? firstTodo.title : "TODO"
+        }
         return specialDay?.name
+    }
+
+    func memoCalendarTodoItems(on date: Date) -> [TodoTask] {
+        let calendar = Calendar.current
+        return todoTasks
+            .filter { !$0.isCompleted }
+            .filter { task in
+                guard let dueDate = task.dueDate else { return false }
+                return calendar.isDate(dueDate, inSameDayAs: date)
+            }
+            .sorted { lhs, rhs in
+                switch (lhs.dueDate, rhs.dueDate) {
+                case let (lhsDate?, rhsDate?):
+                    if lhsDate != rhsDate { return lhsDate < rhsDate }
+                case (.some, nil):
+                    return true
+                case (nil, .some):
+                    return false
+                case (nil, nil):
+                    break
+                }
+                return lhs.createdAt > rhs.createdAt
+            }
     }
 
     func memoCalendarAnniversaryItems(on date: Date) -> [AnniversaryItem] {
@@ -476,9 +718,13 @@ extension ContentView {
     }
 
     var memoCalendarDates: [Date?] {
+        memoCalendarDates(for: memoCalendarMonth)
+    }
+
+    func memoCalendarDates(for month: Date) -> [Date?] {
         let calendar = Calendar.current
-        guard let monthInterval = calendar.dateInterval(of: .month, for: memoCalendarMonth),
-              let dayRange = calendar.range(of: .day, in: .month, for: memoCalendarMonth) else {
+        guard let monthInterval = calendar.dateInterval(of: .month, for: month),
+              let dayRange = calendar.range(of: .day, in: .month, for: month) else {
             return []
         }
 
@@ -531,10 +777,14 @@ extension ContentView {
     func memoCalendarDayLabelTint(
         isSelected: Bool,
         isAnniversary: Bool,
+        hasTodo: Bool,
         specialDay: MemoCalendarSpecialDay?
     ) -> Color {
         if isAnniversary {
             return isSelected ? .blue : .white
+        }
+        if hasTodo {
+            return isSelected ? .white : .orange
         }
         if isSelected {
             return .white.opacity(0.92)
@@ -600,6 +850,111 @@ extension ContentView {
         }
     }
 
+    var memoCalendarUpcomingReminderItems: [MemoCalendarReminderItem] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        let todoReminderItems = todoTasks.compactMap { task -> MemoCalendarReminderItem? in
+            guard !task.isCompleted,
+                  let dueDate = task.dueDate,
+                  calendar.startOfDay(for: dueDate) >= today else {
+                return nil
+            }
+
+            return MemoCalendarReminderItem(
+                id: "todo-\(task.id.uuidString)",
+                kind: .todo,
+                title: task.title,
+                subtitle: "TODO 截止 · \(memoCalendarReminderDateText(for: dueDate, includesTime: true))",
+                extraText: task.priority.title,
+                countdownText: memoCalendarCountdownText(to: dueDate),
+                date: dueDate,
+                icon: "checklist",
+                tint: .orange
+            )
+        }
+
+        let anniversaryReminderItems = sortedAnniversaryItems.compactMap { item -> MemoCalendarReminderItem? in
+            guard let nextDate = nextAnniversaryDate(for: item),
+                  calendar.startOfDay(for: nextDate) >= today else {
+                return nil
+            }
+
+            return MemoCalendarReminderItem(
+                id: "anniversary-\(item.id.uuidString)",
+                kind: .anniversary,
+                title: item.title,
+                subtitle: "纪念日 · \(memoCalendarReminderDateText(for: nextDate, includesTime: false))",
+                extraText: anniversarySolarText(for: item),
+                countdownText: memoCalendarUpcomingCountdownText(for: item),
+                date: nextDate,
+                icon: item.kind.icon,
+                tint: memoCalendarUpcomingItemTint(for: item)
+            )
+        }
+
+        return (todoReminderItems + anniversaryReminderItems).sorted { lhs, rhs in
+            if lhs.date != rhs.date {
+                return lhs.date < rhs.date
+            }
+            if lhs.kind != rhs.kind {
+                return lhs.kind == .todo
+            }
+            return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
+        }
+    }
+
+    func memoCalendarReminderDateText(for date: Date, includesTime: Bool) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = includesTime ? "M月d日 HH:mm EEEE" : "M月d日 EEEE"
+        return formatter.string(from: date)
+    }
+
+    func memoCalendarCountdownText(to date: Date) -> String {
+        let calendar = Calendar.current
+        let days = calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: Date()),
+            to: calendar.startOfDay(for: date)
+        ).day ?? 0
+
+        if days == 0 {
+            return "今天"
+        }
+        return days > 0 ? "\(days)天后" : "\(abs(days))天前"
+    }
+
+    func memoCalendarUpcomingItemTint(for item: AnniversaryItem) -> Color {
+        switch item.kind {
+        case .birthday:
+            return .orange
+        case .wedding:
+            return .pink
+        case .other:
+            return .blue
+        }
+    }
+
+    func memoCalendarUpcomingDateText(for item: AnniversaryItem) -> String {
+        guard let nextDate = nextAnniversaryDate(for: item) else {
+            return anniversaryDateText(for: item)
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M月d日 EEEE"
+        return formatter.string(from: nextDate)
+    }
+
+    func memoCalendarUpcomingCountdownText(for item: AnniversaryItem) -> String {
+        guard let days = daysUntilAnniversary(for: item) else { return "待定" }
+        if days == 0 {
+            return "今天"
+        }
+        return "\(days)天后"
+    }
+
     var memoCalendarSelectedDistanceTint: Color {
         let calendar = Calendar.current
         let days = calendar.dateComponents(
@@ -649,6 +1004,71 @@ extension ContentView {
         }
 
         moveMemoCalendarMonth(by: horizontalOffset < 0 ? 1 : -1)
+    }
+
+    func handleMemoCalendarSwipeChanged(_ value: DragGesture.Value) {
+        guard !isMemoCalendarSwipeAnimating else { return }
+
+        let horizontalOffset = value.translation.width
+        let verticalOffset = value.translation.height
+
+        if abs(horizontalOffset) >= abs(verticalOffset) {
+            memoCalendarSwipeOffset = horizontalOffset
+        }
+    }
+
+    func handleMemoCalendarSwipeEnded(_ value: DragGesture.Value) {
+        guard !isMemoCalendarSwipeAnimating else { return }
+
+        let horizontalOffset = value.translation.width
+        let predictedOffset = value.predictedEndTranslation.width
+        let effectiveOffset = abs(predictedOffset) > abs(horizontalOffset) ? predictedOffset : horizontalOffset
+        let threshold: CGFloat = 48
+
+        guard abs(horizontalOffset) >= abs(value.translation.height) else {
+            resetMemoCalendarSwipeOffset()
+            return
+        }
+
+        let monthDelta: Int
+        if effectiveOffset <= -threshold {
+            monthDelta = 1
+        } else if effectiveOffset >= threshold {
+            monthDelta = -1
+        } else {
+            monthDelta = 0
+        }
+
+        guard monthDelta != 0 else {
+            resetMemoCalendarSwipeOffset()
+            return
+        }
+
+        isMemoCalendarSwipeAnimating = true
+        withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
+            memoCalendarSwipeOffset = monthDelta > 0 ? -UIScreen.main.bounds.width : UIScreen.main.bounds.width
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+            let calendar = Calendar.current
+            memoCalendarMonth = calendar.date(byAdding: .month, value: monthDelta, to: memoCalendarMonth) ?? memoCalendarMonth
+            if !calendar.isDate(memoCalendarSelectedDate, equalTo: memoCalendarMonth, toGranularity: .month),
+               let monthStart = calendar.dateInterval(of: .month, for: memoCalendarMonth)?.start {
+                memoCalendarSelectedDate = monthStart
+            }
+            memoCalendarSwipeOffset = 0
+            isMemoCalendarSwipeAnimating = false
+        }
+    }
+
+    func resetMemoCalendarSwipeOffset() {
+        isMemoCalendarSwipeAnimating = true
+        withAnimation(.spring(response: 0.24, dampingFraction: 0.9)) {
+            memoCalendarSwipeOffset = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            isMemoCalendarSwipeAnimating = false
+        }
     }
 
     var anniversaryCard: some View {
