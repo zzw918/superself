@@ -269,6 +269,23 @@ extension ContentView {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .padding(.top, visibleFinanceSections.count > 1 ? 0 : 8)
+                .overlay(alignment: .bottomTrailing) {
+                    if financeSection == .stockResearch {
+                        Button {
+                            stockNameInput = ""
+                            isShowingStockAddAlert = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.title3.weight(.medium))
+                                .foregroundStyle(.white)
+                                .frame(width: 48, height: 48)
+                                .background(Color.blue, in: Circle())
+                                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
+                    }
+                }
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("理财")
@@ -306,7 +323,6 @@ extension ContentView {
                         sectionManageRow(
                             icon: section.icon,
                             title: section.title,
-                            description: section.description,
                             tint: profileTabTint(.health),
                             isOnlyVisible: isOnlyVisibleHealthSection(section),
                             visibility: healthSectionVisibilityBinding(for: section)
@@ -322,7 +338,6 @@ extension ContentView {
                         sectionManageRow(
                             icon: section.icon,
                             title: section.title,
-                            description: section.description,
                             tint: profileTabTint(.todo),
                             isOnlyVisible: isOnlyVisibleMemoSection(section),
                             visibility: memoSectionVisibilityBinding(for: section)
@@ -338,7 +353,6 @@ extension ContentView {
                         sectionManageRow(
                             icon: section.icon,
                             title: section.title,
-                            description: section.description,
                             tint: profileTabTint(.finance),
                             isOnlyVisible: isOnlyVisibleFinanceSection(section),
                             visibility: financeSectionVisibilityBinding(for: section)
@@ -360,6 +374,7 @@ extension ContentView {
                         HStack {
                             Spacer()
                             Label("重置为默认", systemImage: "arrow.counterclockwise")
+                                .foregroundStyle(.red)
                             Spacer()
                         }
                     }
@@ -386,21 +401,19 @@ extension ContentView {
     func sectionManageRow(
         icon: String,
         title: String,
-        description: String,
         tint: Color,
         isOnlyVisible: Bool,
         visibility: Binding<Bool>
     ) -> some View {
-        HStack(spacing: 14) {
-            profileIcon(icon, tint: tint)
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(tint, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.headline)
-                Text(description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text(title)
+                .font(.subheadline.weight(.semibold))
 
             Spacer(minLength: 8)
 

@@ -102,6 +102,7 @@ struct ContentView: View {
     @State var isNoteSearchExpanded = false
     @State var isShowingNoteAddSheet = false
     @State var wishlistInput = ""
+    @State var wishlistNoteInput = ""
     @State var wishlistCategoryID = WishlistCategory.defaultCategories[0].id
     @State var wishlistFilter: WishlistFilter = .all
     @State var isShowingWishlistAddSheet = false
@@ -138,9 +139,11 @@ struct ContentView: View {
     @State var memoSectionPrefs = SectionPreferences<MemoSection>()
     @State var financeSectionPrefs = SectionPreferences<FinanceSection>()
     @State var expenseTrendGranularity: WeightTrendGranularity = .day
+    @State var financeDistributionGrouping: FinanceDistributionGrouping = .kind
     @State var stockResearchItems: [StockResearchItem] = []
     @State var stockNameInput = ""
     @State var stockSearchText = ""
+    @State var isShowingStockFilterPanel = false
     @State var stockCertaintyFilter: StockRating?
     @State var stockGrowthFilter: StockRating?
     @State var stockAttentionFilter: StockRating?
@@ -346,7 +349,7 @@ struct ContentView: View {
             planSheet
         }
         .sheet(item: $editingFinanceAsset) { asset in
-            FinanceAssetEditorSheet(asset: asset, amountText: currencyText(asset.amount)) { newName, newKind, newAmount, newNote in
+            FinanceAssetEditorSheet(asset: asset) { newName, newKind, newAmount, newNote in
                 updateFinanceAsset(asset, name: newName, kind: newKind, amount: newAmount, note: newNote)
             }
         }
@@ -415,21 +418,22 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingWishlistAddSheet) {
-            WishlistAddSheet(title: $wishlistInput, categoryID: $wishlistCategoryID, categories: sortedWishlistCategories) {
-                insertWishlistItem(title: wishlistInput, categoryID: wishlistCategoryID)
+            WishlistAddSheet(title: $wishlistInput, note: $wishlistNoteInput, categoryID: $wishlistCategoryID, categories: sortedWishlistCategories) {
+                insertWishlistItem(title: wishlistInput, note: wishlistNoteInput, categoryID: wishlistCategoryID)
                 isShowingWishlistAddSheet = false
             } onCancel: {
                 wishlistInput = ""
+                wishlistNoteInput = ""
                 isShowingWishlistAddSheet = false
             }
-            .presentationDetents([.height(380)])
+            .presentationDetents([.height(500)])
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingWishlistItem) { item in
-            WishlistEditorSheet(item: item, categories: wishlistCategories) { newTitle, newCategoryID in
-                updateWishlistItem(item, title: newTitle, categoryID: newCategoryID)
+            WishlistEditorSheet(item: item, categories: wishlistCategories) { newTitle, newNote, newCategoryID in
+                updateWishlistItem(item, title: newTitle, note: newNote, categoryID: newCategoryID)
             }
-            .presentationDetents([.height(480)])
+            .presentationDetents([.height(560)])
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingWishlistCategorySheet) {
@@ -451,7 +455,7 @@ struct ContentView: View {
         .confirmationDialog("选择分类", isPresented: $isShowingWishlistCategoryPicker, titleVisibility: .visible) {
             ForEach(sortedWishlistCategories) { category in
                 Button(category.title) {
-                    insertWishlistItem(title: wishlistInput, categoryID: category.id)
+                    insertWishlistItem(title: wishlistInput, note: wishlistNoteInput, categoryID: category.id)
                 }
             }
             Button("取消", role: .cancel) {}

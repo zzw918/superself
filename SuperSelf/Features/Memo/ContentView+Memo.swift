@@ -73,13 +73,16 @@ struct HorizontalPanHost<Content: View>: UIViewControllerRepresentable {
     }
 
     func makeUIViewController(context: Context) -> ContainerViewController<Content> {
-        ContainerViewController(rootView: content, coordinator: context.coordinator)
+        let controller = ContainerViewController(rootView: content, coordinator: context.coordinator)
+        controller.applyColorScheme(context.environment.colorScheme)
+        return controller
     }
 
     func updateUIViewController(_ uiViewController: ContainerViewController<Content>, context: Context) {
         context.coordinator.onChanged = onChanged
         context.coordinator.onEnded = onEnded
         uiViewController.update(rootView: content)
+        uiViewController.applyColorScheme(context.environment.colorScheme)
     }
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
@@ -164,6 +167,14 @@ struct HorizontalPanHost<Content: View>: UIViewControllerRepresentable {
 
         func update(rootView: HostedContent) {
             hostingController.rootView = rootView
+        }
+
+        func applyColorScheme(_ colorScheme: ColorScheme) {
+            let style: UIUserInterfaceStyle = colorScheme == .dark ? .dark : .light
+            overrideUserInterfaceStyle = style
+            hostingController.overrideUserInterfaceStyle = style
+            view.setNeedsLayout()
+            hostingController.view.setNeedsLayout()
         }
     }
 }
@@ -1660,7 +1671,7 @@ extension ContentView {
     @ViewBuilder
     func noteTagChip(for tag: String?) -> some View {
         let isSelected = noteTagFilter == tag
-        let title = tag.map { "#\($0)" } ?? "全部"
+        let title = tag ?? "全部"
         let tint = Color.blue
 
         Button {

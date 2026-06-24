@@ -301,7 +301,7 @@ extension ContentView {
                     Button("立即同步") {
                         syncNow()
                     }
-                    .buttonStyle(AppSecondaryButtonStyle(tint: .blue))
+                    .buttonStyle(AppSecondaryButtonStyle(tint: .blue, compact: true))
                 }
             }
             .contentTransition(.opacity)

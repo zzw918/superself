@@ -51,17 +51,20 @@ struct SummaryPill: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
             Text(value)
-                .font(.title2.bold())
+                .font(.system(size: 19, weight: .bold, design: .rounded))
                 .foregroundStyle(color)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
 
             Text(title)
-                .font(.caption)
+                .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .background(color.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
@@ -97,18 +100,19 @@ struct AppEmptyState: View {
 struct AppSecondaryButtonStyle: ButtonStyle {
     var tint: Color = .blue
     var isFullWidth: Bool = false
+    var compact: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.subheadline.weight(.semibold))
+            .font((compact ? Font.caption : .subheadline).weight(.semibold))
             .foregroundStyle(tint.opacity(configuration.isPressed ? 0.8 : 1))
             .frame(maxWidth: isFullWidth ? .infinity : nil)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
+            .padding(.horizontal, compact ? 12 : 14)
+            .padding(.vertical, compact ? 8 : 11)
             .background(tint.opacity(configuration.isPressed ? 0.16 : 0.10))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: compact ? 14 : 16, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: compact ? 14 : 16, style: .continuous)
                     .stroke(tint.opacity(0.08), lineWidth: 1)
             }
             .scaleEffect(configuration.isPressed ? 0.98 : 1)

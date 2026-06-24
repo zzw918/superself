@@ -49,6 +49,22 @@ struct FinanceDistributionPoint: Identifiable {
     var id: String { title }
 }
 
+enum FinanceDistributionGrouping: String, CaseIterable, Identifiable {
+    case kind
+    case assetName
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .kind:
+            return "类型"
+        case .assetName:
+            return "名称"
+        }
+    }
+}
+
 enum AppearanceMode: String, CaseIterable, Identifiable, Hashable {
     case system
     case light

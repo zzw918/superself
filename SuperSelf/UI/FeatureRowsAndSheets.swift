@@ -22,6 +22,7 @@ struct TodoTaskRow: View {
     var onTogglePin: (() -> Void)? = nil
 
     @State private var isShowingStatusPopover = false
+    @State private var isShowingRestoreConfirm = false
     @State private var isCelebratingCompletion = false
 
     private var completedDateText: String? {
@@ -44,7 +45,7 @@ struct TodoTaskRow: View {
                     .scaleEffect(isCelebratingCompletion ? 1.18 : 1)
             }
             .buttonStyle(.borderless)
-            .popover(isPresented: $isShowingStatusPopover, arrowEdge: .bottom) {
+            .popover(isPresented: $isShowingStatusPopover) {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(statusDialogTitle)
                         .font(.headline.bold())
@@ -57,31 +58,8 @@ struct TodoTaskRow: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     HStack(spacing: 8) {
-                        Button(secondaryStatusActionTitle) {
-                            handleSecondaryStatusAction()
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(secondaryStatusActionTint)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 42)
-                        .background(
-                            secondaryStatusActionTint.opacity(0.10),
-                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        )
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(secondaryStatusActionTint.opacity(0.08), lineWidth: 1)
-                        }
-
-                        Button("确认完成") {
-                            celebrateAndComplete()
-                        }
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 42)
-                        .background(Color.green, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .shadow(color: Color.green.opacity(0.16), radius: 8, y: 4)
+                        primaryStatusActionButton
+                        secondaryStatusActionButton
                     }
                     .padding(.top, 4)
                 }
@@ -162,6 +140,14 @@ struct TodoTaskRow: View {
         }
         .scaleEffect(isCelebratingCompletion ? 1.015 : 1)
         .animation(.spring(response: 0.28, dampingFraction: 0.7), value: isCelebratingCompletion)
+        .alert("恢复到待处理？", isPresented: $isShowingRestoreConfirm) {
+            Button("恢复到待处理", role: .cancel) {
+                onMarkPending()
+            }
+            Button("取消") {}
+        } message: {
+            Text("「\(condensedTaskTitle)」会回到上方待处理列表。")
+        }
         .id("\(task.id)-\(task.isPinned)-\(task.status.rawValue)")
         .longPressActions(
             DeleteConfirmationContent(
@@ -253,11 +239,53 @@ struct TodoTaskRow: View {
         task.isInProgress ? .secondary : .blue
     }
 
+    private var primaryStatusActionButton: some View {
+        Button {
+            celebrateAndComplete()
+        } label: {
+            Text("确认完成")
+                .font(.subheadline.bold())
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 42)
+        .background(Color.green, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: Color.green.opacity(0.16), radius: 8, y: 4)
+        .contentShape(Rectangle())
+        .buttonStyle(.plain)
+    }
+
+    private var secondaryStatusActionButton: some View {
+        Button {
+            handleSecondaryStatusAction()
+        } label: {
+            Text(secondaryStatusActionTitle)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(secondaryStatusActionTint)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 42)
+        .background(
+            secondaryStatusActionTint.opacity(0.10),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(secondaryStatusActionTint.opacity(0.08), lineWidth: 1)
+        }
+        .contentShape(Rectangle())
+        .buttonStyle(.plain)
+    }
+
     private func handleToggleTap() {
         guard !isCelebratingCompletion else { return }
 
         if task.isCompleted {
-            onMarkPending()
+            isShowingRestoreConfirm = true
         } else {
             isShowingStatusPopover = true
         }
@@ -409,6 +437,13 @@ struct WishlistRow: View {
                             .clipShape(Capsule())
                     }
 
+                    if !item.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text(item.note)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
@@ -461,6 +496,10 @@ struct MemoNoteCard: View {
 
     private var shouldShowExpandToggle: Bool {
         previewText.count > 90 || previewText.filter { $0 == "\n" }.count >= 4
+    }
+
+    private var previewImageColumns: [GridItem] {
+        Array(repeating: GridItem(.fixed(86), spacing: 8), count: min(max(previewImages.count, 1), 3))
     }
 
     private var combinedPreviewText: Text {
@@ -534,21 +573,19 @@ struct MemoNoteCard: View {
             }
 
             if !imageDatas.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Array(previewImages.enumerated()), id: \.offset) { index, uiImage in
-                            Button {
-                                selectedPreviewIndex = index
-                                isShowingImagePreview = true
-                            } label: {
-                                Image(uiImage: uiImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 86, height: 86)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
+                LazyVGrid(columns: previewImageColumns, alignment: .leading, spacing: 8) {
+                    ForEach(Array(previewImages.enumerated()), id: \.offset) { index, uiImage in
+                        Button {
+                            selectedPreviewIndex = index
+                            isShowingImagePreview = true
+                        } label: {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 86, height: 86)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -1204,7 +1241,6 @@ struct TodoPriorityOptionalSelector: View {
 
 struct FinanceAssetEditorSheet: View {
     let asset: FinanceAsset
-    let amountText: String
     let onSave: (String, FinanceAssetKind, Double, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -1213,9 +1249,8 @@ struct FinanceAssetEditorSheet: View {
     @State private var amountInput: String
     @State private var noteInput: String
 
-    init(asset: FinanceAsset, amountText: String, onSave: @escaping (String, FinanceAssetKind, Double, String) -> Void) {
+    init(asset: FinanceAsset, onSave: @escaping (String, FinanceAssetKind, Double, String) -> Void) {
         self.asset = asset
-        self.amountText = amountText
         self.onSave = onSave
         _nameInput = State(initialValue: asset.name)
         _kind = State(initialValue: asset.kind)
@@ -1255,18 +1290,12 @@ struct FinanceAssetEditorSheet: View {
                         }
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        ModernInputField(
-                            placeholder: kind == .custom ? "自定义类目名称" : "资产名称",
-                            text: $nameInput,
-                            icon: kind.icon,
-                            tint: financeKindTint(kind)
-                        )
-
-                        Text("\(kind.title) · 当前 \(amountText)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+                    ModernInputField(
+                        placeholder: kind == .custom ? "自定义类目名称" : "资产名称",
+                        text: $nameInput,
+                        icon: kind.icon,
+                        tint: financeKindTint(kind)
+                    )
 
                     ModernInputField(
                         placeholder: "输入新的金额",
@@ -1302,14 +1331,6 @@ struct FinanceAssetEditorSheet: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
 
-                    Button {
-                        saveAmount()
-                    } label: {
-                        Text("保存修改")
-                    }
-                    .buttonStyle(AppPrimaryButtonStyle(tint: financeKindTint(kind)))
-                    .disabled(!canSaveAmount)
-
                     VStack(alignment: .leading, spacing: 4) {
                         Text(createdTimeText)
                         Text(updatedTimeText)
@@ -1329,6 +1350,15 @@ struct FinanceAssetEditorSheet: View {
                     }
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        saveAmount()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                    .disabled(!canSaveAmount)
                 }
             }
         }
@@ -1375,6 +1405,8 @@ struct FinanceAssetEditorSheet: View {
         switch item {
         case .bankCard:
             return .blue
+        case .providentFund:
+            return .indigo
         case .stock:
             return .green
         case .option:
@@ -2266,6 +2298,7 @@ struct TodoAddSheet: View {
 
 struct WishlistAddSheet: View {
     @Binding var title: String
+    @Binding var note: String
     @Binding var categoryID: String
     let categories: [WishlistCategory]
     let onAdd: () -> Void
@@ -2297,6 +2330,32 @@ struct WishlistAddSheet: View {
                             tint: .blue
                         )
                         .focused($isTitleFocused)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("备注")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+
+                        ZStack(alignment: .topLeading) {
+                            if note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                Text("可选，记一下想要它的原因或补充信息")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.tertiary)
+                                    .padding(.top, 14)
+                                    .padding(.horizontal, 14)
+                            }
+
+                            TextEditor(text: $note)
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 92)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                        }
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -2396,11 +2455,25 @@ struct MemoNoteEditorSheet: View {
     }
 
     private var suggestedTags: [String] {
-        existingTags.filter { !selectedTags.contains($0) }
+        existingTags.filter {
+            !selectedTags.contains($0) && !MemoNote.reservedTags.contains($0)
+        }
     }
 
     private var showsCurrentTags: Bool {
         !selectedTags.isEmpty
+    }
+
+    private var normalizedTagDraft: String {
+        normalizedTag(tagDraft)
+    }
+
+    private var tagDraftValidationMessage: String? {
+        guard !normalizedTagDraft.isEmpty else { return nil }
+        if MemoNote.reservedTags.contains(normalizedTagDraft) {
+            return "“\(normalizedTagDraft)”是系统保留标签，不能作为自定义标签。"
+        }
+        return nil
     }
 
     private var createdTimeText: String? {
@@ -2664,7 +2737,7 @@ struct MemoNoteEditorSheet: View {
                         .autocorrectionDisabled()
                         .submitLabel(.done)
                         .onSubmit {
-                            if !normalizedTag(tagDraft).isEmpty {
+                            if !normalizedTagDraft.isEmpty {
                                 commitTagEdit()
                             }
                         }
@@ -2682,6 +2755,12 @@ struct MemoNoteEditorSheet: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                if let tagDraftValidationMessage {
+                    Text(tagDraftValidationMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
 
                 if !suggestedTags.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
@@ -2731,10 +2810,10 @@ struct MemoNoteEditorSheet: View {
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(normalizedTag(tagDraft).isEmpty ? Color.blue.opacity(0.5) : Color.blue, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .background((normalizedTagDraft.isEmpty || tagDraftValidationMessage != nil) ? Color.blue.opacity(0.5) : Color.blue, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .buttonStyle(.plain)
-                    .disabled(normalizedTag(tagDraft).isEmpty)
+                    .disabled(normalizedTagDraft.isEmpty || tagDraftValidationMessage != nil)
                 }
             }
             .padding(20)
@@ -2771,7 +2850,9 @@ struct MemoNoteEditorSheet: View {
 
     private func addTag(_ tag: String) {
         let normalized = normalizedTag(tag)
-        guard !normalized.isEmpty, !selectedTags.contains(normalized) else { return }
+        guard !normalized.isEmpty,
+              !MemoNote.reservedTags.contains(normalized),
+              !selectedTags.contains(normalized) else { return }
         selectedTags.append(normalized)
     }
 
@@ -2789,8 +2870,9 @@ struct MemoNoteEditorSheet: View {
     }
 
     private func commitTagEdit() {
-        let normalized = normalizedTag(tagDraft)
-        guard !normalized.isEmpty else { return }
+        let normalized = normalizedTagDraft
+        guard !normalized.isEmpty,
+              !MemoNote.reservedTags.contains(normalized) else { return }
 
         if let editingTagIndex, selectedTags.indices.contains(editingTagIndex) {
             selectedTags.remove(at: editingTagIndex)
@@ -3008,18 +3090,20 @@ struct TodoPrioritySelector: View {
 struct WishlistEditorSheet: View {
     let item: WishlistItem
     let categories: [WishlistCategory]
-    let onSave: (String, String) -> Void
+    let onSave: (String, String, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String
+    @State private var noteInput: String
     @State private var categoryID: String
     @FocusState private var isFocused: Bool
 
-    init(item: WishlistItem, categories: [WishlistCategory], onSave: @escaping (String, String) -> Void) {
+    init(item: WishlistItem, categories: [WishlistCategory], onSave: @escaping (String, String, String) -> Void) {
         self.item = item
         self.categories = categories
         self.onSave = onSave
         _titleInput = State(initialValue: item.title)
+        _noteInput = State(initialValue: item.note)
         _categoryID = State(initialValue: item.categoryID)
     }
 
@@ -3096,6 +3180,32 @@ struct WishlistEditorSheet: View {
                 )
                 .focused($isFocused)
 
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("备注")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+
+                    ZStack(alignment: .topLeading) {
+                        if noteInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("可选，记一下想要它的原因或补充信息")
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
+                                .padding(.top, 14)
+                                .padding(.horizontal, 14)
+                        }
+
+                        TextEditor(text: $noteInput)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 92)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(createdTimeText)
                     if let editedTimeText {
@@ -3119,7 +3229,7 @@ struct WishlistEditorSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") {
-                        onSave(titleInput, categoryID)
+                        onSave(titleInput, noteInput, categoryID)
                         dismiss()
                     }
                     .font(.subheadline.bold())

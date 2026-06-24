@@ -210,6 +210,7 @@ struct WishlistFilter: Identifiable, Equatable {
 struct WishlistItem: Identifiable, Equatable, Codable {
     var id = UUID()
     var title: String
+    var note: String
     var categoryID: String
     var createdAt: Date
     var updatedAt: Date?
@@ -223,6 +224,7 @@ struct WishlistItem: Identifiable, Equatable, Codable {
     init(
         id: UUID = UUID(),
         title: String,
+        note: String = "",
         categoryID: String,
         createdAt: Date,
         updatedAt: Date? = nil,
@@ -231,6 +233,7 @@ struct WishlistItem: Identifiable, Equatable, Codable {
     ) {
         self.id = id
         self.title = title
+        self.note = note
         self.categoryID = categoryID
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -241,6 +244,7 @@ struct WishlistItem: Identifiable, Equatable, Codable {
     enum CodingKeys: String, CodingKey {
         case id
         case title
+        case note
         case categoryID
         case category
         case createdAt
@@ -253,6 +257,7 @@ struct WishlistItem: Identifiable, Equatable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         title = try container.decode(String.self, forKey: .title)
+        note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
         if let categoryID = try container.decodeIfPresent(String.self, forKey: .categoryID) {
             self.categoryID = categoryID
         } else if let legacyCategory = try container.decodeIfPresent(String.self, forKey: .category) {
@@ -270,6 +275,7 @@ struct WishlistItem: Identifiable, Equatable, Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(title, forKey: .title)
+        try container.encode(note, forKey: .note)
         try container.encode(categoryID, forKey: .categoryID)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(completedAt, forKey: .completedAt)
@@ -319,12 +325,14 @@ struct MemoNote: Identifiable, Equatable, Codable {
         self.isPinned = isPinned
     }
 
+    static let reservedTags: Set<String> = ["全部"]
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         let decodedContent = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
         let decodedTags = try container.decodeIfPresent([String].self, forKey: .tags)
-        tags = decodedTags ?? Self.extractTags(from: decodedContent)
+        tags = Self.sanitizedTags(decodedTags ?? Self.extractTags(from: decodedContent))
         content = decodedTags == nil ? Self.strippedContent(from: decodedContent, removing: tags) : decodedContent
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
@@ -345,6 +353,20 @@ struct MemoNote: Identifiable, Equatable, Codable {
 
             let tag = String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
             guard !tag.isEmpty, !uniqueTags.contains(tag) else { continue }
+            uniqueTags.append(tag)
+        }
+
+        return uniqueTags
+    }
+
+    static func sanitizedTags(_ tags: [String]) -> [String] {
+        var uniqueTags: [String] = []
+
+        for rawTag in tags {
+            let tag = rawTag.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !tag.isEmpty,
+                  !reservedTags.contains(tag),
+                  !uniqueTags.contains(tag) else { continue }
             uniqueTags.append(tag)
         }
 
@@ -465,6 +487,7 @@ struct AnniversaryItem: Identifiable, Equatable, Codable {
 
 enum FinanceAssetKind: String, CaseIterable, Identifiable, Codable {
     case bankCard
+    case providentFund
     case stock
     case option
     case alipay
@@ -477,6 +500,8 @@ enum FinanceAssetKind: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .bankCard:
             return "银行卡"
+        case .providentFund:
+            return "公积金"
         case .stock:
             return "股票"
         case .option:
@@ -494,6 +519,8 @@ enum FinanceAssetKind: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .bankCard:
             return "creditcard"
+        case .providentFund:
+            return "building.columns"
         case .stock:
             return "chart.line.uptrend.xyaxis"
         case .option:

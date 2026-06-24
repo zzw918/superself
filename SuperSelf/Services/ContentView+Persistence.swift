@@ -522,7 +522,7 @@ extension ContentView {
 
     func addMemoNote(content: String, tags: [String], imageDatas: [Data]) {
         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedTags = Array(NSOrderedSet(array: tags.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })) as? [String] ?? []
+        let normalizedTags = MemoNote.sanitizedTags(tags)
         guard !trimmedContent.isEmpty || !imageDatas.isEmpty || !normalizedTags.isEmpty,
               let imageFileNames = storeMemoNoteImages(imageDatas) else { return }
 
@@ -536,7 +536,7 @@ extension ContentView {
 
     func updateMemoNote(_ note: MemoNote, content: String, tags: [String], imageDatas: [Data]) {
         let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedTags = Array(NSOrderedSet(array: tags.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })) as? [String] ?? []
+        let normalizedTags = MemoNote.sanitizedTags(tags)
         guard !trimmedContent.isEmpty || !imageDatas.isEmpty || !normalizedTags.isEmpty,
               let index = memoNotes.firstIndex(where: { $0.id == note.id }),
               let imageFileNames = storeMemoNoteImages(imageDatas) else { return }
@@ -668,22 +668,24 @@ extension ContentView {
         guard !trimmedTitle.isEmpty else { return }
 
         if let categoryID = wishlistFilter.categoryID {
-            insertWishlistItem(title: trimmedTitle, categoryID: categoryID)
+            insertWishlistItem(title: trimmedTitle, note: wishlistNoteInput, categoryID: categoryID)
         } else {
             isShowingWishlistCategoryPicker = true
         }
     }
 
-    func insertWishlistItem(title: String, categoryID: String) {
+    func insertWishlistItem(title: String, note: String = "", categoryID: String) {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { return }
 
         wishlistItems.insert(
-            WishlistItem(title: trimmedTitle, categoryID: categoryID, createdAt: Date()),
+            WishlistItem(title: trimmedTitle, note: trimmedNote, categoryID: categoryID, createdAt: Date()),
             at: 0
         )
         wishlistCategoryID = categoryID
         wishlistInput = ""
+        wishlistNoteInput = ""
         persistWishlistItems()
     }
 
@@ -699,12 +701,14 @@ extension ContentView {
         persistWishlistItems()
     }
 
-    func updateWishlistItem(_ item: WishlistItem, title: String, categoryID: String) {
+    func updateWishlistItem(_ item: WishlistItem, title: String, note: String, categoryID: String) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty,
               let index = wishlistItems.firstIndex(where: { $0.id == item.id }) else { return }
 
         wishlistItems[index].title = trimmed
+        wishlistItems[index].note = trimmedNote
         wishlistItems[index].categoryID = categoryID
         wishlistItems[index].updatedAt = Date()
         persistWishlistItems()

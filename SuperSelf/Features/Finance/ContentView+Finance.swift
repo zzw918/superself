@@ -361,6 +361,8 @@ extension ContentView {
         switch kind {
         case .bankCard:
             return .blue
+        case .providentFund:
+            return .indigo
         case .stock:
             return .green
         case .option:
@@ -417,8 +419,43 @@ extension ContentView {
 
     var financeDistributionCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("资产分布")
-                .font(.title3.bold())
+            HStack(alignment: .center, spacing: 12) {
+                Text("资产分布")
+                    .font(.title3.bold())
+
+                Spacer()
+
+                Menu {
+                    ForEach(FinanceDistributionGrouping.allCases) { option in
+                        Button {
+                            financeDistributionGrouping = option
+                        } label: {
+                            if option == financeDistributionGrouping {
+                                Label(option.title, systemImage: "checkmark")
+                            } else {
+                                Text(option.title)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(financeDistributionGrouping.title)
+                            .lineLimit(1)
+
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .stroke(Color(.separator).opacity(0.10), lineWidth: 1)
+                    }
+                }
+            }
 
             if !isFinanceAssetRecordVisible {
                 financePrivacyPlaceholder(title: "分布已隐藏", systemImage: "lock.fill")
@@ -427,7 +464,9 @@ extension ContentView {
                 AppEmptyState(
                     title: "还没有分布",
                     systemImage: "chart.pie",
-                    description: "添加资产后，会显示各类资产占比。"
+                    description: financeDistributionGrouping == .kind
+                        ? "添加资产后，会显示各类资产占比。"
+                        : "添加资产后，会显示各资产名称占比。"
                 )
                 .frame(maxWidth: .infinity, minHeight: 130)
             } else {
@@ -435,6 +474,7 @@ extension ContentView {
                     points: financeDistributionPoints,
                     amountText: currencyText
                 )
+                .id(financeDistributionGrouping)
             }
         }
         .padding()
@@ -710,26 +750,28 @@ extension ContentView {
 
     var stockResearchListCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SearchInputBar(placeholder: "搜索股票名称", text: $stockSearchText)
+            HStack(alignment: .center, spacing: 10) {
+                SearchInputBar(placeholder: "搜索股票名称", text: $stockSearchText)
+                    .frame(maxWidth: .infinity)
 
-            HStack(alignment: .top, spacing: 10) {
                 if !stockResearchItems.isEmpty {
-                    stockResearchFilterBar
-                } else {
-                    Spacer(minLength: 0)
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
+                            isShowingStockFilterPanel.toggle()
+                        }
+                    } label: {
+                        StockResearchFilterToggleButton(
+                            activeCount: stockResearchFilterActiveCount,
+                            isExpanded: isShowingStockFilterPanel
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
+            }
 
-                Button {
-                    stockNameInput = ""
-                    isShowingStockAddAlert = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
-                        .background(Color.blue, in: Circle())
-                }
-                .buttonStyle(.plain)
+            if !stockResearchItems.isEmpty && isShowingStockFilterPanel {
+                stockResearchFilterBar
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
             if stockResearchItems.isEmpty {
@@ -772,6 +814,10 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
+    var stockResearchFilterActiveCount: Int {
+        [stockCertaintyFilter, stockGrowthFilter, stockAttentionFilter].compactMap { $0 }.count
+    }
+
     var stockResearchFilterBar: some View {
         StockResearchFilterPanel(
             certainty: $stockCertaintyFilter,
@@ -786,69 +832,35 @@ struct StockResearchFilterPanel: View {
     @Binding var growth: StockRating?
     @Binding var attention: StockRating?
 
-    @State private var isExpanded = false
-
     private var activeCount: Int {
         [certainty, growth, attention].compactMap { $0 }.count
     }
 
     var body: some View {
-        VStack(spacing: 10) {
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "line.3.horizontal.decrease.circle\(activeCount > 0 ? ".fill" : "")")
-                    Text("筛选")
-                    if activeCount > 0 {
-                        Text("\(activeCount)")
-                            .font(.caption2.bold())
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 1)
-                            .background(Color.blue, in: Capsule())
-                            .foregroundStyle(.white)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.down")
-                        .font(.caption.bold())
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(activeCount > 0 ? .blue : .secondary)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+        VStack(spacing: 8) {
+            StockRatingFilterRow(title: "确定性", tint: .green, selection: $certainty)
+            StockRatingFilterRow(title: "成长性", tint: .orange, selection: $growth)
+            StockRatingFilterRow(title: "关注度", tint: .blue, selection: $attention)
 
-            if isExpanded {
-                VStack(spacing: 8) {
-                    StockRatingFilterRow(title: "确定性", tint: .green, selection: $certainty)
-                    StockRatingFilterRow(title: "成长性", tint: .orange, selection: $growth)
-                    StockRatingFilterRow(title: "关注度", tint: .blue, selection: $attention)
-
-                    if activeCount > 0 {
-                        Button {
-                            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
-                                certainty = nil
-                                growth = nil
-                                attention = nil
-                            }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.counterclockwise")
-                                Text("重置筛选")
-                            }
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .background(Color(.tertiarySystemFill), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
+            if activeCount > 0 {
+                Button {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                        certainty = nil
+                        growth = nil
+                        attention = nil
                     }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.counterclockwise")
+                        Text("重置筛选")
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(Color(.tertiarySystemFill), in: Capsule())
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .buttonStyle(.plain)
             }
         }
         .padding(.leading, 12)
@@ -858,6 +870,42 @@ struct StockResearchFilterPanel: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.tertiarySystemGroupedBackground))
         )
+    }
+}
+
+struct StockResearchFilterToggleButton: View {
+    let activeCount: Int
+    let isExpanded: Bool
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Image(systemName: "slider.horizontal.3")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(activeCount > 0 ? .blue : .secondary)
+                .frame(width: 46, height: 48)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(
+                            (isExpanded ? Color.blue : Color(.separator)).opacity(isExpanded ? 0.18 : 0.12),
+                            lineWidth: 1
+                        )
+                }
+
+            if activeCount > 0 {
+                Text("\(activeCount)")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(Color.blue, in: Capsule())
+                    .offset(x: 6, y: -4)
+            }
+        }
+        .contentShape(Rectangle())
     }
 }
 
@@ -990,6 +1038,7 @@ struct ExpenseRecordEditorSheet: View {
     @State private var noteInput: String
     @State private var customCategoryInput = ""
     @State private var isShowingCustomCategoryInput = false
+    @State private var isShowingDatePicker = false
 
     init(
         record: ExpenseRecord? = nil,
@@ -1036,6 +1085,14 @@ struct ExpenseRecordEditorSheet: View {
     var canSave: Bool {
         guard let normalizedAmount else { return false }
         return normalizedAmount > 0 && !selectedCategoryID.isEmpty
+    }
+
+    var selectedDateButtonText: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.calendar = mondayFirstCalendar
+        formatter.dateFormat = "yyyy年M月d日"
+        return formatter.string(from: selectedDate)
     }
 
     var quickDateOptions: [(title: String, date: Date)] {
@@ -1204,7 +1261,10 @@ struct ExpenseRecordEditorSheet: View {
                                 } label: {
                                     Text(option.title)
                                         .font(.footnote.weight(.medium))
+                                        .lineLimit(1)
+                                        .fixedSize(horizontal: true, vertical: false)
                                         .foregroundStyle(isSelected ? .white : .secondary)
+                                        .frame(minWidth: 28)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 8)
                                         .background(
@@ -1221,15 +1281,44 @@ struct ExpenseRecordEditorSheet: View {
 
                             Spacer(minLength: 8)
 
-                            DatePicker(
-                                "",
-                                selection: $selectedDate,
-                                displayedComponents: [.date]
-                            )
-                            .labelsHidden()
-                            .datePickerStyle(.compact)
-                            .environment(\.locale, Locale(identifier: "zh_CN"))
-                            .environment(\.calendar, mondayFirstCalendar)
+                            Button {
+                                isShowingDatePicker = true
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Text(selectedDateButtonText)
+                                        .font(.footnote.weight(.medium))
+                                        .lineLimit(1)
+
+                                    Image(systemName: "chevron.down")
+                                        .font(.caption2.bold())
+                                }
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(chipBackgroundColor, in: Capsule())
+                                .overlay {
+                                    Capsule()
+                                        .stroke(chipBorderColor, lineWidth: 1)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .popover(isPresented: $isShowingDatePicker, arrowEdge: .bottom) {
+                                DatePicker(
+                                    "",
+                                    selection: $selectedDate,
+                                    displayedComponents: [.date]
+                                )
+                                .labelsHidden()
+                                .datePickerStyle(.graphical)
+                                .environment(\.locale, Locale(identifier: "zh_CN"))
+                                .environment(\.calendar, mondayFirstCalendar)
+                                .padding(16)
+                                .frame(width: 320)
+                                .presentationCompactAdaptation(.popover)
+                                .onChange(of: selectedDate) { _, _ in
+                                    isShowingDatePicker = false
+                                }
+                            }
                         }
                     }
 

@@ -165,7 +165,9 @@ extension ContentView {
     }
 
     var allMemoNoteTags: [String] {
-        let tags = memoNotes.flatMap(\.tags)
+        let tags = memoNotes
+            .flatMap(\.tags)
+            .filter { !MemoNote.reservedTags.contains($0) }
         let counts = Dictionary(tags.map { ($0, 1) }, uniquingKeysWith: +)
 
         return counts.keys.sorted { lhs, rhs in
@@ -284,19 +286,42 @@ extension ContentView {
     }
 
     var financeDistributionPoints: [FinanceDistributionPoint] {
-        let amountsByKind = Dictionary(grouping: financeAssets, by: \.kind)
-            .mapValues { assets in
-                assets.map(\.amount).reduce(0, +)
-            }
+        let groupedAmounts: [(title: String, amount: Double)]
 
-        return amountsByKind
-            .filter { $0.value > 0 }
-            .sorted { $0.value > $1.value }
+        switch financeDistributionGrouping {
+        case .kind:
+            groupedAmounts = Dictionary(grouping: financeAssets, by: \.kind)
+                .map { kind, assets in
+                    (
+                        title: kind.title,
+                        amount: assets.map(\.amount).reduce(0, +)
+                    )
+                }
+        case .assetName:
+            groupedAmounts = Dictionary(grouping: financeAssets) { asset in
+                asset.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            .map { name, assets in
+                (
+                    title: name.isEmpty ? "未命名资产" : name,
+                    amount: assets.map(\.amount).reduce(0, +)
+                )
+            }
+        }
+
+        return groupedAmounts
+            .filter { $0.amount > 0 }
+            .sorted { lhs, rhs in
+                if lhs.amount != rhs.amount {
+                    return lhs.amount > rhs.amount
+                }
+                return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
+            }
             .enumerated()
             .map { index, item in
                 FinanceDistributionPoint(
-                    title: item.key.title,
-                    amount: item.value,
+                    title: item.title,
+                    amount: item.amount,
                     color: financeDistributionColor(at: index)
                 )
             }
