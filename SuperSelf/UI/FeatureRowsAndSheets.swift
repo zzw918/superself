@@ -14,12 +14,14 @@ extension TodoPriority {
 
 struct TodoTaskRow: View {
     let task: TodoTask
-    let onToggle: () -> Void
+    let onMarkPending: () -> Void
+    let onMarkInProgress: () -> Void
+    let onMarkCompleted: () -> Void
     let onEdit: () -> Void
     var onDelete: (() -> Void)? = nil
     var onTogglePin: (() -> Void)? = nil
 
-    @State private var isShowingCompleteConfirm = false
+    @State private var isShowingStatusPopover = false
     @State private var isCelebratingCompletion = false
 
     private var completedDateText: String? {
@@ -36,12 +38,58 @@ struct TodoTaskRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Button(action: handleToggleTap) {
-                Image(systemName: task.isCompleted || isCelebratingCompletion ? "checkmark.circle.fill" : "circle")
+                Image(systemName: statusSymbolName)
                     .font(.title2)
-                    .foregroundStyle(task.isCompleted || isCelebratingCompletion ? .green : Color(.systemGray3))
+                    .foregroundStyle(statusTint)
                     .scaleEffect(isCelebratingCompletion ? 1.18 : 1)
             }
             .buttonStyle(.borderless)
+            .popover(isPresented: $isShowingStatusPopover, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(statusDialogTitle)
+                        .font(.headline.bold())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text(statusDialogMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    HStack(spacing: 8) {
+                        Button(secondaryStatusActionTitle) {
+                            handleSecondaryStatusAction()
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(secondaryStatusActionTint)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
+                        .background(
+                            secondaryStatusActionTint.opacity(0.10),
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(secondaryStatusActionTint.opacity(0.08), lineWidth: 1)
+                        }
+
+                        Button("确认完成") {
+                            celebrateAndComplete()
+                        }
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
+                        .background(Color.green, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .shadow(color: Color.green.opacity(0.16), radius: 8, y: 4)
+                    }
+                    .padding(.top, 4)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 18)
+                .frame(width: 332)
+                .presentationCompactAdaptation(.popover)
+            }
 
             Button(action: onEdit) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -57,6 +105,10 @@ struct TodoTaskRow: View {
                                 .font(.caption2)
                                 .foregroundStyle(.orange)
                                 .rotationEffect(.degrees(45))
+                        }
+
+                        if task.isInProgress && !isCelebratingCompletion {
+                            TodoTaskStatusBadge(status: .inProgress)
                         }
 
                         TodoPriorityBadge(priority: task.priority)
@@ -91,7 +143,7 @@ struct TodoTaskRow: View {
         .padding(.horizontal, 14)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(isCelebratingCompletion ? Color.green.opacity(0.12) : Color(.tertiarySystemGroupedBackground))
+                .fill(rowBackgroundColor)
         )
         .overlay(alignment: .trailing) {
             if isCelebratingCompletion {
@@ -110,18 +162,7 @@ struct TodoTaskRow: View {
         }
         .scaleEffect(isCelebratingCompletion ? 1.015 : 1)
         .animation(.spring(response: 0.28, dampingFraction: 0.7), value: isCelebratingCompletion)
-        .confirmationDialog("完成这个 TODO？", isPresented: $isShowingCompleteConfirm, titleVisibility: .visible) {
-            Button("确认完成") {
-                celebrateAndToggle()
-            }
-            .tint(.green)
-            Button("取消", role: .cancel) {
-                isShowingCompleteConfirm = false
-            }
-        } message: {
-            Text("「\(task.title)」会移入已完成列表。")
-        }
-        .id("\(task.id)-\(task.isPinned)")
+        .id("\(task.id)-\(task.isPinned)-\(task.status.rawValue)")
         .longPressActions(
             DeleteConfirmationContent(
                 title: "删除待办？",
@@ -134,25 +175,137 @@ struct TodoTaskRow: View {
         )
     }
 
+    private var statusSymbolName: String {
+        if isCelebratingCompletion {
+            return "checkmark.circle.fill"
+        }
+
+        switch task.status {
+        case .pending:
+            return "circle"
+        case .inProgress:
+            return "circle.inset.filled"
+        case .completed:
+            return "checkmark.circle.fill"
+        }
+    }
+
+    private var statusTint: Color {
+        if isCelebratingCompletion {
+            return .green
+        }
+
+        switch task.status {
+        case .pending:
+            return Color(.systemGray3)
+        case .inProgress:
+            return .blue.opacity(0.90)
+        case .completed:
+            return .green
+        }
+    }
+
+    private var rowBackgroundColor: Color {
+        if isCelebratingCompletion {
+            return Color.green.opacity(0.12)
+        }
+
+        if task.isInProgress {
+            return Color.blue.opacity(0.06)
+        }
+
+        return Color(.tertiarySystemGroupedBackground)
+    }
+
+    private var statusDialogTitle: String {
+        switch task.status {
+        case .pending:
+            return "更新这个 TODO 的状态？"
+        case .inProgress:
+            return "进行中的 TODO 要怎么处理？"
+        case .completed:
+            return "已完成"
+        }
+    }
+
+    private var condensedTaskTitle: String {
+        let normalized = task.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard normalized.count > 20 else { return normalized }
+        return String(normalized.prefix(20)) + "..."
+    }
+
+    private var statusDialogMessage: String {
+        switch task.status {
+        case .pending:
+            return "你可以先标成进行中，或者直接确认完成。"
+        case .inProgress:
+            return "「\(condensedTaskTitle)」可以继续流转到已完成，或者恢复为待处理。"
+        case .completed:
+            return "「\(condensedTaskTitle)」已经完成。"
+        }
+    }
+
+    private var secondaryStatusActionTitle: String {
+        task.isInProgress ? "待处理" : "进行中"
+    }
+
+    private var secondaryStatusActionTint: Color {
+        task.isInProgress ? .secondary : .blue
+    }
+
     private func handleToggleTap() {
         guard !isCelebratingCompletion else { return }
 
         if task.isCompleted {
-            onToggle()
+            onMarkPending()
         } else {
-            isShowingCompleteConfirm = true
+            isShowingStatusPopover = true
         }
     }
 
-    private func celebrateAndToggle() {
+    private func handleSecondaryStatusAction() {
+        isShowingStatusPopover = false
+        if task.isInProgress {
+            onMarkPending()
+        } else {
+            onMarkInProgress()
+        }
+    }
+
+    private func celebrateAndComplete() {
+        isShowingStatusPopover = false
         withAnimation(.spring(response: 0.28, dampingFraction: 0.68)) {
             isCelebratingCompletion = true
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-            onToggle()
+            onMarkCompleted()
             isCelebratingCompletion = false
         }
+    }
+}
+
+struct TodoTaskStatusBadge: View {
+    let status: TodoTaskStatus
+
+    private var tint: Color {
+        switch status {
+        case .pending:
+            return .secondary.opacity(0.82)
+        case .inProgress:
+            return .blue.opacity(0.82)
+        case .completed:
+            return .green.opacity(0.82)
+        }
+    }
+
+    var body: some View {
+        Text(status.title)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(tint.opacity(0.10), in: Capsule())
     }
 }
 
@@ -2040,7 +2193,7 @@ struct TodoAddSheet: View {
     }
 
     private var canSave: Bool {
-        !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && priority != nil
+        !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -2078,8 +2231,11 @@ struct TodoAddSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("添加") {
-                        guard let priority else { return }
-                        onAdd(titleInput.trimmingCharacters(in: .whitespacesAndNewlines), priority, hasDueDate ? dueDate : nil)
+                        onAdd(
+                            titleInput.trimmingCharacters(in: .whitespacesAndNewlines),
+                            priority ?? .notImportantNotUrgent,
+                            hasDueDate ? dueDate : nil
+                        )
                         dismiss()
                     }
                     .font(.subheadline.bold())

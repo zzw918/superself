@@ -7,10 +7,35 @@ enum CalculatorOperation: String {
     case divide = "÷"
 }
 
-struct CalculatorHistoryItem: Identifiable, Equatable {
-    let id = UUID()
-    let expression: String
-    let result: String
+struct CalculatorHistoryItem: Identifiable, Equatable, Codable {
+    var id: UUID
+    var expression: String
+    var result: String
+    var createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id, expression, result, createdAt
+    }
+
+    init(
+        id: UUID = UUID(),
+        expression: String,
+        result: String,
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.expression = expression
+        self.result = result
+        self.createdAt = createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        expression = try container.decode(String.self, forKey: .expression)
+        result = try container.decode(String.self, forKey: .result)
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+    }
 }
 
 enum CalculatorButtonKind {
@@ -798,7 +823,7 @@ extension ContentView {
                 Spacer(minLength: 8)
 
                 Button("清空") {
-                    calculatorHistory.removeAll()
+                    clearCalculatorHistory()
                 }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.blue)
@@ -1111,6 +1136,7 @@ extension ContentView {
             CalculatorHistoryItem(expression: expression, result: resultText),
             at: 0
         )
+        persistCalculatorHistory()
         calculatorStoredValue = nil
         calculatorPendingOperation = nil
         calculatorIsEnteringNewNumber = false

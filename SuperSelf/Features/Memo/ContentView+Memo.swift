@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum MemoCalendarSpecialDayKind {
     case holiday
@@ -33,6 +34,138 @@ struct MemoCalendarReminderItem: Identifiable {
     let date: Date
     let icon: String
     let tint: Color
+}
+
+struct MemoCalendarDayContext {
+    let date: Date
+    let specialDay: MemoCalendarSpecialDay?
+    let anniversaryItems: [AnniversaryItem]
+    let todoItems: [TodoTask]
+    let dayLabel: String?
+}
+
+struct MemoCalendarMonthPage {
+    let month: Date
+    let cells: [MemoCalendarDayContext?]
+
+    var weekCount: Int {
+        max(1, cells.count / 7)
+    }
+}
+
+struct HorizontalPanHost<Content: View>: UIViewControllerRepresentable {
+    let content: Content
+    let onChanged: (CGSize) -> Void
+    let onEnded: (CGSize, CGSize) -> Void
+
+    init(
+        @ViewBuilder content: () -> Content,
+        onChanged: @escaping (CGSize) -> Void,
+        onEnded: @escaping (CGSize, CGSize) -> Void
+    ) {
+        self.content = content()
+        self.onChanged = onChanged
+        self.onEnded = onEnded
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onChanged: onChanged, onEnded: onEnded)
+    }
+
+    func makeUIViewController(context: Context) -> ContainerViewController<Content> {
+        ContainerViewController(rootView: content, coordinator: context.coordinator)
+    }
+
+    func updateUIViewController(_ uiViewController: ContainerViewController<Content>, context: Context) {
+        context.coordinator.onChanged = onChanged
+        context.coordinator.onEnded = onEnded
+        uiViewController.update(rootView: content)
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var onChanged: (CGSize) -> Void
+        var onEnded: (CGSize, CGSize) -> Void
+
+        init(
+            onChanged: @escaping (CGSize) -> Void,
+            onEnded: @escaping (CGSize, CGSize) -> Void
+        ) {
+            self.onChanged = onChanged
+            self.onEnded = onEnded
+        }
+
+        @objc func handlePan(_ recognizer: UIPanGestureRecognizer) {
+            guard let view = recognizer.view else { return }
+            let translation = recognizer.translation(in: view)
+            let velocity = recognizer.velocity(in: view)
+            let translationSize = CGSize(width: translation.x, height: translation.y)
+            let velocitySize = CGSize(width: velocity.x, height: velocity.y)
+
+            switch recognizer.state {
+            case .began, .changed:
+                onChanged(translationSize)
+            case .ended, .cancelled, .failed:
+                onEnded(translationSize, velocitySize)
+            default:
+                break
+            }
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let panGesture = gestureRecognizer as? UIPanGestureRecognizer,
+                  let view = gestureRecognizer.view else {
+                return true
+            }
+
+            let velocity = panGesture.velocity(in: view)
+            return abs(velocity.x) > abs(velocity.y)
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+        ) -> Bool {
+            false
+        }
+    }
+
+    final class ContainerViewController<HostedContent: View>: UIViewController {
+        private let hostingController: UIHostingController<HostedContent>
+
+        init(rootView: HostedContent, coordinator: Coordinator) {
+            self.hostingController = UIHostingController(rootView: rootView)
+            super.init(nibName: nil, bundle: nil)
+
+            let panGesture = UIPanGestureRecognizer(target: coordinator, action: #selector(Coordinator.handlePan(_:)))
+            panGesture.delegate = coordinator
+            view.addGestureRecognizer(panGesture)
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            view.backgroundColor = .clear
+            hostingController.view.backgroundColor = .clear
+            addChild(hostingController)
+            hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(hostingController.view)
+            NSLayoutConstraint.activate([
+                hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                hostingController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+                hostingController.view.topAnchor.constraint(equalTo: view.topAnchor),
+                hostingController.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            ])
+            hostingController.didMove(toParent: self)
+        }
+
+        func update(rootView: HostedContent) {
+            hostingController.rootView = rootView
+        }
+    }
 }
 
 extension ContentView {
@@ -130,48 +263,74 @@ extension ContentView {
     }
 
     var memoCalendarPager: some View {
-        let pagerDragGesture = DragGesture(minimumDistance: 4, coordinateSpace: .local)
-            .onChanged { value in
-                handleMemoCalendarSwipeChanged(value)
-            }
-            .onEnded { value in
-                handleMemoCalendarSwipeEnded(value)
-            }
+        let weekdayHeaderHeight: CGFloat = 18
+        let pagerTotalHeight = weekdayHeaderHeight + 10 + memoCalendarPagerHeight
 
-        return VStack(spacing: 10) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 10) {
-                ForEach(Array(memoCalendarWeekdays.enumerated()), id: \.offset) { index, weekday in
-                    Text(weekday)
-                        .font(.caption.bold())
-                        .foregroundStyle(index >= 5 ? .red : .secondary)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-
-            GeometryReader { proxy in
-                let pageWidth = proxy.size.width
-
-                HStack(spacing: 0) {
-                    ForEach(memoCalendarPagerMonths, id: \.timeIntervalSinceReferenceDate) { month in
-                        memoCalendarMonthGrid(for: month)
-                            .frame(width: pageWidth)
+        return HorizontalPanHost {
+            VStack(spacing: 10) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 10) {
+                    ForEach(Array(memoCalendarWeekdays.enumerated()), id: \.offset) { index, weekday in
+                        Text(weekday)
+                            .font(.caption.bold())
+                            .foregroundStyle(index >= 5 ? .red : .secondary)
+                            .frame(maxWidth: .infinity)
                     }
                 }
-                .offset(x: -pageWidth + memoCalendarSwipeOffset)
-                .animation(
-                    isMemoCalendarSwipeAnimating
-                        ? .spring(response: 0.24, dampingFraction: 0.86)
-                        : nil,
-                    value: memoCalendarSwipeOffset
-                )
-                .frame(width: pageWidth, alignment: .leading)
+
+                GeometryReader { proxy in
+                    let pageWidth = proxy.size.width
+
+                    HStack(spacing: 0) {
+                        ForEach(memoCalendarPages, id: \.month.timeIntervalSinceReferenceDate) { page in
+                            memoCalendarMonthGrid(for: page)
+                                .frame(width: pageWidth)
+                        }
+                    }
+                    .offset(x: -pageWidth + memoCalendarSwipeOffset)
+                    .animation(
+                        isMemoCalendarSwipeAnimating
+                            ? .spring(response: 0.24, dampingFraction: 0.86)
+                            : nil,
+                        value: memoCalendarSwipeOffset
+                    )
+                    .frame(width: pageWidth, alignment: .leading)
+                    .clipped()
+                    .onAppear {
+                        memoCalendarPageWidth = pageWidth
+                        refreshMemoCalendarPages()
+                    }
+                    .onChange(of: pageWidth) { _, newWidth in
+                        memoCalendarPageWidth = newWidth
+                    }
+                }
+                .frame(height: memoCalendarPagerHeight)
                 .clipped()
             }
-            .frame(height: memoCalendarPagerHeight)
-            .clipped()
+            .contentShape(Rectangle())
+        } onChanged: { translation in
+            handleMemoCalendarSwipeChanged(
+                horizontalOffset: translation.width,
+                verticalOffset: translation.height
+            )
+        } onEnded: { translation, velocity in
+            handleMemoCalendarSwipeEnded(
+                horizontalOffset: translation.width,
+                verticalOffset: translation.height,
+                velocityWidth: velocity.width
+            )
         }
-        .contentShape(Rectangle())
-        .highPriorityGesture(pagerDragGesture)
+        .frame(maxWidth: .infinity)
+        .frame(height: pagerTotalHeight)
+        .onAppear(perform: refreshMemoCalendarPages)
+        .onChange(of: memoCalendarMonth) { _, _ in
+            refreshMemoCalendarPages()
+        }
+        .onChange(of: todoTasks) { _, _ in
+            refreshMemoCalendarPages()
+        }
+        .onChange(of: anniversaryItems) { _, _ in
+            refreshMemoCalendarPages()
+        }
     }
 
     var memoCalendarPagerMonths: [Date] {
@@ -181,18 +340,16 @@ extension ContentView {
     }
 
     var memoCalendarPagerHeight: CGFloat {
-        let maxCount = memoCalendarPagerMonths
-            .map { memoCalendarDates(for: $0).count / 7 }
-            .max() ?? 6
+        let maxCount = memoCalendarPages.map(\.weekCount).max() ?? 6
         return CGFloat(maxCount) * 54 + CGFloat(max(0, maxCount - 1)) * 10
     }
 
     @ViewBuilder
-    func memoCalendarMonthGrid(for month: Date) -> some View {
+    func memoCalendarMonthGrid(for page: MemoCalendarMonthPage) -> some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 10) {
-            ForEach(Array(memoCalendarDates(for: month).enumerated()), id: \.offset) { _, date in
-                if let date {
-                    memoCalendarDayCell(date)
+            ForEach(Array(page.cells.enumerated()), id: \.offset) { _, dayContext in
+                if let dayContext {
+                    memoCalendarDayCell(dayContext)
                 } else {
                     Color.clear
                         .frame(height: 54)
@@ -207,26 +364,23 @@ extension ContentView {
         let selectedTodoItems = memoCalendarTodoItems(on: memoCalendarSelectedDate)
 
         return VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("当天详情")
-                    .font(.headline.bold())
-
-                Spacer()
-
-                Text(memoCalendarSelectedDistanceText)
-                    .font(.caption.bold())
-                    .foregroundStyle(memoCalendarSelectedDistanceTint)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(memoCalendarSelectedDistanceTint.opacity(0.12), in: Capsule())
-            }
-
             HStack(alignment: .top, spacing: 12) {
                 memoCalendarSelectedLeadingIcon(for: selectedAnniversaryItems)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(memoCalendarSelectedFullDateText)
-                        .font(.subheadline.bold())
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text(memoCalendarSelectedFullDateText)
+                            .font(.subheadline.bold())
+
+                        Spacer(minLength: 8)
+
+                        Text(memoCalendarSelectedDistanceText)
+                            .font(.caption.bold())
+                            .foregroundStyle(memoCalendarSelectedDistanceTint)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(memoCalendarSelectedDistanceTint.opacity(0.12), in: Capsule())
+                    }
 
                     Text(memoCalendarSelectedLunarDateText)
                         .font(.caption)
@@ -411,19 +565,16 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
-    func memoCalendarDayCell(_ date: Date) -> some View {
+    func memoCalendarDayCell(_ dayContext: MemoCalendarDayContext) -> some View {
         let calendar = Calendar.current
+        let date = dayContext.date
         let isToday = calendar.isDateInToday(date)
         let isSelected = calendar.isDate(date, inSameDayAs: memoCalendarSelectedDate)
         let isWeekend = memoCalendarIsWeekend(date)
-        let specialDay = memoCalendarSpecialDay(for: date)
-        let anniversaryItems = memoCalendarAnniversaryItems(on: date)
-        let todoItems = memoCalendarTodoItems(on: date)
-        let dayLabel = memoCalendarDayLabel(
-            specialDay: specialDay,
-            anniversaryItems: anniversaryItems,
-            todoItems: todoItems
-        )
+        let specialDay = dayContext.specialDay
+        let anniversaryItems = dayContext.anniversaryItems
+        let todoItems = dayContext.todoItems
+        let dayLabel = dayContext.dayLabel
         let dayLabelTint = memoCalendarDayLabelTint(
             isSelected: isSelected,
             isAnniversary: !anniversaryItems.isEmpty,
@@ -489,6 +640,29 @@ extension ContentView {
         .buttonStyle(.plain)
     }
 
+    func refreshMemoCalendarPages() {
+        memoCalendarPages = memoCalendarPagerMonths.map { month in
+            let cells = memoCalendarDates(for: month).map { date -> MemoCalendarDayContext? in
+                guard let date else { return nil }
+                let specialDay = memoCalendarSpecialDay(for: date)
+                let anniversaryItems = memoCalendarAnniversaryItems(on: date)
+                let todoItems = memoCalendarTodoItems(on: date)
+                return MemoCalendarDayContext(
+                    date: date,
+                    specialDay: specialDay,
+                    anniversaryItems: anniversaryItems,
+                    todoItems: todoItems,
+                    dayLabel: memoCalendarDayLabel(
+                        specialDay: specialDay,
+                        anniversaryItems: anniversaryItems,
+                        todoItems: todoItems
+                    )
+                )
+            }
+            return MemoCalendarMonthPage(month: month, cells: cells)
+        }
+    }
+
     var memoCalendarWeekdays: [String] {
         ["一", "二", "三", "四", "五", "六", "日"]
     }
@@ -531,6 +705,10 @@ extension ContentView {
                 return calendar.isDate(dueDate, inSameDayAs: date)
             }
             .sorted { lhs, rhs in
+                if lhs.isInProgress != rhs.isInProgress {
+                    return lhs.isInProgress
+                }
+
                 switch (lhs.dueDate, rhs.dueDate) {
                 case let (lhsDate?, rhsDate?):
                     if lhsDate != rhsDate { return lhsDate < rhsDate }
@@ -1006,26 +1184,26 @@ extension ContentView {
         moveMemoCalendarMonth(by: horizontalOffset < 0 ? 1 : -1)
     }
 
-    func handleMemoCalendarSwipeChanged(_ value: DragGesture.Value) {
+    func handleMemoCalendarSwipeChanged(horizontalOffset: CGFloat, verticalOffset: CGFloat) {
         guard !isMemoCalendarSwipeAnimating else { return }
-
-        let horizontalOffset = value.translation.width
-        let verticalOffset = value.translation.height
 
         if abs(horizontalOffset) >= abs(verticalOffset) {
             memoCalendarSwipeOffset = horizontalOffset
         }
     }
 
-    func handleMemoCalendarSwipeEnded(_ value: DragGesture.Value) {
+    func handleMemoCalendarSwipeEnded(
+        horizontalOffset: CGFloat,
+        verticalOffset: CGFloat,
+        velocityWidth: CGFloat
+    ) {
         guard !isMemoCalendarSwipeAnimating else { return }
 
-        let horizontalOffset = value.translation.width
-        let predictedOffset = value.predictedEndTranslation.width
+        let predictedOffset = horizontalOffset + velocityWidth * 0.12
         let effectiveOffset = abs(predictedOffset) > abs(horizontalOffset) ? predictedOffset : horizontalOffset
         let threshold: CGFloat = 48
 
-        guard abs(horizontalOffset) >= abs(value.translation.height) else {
+        guard abs(horizontalOffset) >= abs(verticalOffset) else {
             resetMemoCalendarSwipeOffset()
             return
         }
@@ -1045,8 +1223,9 @@ extension ContentView {
         }
 
         isMemoCalendarSwipeAnimating = true
+        let animationWidth = memoCalendarPageWidth > 0 ? memoCalendarPageWidth : UIScreen.main.bounds.width
         withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
-            memoCalendarSwipeOffset = monthDelta > 0 ? -UIScreen.main.bounds.width : UIScreen.main.bounds.width
+            memoCalendarSwipeOffset = monthDelta > 0 ? -animationWidth : animationWidth
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
@@ -1231,8 +1410,12 @@ extension ContentView {
                 if !activeTodoTasks.isEmpty {
                     VStack(spacing: 8) {
                         ForEach(activeTodoTasks) { task in
-                            TodoTaskRow(task: task, onToggle: {
-                                toggleTodoTask(task)
+                            TodoTaskRow(task: task, onMarkPending: {
+                                setTodoTaskStatus(task, status: .pending)
+                            }, onMarkInProgress: {
+                                setTodoTaskStatus(task, status: .inProgress)
+                            }, onMarkCompleted: {
+                                setTodoTaskStatus(task, status: .completed)
                             }, onEdit: {
                                 editingTodoTask = task
                             }, onDelete: {
@@ -1248,8 +1431,12 @@ extension ContentView {
                     DisclosureGroup {
                         VStack(spacing: 8) {
                             ForEach(completedTodoTasks.prefix(8)) { task in
-                                TodoTaskRow(task: task, onToggle: {
-                                    toggleTodoTask(task)
+                                TodoTaskRow(task: task, onMarkPending: {
+                                    setTodoTaskStatus(task, status: .pending)
+                                }, onMarkInProgress: {
+                                    setTodoTaskStatus(task, status: .inProgress)
+                                }, onMarkCompleted: {
+                                    setTodoTaskStatus(task, status: .completed)
                                 }, onEdit: {
                                     editingTodoTask = task
                                 }, onDelete: {

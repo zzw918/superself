@@ -90,6 +90,13 @@ extension ContentView {
                 if lhs.isPinned != rhs.isPinned {
                     return lhs.isPinned
                 }
+
+                let lhsStatusPriority = lhs.isInProgress ? 0 : 1
+                let rhsStatusPriority = rhs.isInProgress ? 0 : 1
+
+                if lhsStatusPriority != rhsStatusPriority {
+                    return lhsStatusPriority < rhsStatusPriority
+                }
                 
                 let lhsPriorityIndex = TodoPriority.allCases.firstIndex(of: lhs.priority) ?? .max
                 let rhsPriorityIndex = TodoPriority.allCases.firstIndex(of: rhs.priority) ?? .max

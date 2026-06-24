@@ -1066,7 +1066,7 @@ struct ExpenseRecordEditorSheet: View {
                             .foregroundStyle(.secondary)
 
                         ModernInputField(
-                            placeholder: "输入这笔支出",
+                            placeholder: "支出金额",
                             text: $amountInput,
                             icon: "yensign.circle.fill",
                             tint: .blue,

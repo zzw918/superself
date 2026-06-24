@@ -323,6 +323,7 @@ extension ContentView {
         loadSectionPreferences()
         loadWeightLogs()
         loadFastingSessions()
+        loadCalculatorHistory()
         loadTodoTasks()
         loadMemoNotes()
         loadWishlistCategories()
@@ -427,6 +428,14 @@ extension ContentView {
         }
     }
 
+    func loadCalculatorHistory() {
+        guard !calculatorHistoryData.isEmpty else { return }
+
+        if let decodedHistory = try? JSONDecoder().decode([CalculatorHistoryItem].self, from: calculatorHistoryData) {
+            calculatorHistory = decodedHistory.sorted { $0.createdAt > $1.createdAt }
+        }
+    }
+
     func loadMemoNotes() {
         guard !memoNotesData.isEmpty else { return }
 
@@ -446,9 +455,17 @@ extension ContentView {
     }
 
     func toggleTodoTask(_ task: TodoTask) {
+        setTodoTaskStatus(task, status: task.isCompleted ? .pending : .completed)
+    }
+
+    func setTodoTaskStatus(_ task: TodoTask, status: TodoTaskStatus) {
         guard let index = todoTasks.firstIndex(where: { $0.id == task.id }) else { return }
 
-        todoTasks[index].completedAt = todoTasks[index].isCompleted ? nil : Date()
+        guard todoTasks[index].status != status else { return }
+
+        todoTasks[index].status = status
+        todoTasks[index].completedAt = status == .completed ? Date() : nil
+        todoTasks[index].updatedAt = Date()
         persistTodoTasks()
     }
 
@@ -486,6 +503,21 @@ extension ContentView {
             cloudStore.set(encodedTasks, forKey: todoTasksCloudKey)
             flushToICloud()
         }
+    }
+
+    func persistCalculatorHistory() {
+        calculatorHistory = Array(calculatorHistory.sorted { $0.createdAt > $1.createdAt }.prefix(200))
+
+        if let encodedHistory = try? JSONEncoder().encode(calculatorHistory) {
+            calculatorHistoryData = encodedHistory
+            cloudStore.set(encodedHistory, forKey: calculatorHistoryCloudKey)
+            flushToICloud()
+        }
+    }
+
+    func clearCalculatorHistory() {
+        calculatorHistory.removeAll()
+        persistCalculatorHistory()
     }
 
     func addMemoNote(content: String, tags: [String], imageDatas: [Data]) {
@@ -1159,6 +1191,11 @@ extension ContentView {
             mergeTodoTasks(cloudTodoTasks)
         }
 
+        if let cloudCalculatorHistoryData = cloudStore.data(forKey: calculatorHistoryCloudKey),
+           let cloudCalculatorHistory = try? JSONDecoder().decode([CalculatorHistoryItem].self, from: cloudCalculatorHistoryData) {
+            mergeCalculatorHistory(cloudCalculatorHistory)
+        }
+
         if let cloudWishlistItemsData = cloudStore.data(forKey: wishlistItemsCloudKey),
            let cloudWishlistItems = try? JSONDecoder().decode([WishlistItem].self, from: cloudWishlistItemsData) {
             mergeWishlistItems(cloudWishlistItems)
@@ -1276,6 +1313,10 @@ extension ContentView {
 
         if let encodedTodoTasks = try? JSONEncoder().encode(todoTasks) {
             cloudStore.set(encodedTodoTasks, forKey: todoTasksCloudKey)
+        }
+
+        if let encodedCalculatorHistory = try? JSONEncoder().encode(calculatorHistory) {
+            cloudStore.set(encodedCalculatorHistory, forKey: calculatorHistoryCloudKey)
         }
 
         if let encodedWishlistItems = try? JSONEncoder().encode(wishlistItems) {
@@ -1496,6 +1537,28 @@ extension ContentView {
 
         if let encodedTasks = try? JSONEncoder().encode(todoTasks) {
             todoTasksData = encodedTasks
+        }
+    }
+
+    func mergeCalculatorHistory(_ cloudHistory: [CalculatorHistoryItem]) {
+        var mergedHistoryByID = Dictionary(uniqueKeysWithValues: calculatorHistory.map { ($0.id, $0) })
+
+        for item in cloudHistory {
+            if let local = mergedHistoryByID[item.id] {
+                mergedHistoryByID[item.id] = item.createdAt >= local.createdAt ? item : local
+            } else {
+                mergedHistoryByID[item.id] = item
+            }
+        }
+
+        calculatorHistory = Array(
+            mergedHistoryByID.values
+                .sorted { $0.createdAt > $1.createdAt }
+                .prefix(200)
+        )
+
+        if let encodedHistory = try? JSONEncoder().encode(calculatorHistory) {
+            calculatorHistoryData = encodedHistory
         }
     }
 

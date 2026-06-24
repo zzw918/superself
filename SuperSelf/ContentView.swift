@@ -27,6 +27,7 @@ struct ContentView: View {
     let expenseRecordsCloudKey = "expenseRecords"
     let expenseCategoriesCloudKey = "expenseCategories"
     let stockResearchItemsCloudKey = "stockResearchItems"
+    let calculatorHistoryCloudKey = "calculatorHistory"
     let mainTabPreferencesCloudKey = "mainTabPreferences"
     let healthSectionPreferencesCloudKey = "healthSectionPreferences"
     let memoSectionPreferencesCloudKey = "memoSectionPreferences"
@@ -54,6 +55,7 @@ struct ContentView: View {
     @AppStorage("expenseRecords") var expenseRecordsData = Data()
     @AppStorage("expenseCategories") var expenseCategoriesData = Data()
     @AppStorage("stockResearchItems") var stockResearchItemsData = Data()
+    @AppStorage("calculatorHistory") var calculatorHistoryData = Data()
     @AppStorage("mainTabPreferences") var mainTabPreferencesData = Data()
     @AppStorage("healthSectionPreferences") var healthSectionPreferencesData = Data()
     @AppStorage("memoSectionPreferences") var memoSectionPreferencesData = Data()
@@ -88,6 +90,8 @@ struct ContentView: View {
     @State var memoCalendarSelectedDate = Calendar.current.startOfDay(for: Date())
     @State var memoCalendarSwipeOffset: CGFloat = 0
     @State var isMemoCalendarSwipeAnimating = false
+    @State var memoCalendarPageWidth: CGFloat = 0
+    @State var memoCalendarPages: [MemoCalendarMonthPage] = []
     @State var todoInput = ""
     @State var todoPriorityInput: TodoPriority = .importantNotUrgent
     @State var todoFilter: TodoPriority? = nil

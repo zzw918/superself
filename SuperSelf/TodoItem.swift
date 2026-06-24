@@ -45,27 +45,51 @@ struct FastingSession: Identifiable, Equatable, Codable {
     var completed: Bool
 }
 
+enum TodoTaskStatus: String, CaseIterable, Identifiable, Codable {
+    case pending
+    case inProgress
+    case completed
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .pending:
+            return "待处理"
+        case .inProgress:
+            return "进行中"
+        case .completed:
+            return "已完成"
+        }
+    }
+}
+
 struct TodoTask: Identifiable, Equatable, Codable {
     var id = UUID()
     var title: String
     var createdAt: Date
     var updatedAt: Date?
     var completedAt: Date?
+    var status: TodoTaskStatus = .pending
     var priority: TodoPriority = .importantNotUrgent
     var dueDate: Date?
     var isPinned: Bool = false
 
     var isCompleted: Bool {
-        completedAt != nil
+        status == .completed
+    }
+
+    var isInProgress: Bool {
+        status == .inProgress
     }
 
     /// 用于排序与展示的最近活动时间：编辑过取编辑时间，否则取创建时间。
     var lastActivityAt: Date {
-        updatedAt ?? createdAt
+        max(updatedAt ?? createdAt, completedAt ?? .distantPast)
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, createdAt, updatedAt, completedAt, priority, dueDate, isPinned
+        case id, title, createdAt, updatedAt, completedAt, status, priority, dueDate, isPinned
     }
 
     init(
@@ -74,6 +98,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
         createdAt: Date,
         updatedAt: Date? = nil,
         completedAt: Date? = nil,
+        status: TodoTaskStatus = .pending,
         priority: TodoPriority = .importantNotUrgent,
         dueDate: Date? = nil,
         isPinned: Bool = false
@@ -83,6 +108,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.completedAt = completedAt
+        self.status = completedAt != nil && status == .pending ? .completed : status
         self.priority = priority
         self.dueDate = dueDate
         self.isPinned = isPinned
@@ -95,6 +121,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+        status = try container.decodeIfPresent(TodoTaskStatus.self, forKey: .status) ?? (completedAt != nil ? .completed : .pending)
         priority = try container.decodeIfPresent(TodoPriority.self, forKey: .priority) ?? .importantNotUrgent
         dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
