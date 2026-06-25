@@ -452,6 +452,9 @@ extension ContentView {
                 calculatorRow
                     .profileCardRow()
 
+                exchangeRateRow
+                    .profileCardRow()
+
                 profileSectionTitleRow("功能管理") {
                     if isEditingTabs {
                         HStack(spacing: 8) {
@@ -660,6 +663,39 @@ extension ContentView {
         .overlay {
             NavigationLink {
                 AnyView(WeatherForecastPage(weatherStore: weatherStore))
+            } label: {
+                EmptyView()
+            }
+            .opacity(0)
+        }
+    }
+
+    var exchangeRateRow: some View {
+        HStack(spacing: 14) {
+            profileIcon("dollarsign.circle", tint: .orange)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("汇率转换")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("实时获取最新汇率，支持多币种转换")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            NavigationLink {
+                AnyView(ExchangeRatePage())
             } label: {
                 EmptyView()
             }

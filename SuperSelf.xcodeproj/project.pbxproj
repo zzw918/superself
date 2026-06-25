@@ -23,7 +23,10 @@
 		A1B2C3D41A2B3C4D00000019 /* FeatureRowsAndSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000019 /* FeatureRowsAndSheets.swift */; };
 		A1B2C3D41A2B3C4D00000020 /* Charts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000020 /* Charts.swift */; };
 		A1B2C3D41A2B3C4D00000021 /* ContentView+Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000021 /* ContentView+Notifications.swift */; };
-		A1B2C3D41A2B3C4D00000022 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000022 /* WeatherService.swift */; };
+                A1B2C3D41A2B3C4D00000022 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000022 /* WeatherService.swift */; };
+                A1B2C3D41A2B3C4D00000091 /* ExchangeRateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000091 /* ExchangeRateService.swift */; };
+                A1B2C3D41A2B3C4D00000092 /* ExchangeRatePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000092 /* ExchangeRatePage.swift */; };
+		A1B2C3D41A2B3C4D00000093 /* ExchangeRateTrendPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000093 /* ExchangeRateTrendPage.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +49,9 @@
 		A1B2C3D31A2B3C4D00000020 /* Charts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Charts.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000021 /* ContentView+Notifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Notifications.swift"; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000022 /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000091 /* ExchangeRateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeRateService.swift; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000092 /* ExchangeRatePage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeRatePage.swift; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000093 /* ExchangeRateTrendPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeRateTrendPage.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -140,6 +146,8 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D31A2B3C4D00000011 /* ContentView+Pages.swift */,
+				A1B2C3D31A2B3C4D00000092 /* ExchangeRatePage.swift */,
+				A1B2C3D31A2B3C4D00000093 /* ExchangeRateTrendPage.swift */,
 			);
 			path = Profile;
 			sourceTree = "<group>";
@@ -150,6 +158,7 @@
 				A1B2C3D31A2B3C4D00000016 /* ContentView+Persistence.swift */,
 				A1B2C3D31A2B3C4D00000021 /* ContentView+Notifications.swift */,
 				A1B2C3D31A2B3C4D00000022 /* WeatherService.swift */,
+				A1B2C3D31A2B3C4D00000091 /* ExchangeRateService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -254,6 +263,9 @@
 				A1B2C3D41A2B3C4D00000020 /* Charts.swift in Sources */,
 				A1B2C3D41A2B3C4D00000021 /* ContentView+Notifications.swift in Sources */,
 				A1B2C3D41A2B3C4D00000022 /* WeatherService.swift in Sources */,
+				A1B2C3D41A2B3C4D00000091 /* ExchangeRateService.swift in Sources */,
+				A1B2C3D41A2B3C4D00000092 /* ExchangeRatePage.swift in Sources */,
+				A1B2C3D41A2B3C4D00000093 /* ExchangeRateTrendPage.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
