@@ -116,7 +116,7 @@ extension ContentView {
 
     func loadSectionPreferences() {
         if let prefs = decodeSectionPreferences(HealthSection.self, from: healthSectionPreferencesData) {
-            healthSectionPrefs = prefs.normalized
+            healthSectionPrefs = migrateHealthSectionPreferences(prefs)
         }
         if let prefs = decodeSectionPreferences(MemoSection.self, from: memoSectionPreferencesData) {
             memoSectionPrefs = migrateMemoSectionPreferences(prefs)
@@ -130,6 +130,21 @@ extension ContentView {
     func decodeSectionPreferences<S>(_ type: S.Type, from data: Data) -> SectionPreferences<S>? {
         guard !data.isEmpty else { return nil }
         return try? JSONDecoder().decode(SectionPreferences<S>.self, from: data)
+    }
+
+    func migrateHealthSectionPreferences(_ prefs: SectionPreferences<HealthSection>) -> SectionPreferences<HealthSection> {
+        var order = prefs.order
+        var visibleSections = prefs.visibleSections
+
+        if !order.contains(.mood) {
+            order.append(.mood)
+            visibleSections.append(.mood)
+        } else if !visibleSections.contains(.mood) && !UserDefaults.standard.bool(forKey: "hasMigratedMoodVisibilityFix") {
+            visibleSections.append(.mood)
+            UserDefaults.standard.set(true, forKey: "hasMigratedMoodVisibilityFix")
+        }
+
+        return SectionPreferences(order: order, visibleSections: visibleSections).normalized
     }
 
     func migrateMemoSectionPreferences(_ prefs: SectionPreferences<MemoSection>) -> SectionPreferences<MemoSection> {
@@ -1247,7 +1262,7 @@ extension ContentView {
 
         if let data = cloudStore.data(forKey: healthSectionPreferencesCloudKey),
            let prefs = try? JSONDecoder().decode(SectionPreferences<HealthSection>.self, from: data) {
-            healthSectionPrefs = prefs.normalized
+            healthSectionPrefs = migrateHealthSectionPreferences(prefs)
             healthSectionPreferencesData = (try? JSONEncoder().encode(healthSectionPrefs)) ?? healthSectionPreferencesData
         }
 

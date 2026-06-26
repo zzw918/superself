@@ -27,6 +27,8 @@
                 A1B2C3D41A2B3C4D00000091 /* ExchangeRateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000091 /* ExchangeRateService.swift */; };
                 A1B2C3D41A2B3C4D00000092 /* ExchangeRatePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000092 /* ExchangeRatePage.swift */; };
 		A1B2C3D41A2B3C4D00000093 /* ExchangeRateTrendPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000093 /* ExchangeRateTrendPage.swift */; };
+		A1B2C3D41A2B3C4D00000094 /* ContentView+Mood.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000094 /* ContentView+Mood.swift */; };
+		A1B2C3D41A2B3C4D00000095 /* JokeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000095 /* JokeService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +54,8 @@
 		A1B2C3D31A2B3C4D00000091 /* ExchangeRateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeRateService.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000092 /* ExchangeRatePage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeRatePage.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000093 /* ExchangeRateTrendPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeRateTrendPage.swift; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000094 /* ContentView+Mood.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Mood.swift"; sourceTree = "<group>"; };
+		A1B2C3D31A2B3C4D00000095 /* JokeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JokeService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -122,6 +126,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D31A2B3C4D00000013 /* ContentView+Health.swift */,
+				A1B2C3D31A2B3C4D00000094 /* ContentView+Mood.swift */,
 			);
 			path = Health;
 			sourceTree = "<group>";
@@ -159,6 +164,7 @@
 				A1B2C3D31A2B3C4D00000021 /* ContentView+Notifications.swift */,
 				A1B2C3D31A2B3C4D00000022 /* WeatherService.swift */,
 				A1B2C3D31A2B3C4D00000091 /* ExchangeRateService.swift */,
+				A1B2C3D31A2B3C4D00000095 /* JokeService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -266,6 +272,8 @@
 				A1B2C3D41A2B3C4D00000091 /* ExchangeRateService.swift in Sources */,
 				A1B2C3D41A2B3C4D00000092 /* ExchangeRatePage.swift in Sources */,
 				A1B2C3D41A2B3C4D00000093 /* ExchangeRateTrendPage.swift in Sources */,
+				A1B2C3D41A2B3C4D00000094 /* ContentView+Mood.swift in Sources */,
+				A1B2C3D41A2B3C4D00000095 /* JokeService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

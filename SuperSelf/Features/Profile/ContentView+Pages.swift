@@ -133,6 +133,8 @@ extension ContentView {
             fastingSection
         case .weight:
             weightSection
+        case .mood:
+            moodSection
         }
     }
 
