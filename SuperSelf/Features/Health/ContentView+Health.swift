@@ -18,7 +18,7 @@ extension ContentView {
         return VStack(spacing: 22) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 10) {
-                    Text(isFasting ? "断食中" : "进食中")
+                    Text(isFasting ? (reached ? "断食中 🥳" : "断食中 🥺") : (reached ? "进食中 🐷" : "进食中 😋"))
                         .font(.title.bold())
                         .foregroundStyle(reached ? overtimeAccent : accent)
                     Spacer()

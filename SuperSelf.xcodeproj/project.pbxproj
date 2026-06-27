@@ -29,6 +29,7 @@
 		A1B2C3D41A2B3C4D00000093 /* ExchangeRateTrendPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000093 /* ExchangeRateTrendPage.swift */; };
 		A1B2C3D41A2B3C4D00000094 /* ContentView+Mood.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000094 /* ContentView+Mood.swift */; };
 		A1B2C3D41A2B3C4D00000095 /* JokeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000095 /* JokeService.swift */; };
+                A1B2C3D41A2B3C4D00000101 /* cute_pig_walk.gif in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D31A2B3C4D00000101 /* cute_pig_walk.gif */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,14 +57,15 @@
 		A1B2C3D31A2B3C4D00000093 /* ExchangeRateTrendPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExchangeRateTrendPage.swift; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000094 /* ContentView+Mood.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentView+Mood.swift"; sourceTree = "<group>"; };
 		A1B2C3D31A2B3C4D00000095 /* JokeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JokeService.swift; sourceTree = "<group>"; };
+                A1B2C3D31A2B3C4D00000101 /* cute_pig_walk.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = cute_pig_walk.gif; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A1B2C3D51A2B3C4D00000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-			);
+                        files = (
+                        );
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -88,6 +90,7 @@
 				A1B2C3D61A2B3C4D00000005 /* Features */,
 				A1B2C3D61A2B3C4D00000010 /* Services */,
 				A1B2C3D61A2B3C4D00000011 /* UI */,
+                                A1B2C3D61A2B3C4D00000100 /* Resources */,
 				A1B2C3D31A2B3C4D00000004 /* Assets.xcassets */,
 			);
 			path = SuperSelf;
@@ -179,6 +182,14 @@
 			path = UI;
 			sourceTree = "<group>";
 		};
+                A1B2C3D61A2B3C4D00000100 /* Resources */ = {
+                        isa = PBXGroup;
+                        children = (
+                                A1B2C3D31A2B3C4D00000101 /* cute_pig_walk.gif */,
+                        );
+                        path = Resources;
+                        sourceTree = "<group>";
+                };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -194,8 +205,8 @@
 			);
 			dependencies = (
 			);
-			name = SuperSelf;
-			productName = SuperSelf;
+                        name = SuperSelf;
+                        productName = SuperSelf;
 			productReference = A1B2C3D31A2B3C4D00000005 /* SuperSelf.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -227,8 +238,8 @@
 				en,
 				Base,
 			);
-			mainGroup = A1B2C3D61A2B3C4D00000001;
-			productRefGroup = A1B2C3D61A2B3C4D00000003 /* Products */;
+                        mainGroup = A1B2C3D61A2B3C4D00000001;
+                        productRefGroup = A1B2C3D61A2B3C4D00000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -241,9 +252,10 @@
 		A1B2C3D91A2B3C4D00000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-				A1B2C3D41A2B3C4D00000004 /* Assets.xcassets in Resources */,
-			);
+                        files = (
+                                A1B2C3D41A2B3C4D00000004 /* Assets.xcassets in Resources */,
+                                A1B2C3D41A2B3C4D00000101 /* cute_pig_walk.gif in Resources */,
+                        );
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
