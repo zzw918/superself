@@ -177,6 +177,11 @@ struct DeleteConfirmationContent {
     let confirmTitle: String
 }
 
+enum LongPressActionPresentation {
+    case contextMenu
+    case blurredOverlay
+}
+
 struct AppSegmentedControl<Option: Identifiable & Hashable>: View {
     let options: [Option]
     @Binding var selection: Option
@@ -455,43 +460,210 @@ struct LongPressDeleteModifier: ViewModifier {
     let onDelete: (() -> Void)?
     var isPinned: Bool = false
     var onTogglePin: (() -> Void)? = nil
+    var presentation: LongPressActionPresentation = .contextMenu
 
     @State private var isShowingConfirmation = false
+    @State private var isShowingActionsOverlay = false
+    @State private var itemFrame: CGRect = .zero
 
     func body(content: Content) -> some View {
         if onDelete != nil || onTogglePin != nil {
-            content
-                .contextMenu {
-                    if let onTogglePin {
-                        Button {
-                            onTogglePin()
-                        } label: {
-                            Label(isPinned ? "取消置顶" : "置顶", systemImage: isPinned ? "pin.slash" : "pin")
+            switch presentation {
+            case .contextMenu:
+                content
+                    .contextMenu {
+                        if let onTogglePin {
+                            Button {
+                                onTogglePin()
+                            } label: {
+                                Label(isPinned ? "取消置顶" : "置顶", systemImage: isPinned ? "pin.slash" : "pin")
+                            }
+                        }
+                        if onDelete != nil {
+                            Button(role: .destructive) {
+                                isShowingConfirmation = true
+                            } label: {
+                                Label("删除", systemImage: "trash")
+                            }
                         }
                     }
-                    if onDelete != nil {
-                        Button(role: .destructive) {
-                            isShowingConfirmation = true
-                        } label: {
-                            Label("删除", systemImage: "trash")
+                    .confirmationDialog(
+                        confirmation.title,
+                        isPresented: $isShowingConfirmation,
+                        titleVisibility: .visible
+                    ) {
+                        Button(confirmation.confirmTitle, role: .destructive) {
+                            onDelete?()
                         }
+                        Button("取消", role: .cancel) {}
+                    } message: {
+                        Text(confirmation.message)
                     }
-                }
-                .confirmationDialog(
-                    confirmation.title,
-                    isPresented: $isShowingConfirmation,
-                    titleVisibility: .visible
-                ) {
-                    Button(confirmation.confirmTitle, role: .destructive) {
-                        onDelete?()
+
+            case .blurredOverlay:
+                content
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear.onAppear {
+                                itemFrame = geo.frame(in: .global)
+                            }
+                            .onChange(of: geo.frame(in: .global)) { newFrame in
+                                itemFrame = newFrame
+                            }
+                        }
+                    )
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 0.35)
+                            .onEnded { _ in
+                                let generator = UIImpactFeedbackGenerator(style: .medium)
+                                generator.impactOccurred()
+                                isShowingActionsOverlay = true
+                            }
+                    )
+                    .fullScreenCover(isPresented: $isShowingActionsOverlay) {
+                        LongPressActionsOverlay(
+                            isPinned: isPinned,
+                            canDelete: onDelete != nil,
+                            itemFrame: itemFrame,
+                            highlightContent: { content },
+                            onTogglePin: {
+                                isShowingActionsOverlay = false
+                                onTogglePin?()
+                            },
+                            onDelete: {
+                                isShowingActionsOverlay = false
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                                    isShowingConfirmation = true
+                                }
+                            }
+                        )
+                        .presentationBackground(.clear)
                     }
-                    Button("取消", role: .cancel) {}
-                } message: {
-                    Text(confirmation.message)
-                }
+                    .confirmationDialog(
+                        confirmation.title,
+                        isPresented: $isShowingConfirmation,
+                        titleVisibility: .visible
+                    ) {
+                        Button(confirmation.confirmTitle, role: .destructive) {
+                            onDelete?()
+                        }
+                        Button("取消", role: .cancel) {}
+                    } message: {
+                        Text(confirmation.message)
+                    }
+            }
         } else {
             content
         }
+    }
+}
+
+struct LongPressActionsOverlay<HighlightContent: View>: View {
+    let isPinned: Bool
+    let canDelete: Bool
+    let itemFrame: CGRect
+    @ViewBuilder let highlightContent: () -> HighlightContent
+    let onTogglePin: () -> Void
+    let onDelete: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        GeometryReader { proxy in
+            let menuWidth = min(308, proxy.size.width - 64)
+            let menuHeight: CGFloat = canDelete ? 118 : 64
+            let menuX = min(max(itemFrame.midX, menuWidth / 2 + 16), proxy.size.width - menuWidth / 2 - 16)
+            let bottomMenuY = itemFrame.maxY + 14 + menuHeight / 2
+            let topMenuY = itemFrame.minY - 14 - menuHeight / 2
+            let menuY = bottomMenuY < proxy.size.height - 96 ? bottomMenuY : max(80 + menuHeight / 2, topMenuY)
+
+            ZStack {
+                Rectangle()
+                    .fill(.regularMaterial)
+                    .ignoresSafeArea()
+
+                Color.black.opacity(0.22)
+                    .ignoresSafeArea()
+
+                Color.clear
+                    .contentShape(Rectangle())
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        dismiss()
+                    }
+
+                if itemFrame != .zero {
+                    highlightContent()
+                        .frame(width: itemFrame.width, height: itemFrame.height, alignment: .center)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: .black.opacity(0.16), radius: 22, x: 0, y: 10)
+                        .position(x: itemFrame.midX, y: itemFrame.midY)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+
+                actionMenu
+                    .frame(width: menuWidth)
+                    .position(x: menuX, y: menuY)
+            }
+        }
+    }
+
+    private var actionMenu: some View {
+        VStack(spacing: 0) {
+            Button {
+                onTogglePin()
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: isPinned ? "pin.slash.fill" : "pin.fill")
+                        .font(.title3)
+                        .foregroundStyle(.primary)
+                        .frame(width: 28)
+
+                    Text(isPinned ? "取消置顶" : "置顶")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+                }
+                .padding(.horizontal, 18)
+                .frame(height: 58)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if canDelete {
+                Divider()
+                    .padding(.leading, 60)
+
+                Button {
+                    onDelete()
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: "trash.fill")
+                            .font(.title3)
+                            .foregroundStyle(.red)
+                            .frame(width: 28)
+
+                        Text("删除")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.red)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 18)
+                    .frame(height: 58)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.white.opacity(0.28), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.12), radius: 18, x: 0, y: 8)
     }
 }
 
@@ -504,13 +676,15 @@ extension View {
         _ confirmation: DeleteConfirmationContent,
         onDelete: (() -> Void)?,
         isPinned: Bool,
-        onTogglePin: (() -> Void)?
+        onTogglePin: (() -> Void)?,
+        presentation: LongPressActionPresentation = .contextMenu
     ) -> some View {
         modifier(LongPressDeleteModifier(
             confirmation: confirmation,
             onDelete: onDelete,
             isPinned: isPinned,
-            onTogglePin: onTogglePin
+            onTogglePin: onTogglePin,
+            presentation: presentation
         ))
     }
 }

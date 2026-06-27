@@ -77,7 +77,7 @@ struct TodoTaskRow: View {
                         .foregroundStyle(task.isCompleted || isCelebratingCompletion ? .secondary : .primary)
                         .multilineTextAlignment(.leading)
 
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         if task.isPinned {
                             Image(systemName: "pin.fill")
                                 .font(.caption2)
@@ -157,7 +157,8 @@ struct TodoTaskRow: View {
             ),
             onDelete: onDelete,
             isPinned: task.isPinned,
-            onTogglePin: onTogglePin
+            onTogglePin: onTogglePin,
+            presentation: .contextMenu
         )
     }
 
@@ -329,7 +330,7 @@ struct TodoTaskStatusBadge: View {
 
     var body: some View {
         Text(status.title)
-            .font(.caption2.weight(.semibold))
+            .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(tint)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
@@ -356,7 +357,7 @@ struct TodoPriorityBadge: View {
     var body: some View {
         HStack(spacing: 0) {
             Text(priority.title)
-                .font(.caption2.weight(.semibold))
+                .font(.system(size: 10, weight: .semibold))
         }
         .foregroundStyle(tint)
         .padding(.horizontal, 7)
@@ -385,7 +386,7 @@ struct TodoDueBadge: View {
             Image(systemName: isOverdue ? "exclamationmark.circle.fill" : "calendar.badge.clock")
                 .font(.system(size: 9, weight: .bold))
             Text(dueText)
-                .font(.caption2.weight(.semibold))
+                .font(.system(size: 10, weight: .semibold))
         }
         .foregroundStyle(tint)
         .padding(.horizontal, 7)
@@ -2963,6 +2964,40 @@ struct TodoDueDateField: View {
         return formatter.string(from: dueDate)
     }
 
+    private var quickDateOptions: [(title: String, date: Date)] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return [
+            ("今天", today),
+            ("明天", calendar.date(byAdding: .day, value: 1, to: today) ?? today),
+            ("下周", calendar.date(byAdding: .day, value: 7, to: today) ?? today)
+        ]
+    }
+
+    private var mondayFirstCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "zh_CN")
+        calendar.timeZone = .current
+        calendar.firstWeekday = 2
+        return calendar
+    }
+
+    private func setDueDateKeepingTime(_ date: Date) {
+        let calendar = Calendar.current
+        let dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: dueDate)
+
+        var components = DateComponents()
+        components.year = dateComponents.year
+        components.month = dateComponents.month
+        components.day = dateComponents.day
+        components.hour = timeComponents.hour
+        components.minute = timeComponents.minute
+        components.second = timeComponents.second
+
+        dueDate = calendar.date(from: components) ?? date
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: $hasDueDate.animation(.spring(response: 0.25, dampingFraction: 0.88))) {
@@ -2976,18 +3011,49 @@ struct TodoDueDateField: View {
             .tint(.blue)
 
             if hasDueDate {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    ForEach(quickDateOptions, id: \.title) { option in
+                        let isSelected = Calendar.current.isDate(dueDate, inSameDayAs: option.date)
+
+                        Button {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                setDueDateKeepingTime(option.date)
+                            }
+                        } label: {
+                            Text(option.title)
+                                .font(.footnote.weight(.medium))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .foregroundStyle(isSelected ? .white : .secondary)
+                                .frame(minWidth: 24)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(
+                                    isSelected ? AnyShapeStyle(Color.blue) : AnyShapeStyle(Color(.tertiarySystemGroupedBackground)),
+                                    in: Capsule()
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Spacer(minLength: 4)
+
                     Button {
                         isShowingDatePicker = true
                         isShowingTimePicker = false
                     } label: {
-                        Text(dueDateText)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.blue)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(Color(.tertiarySystemGroupedBackground))
-                            .clipShape(Capsule())
+                        HStack(spacing: 4) {
+                            Text(dueDateText)
+                                .font(.footnote.weight(.medium))
+                                .lineLimit(1)
+
+                            Image(systemName: "chevron.down")
+                                .font(.caption2.bold())
+                        }
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .popover(isPresented: $isShowingDatePicker, arrowEdge: .bottom) {
@@ -2999,6 +3065,7 @@ struct TodoDueDateField: View {
                         .labelsHidden()
                         .datePickerStyle(.graphical)
                         .environment(\.locale, Locale(identifier: "zh_CN"))
+                        .environment(\.calendar, mondayFirstCalendar)
                         .padding(10)
                         .frame(minWidth: 320)
                         .presentationCompactAdaptation(.popover)
@@ -3009,9 +3076,10 @@ struct TodoDueDateField: View {
                         isShowingDatePicker = false
                     } label: {
                         Text(dueTimeText)
-                            .font(.subheadline.weight(.medium))
+                            .font(.footnote.weight(.medium))
+                            .lineLimit(1)
                             .foregroundStyle(.primary)
-                            .padding(.horizontal, 14)
+                            .padding(.horizontal, 10)
                             .padding(.vertical, 8)
                             .background(Color(.tertiarySystemGroupedBackground))
                             .clipShape(Capsule())
@@ -3031,6 +3099,8 @@ struct TodoDueDateField: View {
                         .presentationCompactAdaptation(.popover)
                     }
                 }
+                .lineLimit(1)
+                .minimumScaleFactor(0.9)
             }
         }
         .padding(.horizontal, 14)

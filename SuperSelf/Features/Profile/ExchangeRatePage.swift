@@ -69,6 +69,11 @@ struct ExchangeRatePage: View {
                             .monospacedDigit()
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.leading)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.55)
+                            .allowsTightening(true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .clipped()
                             .focused($isInputFocused)
                             .onChange(of: amountText) { newValue in
                                 if isEditingTop {
@@ -84,9 +89,8 @@ struct ExchangeRatePage: View {
                                 }
                             }
                         
-                        Spacer()
-                        
                         currencyMenu(isSource: true)
+                            .fixedSize()
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 20)
@@ -118,6 +122,11 @@ struct ExchangeRatePage: View {
                             .monospacedDigit()
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.leading)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.55)
+                            .allowsTightening(true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .clipped()
                             .focused($isInputFocused)
                             .onChange(of: bottomAmountText) { newValue in
                                 if !isEditingTop {
@@ -134,9 +143,8 @@ struct ExchangeRatePage: View {
                                 }
                             }
                         
-                        Spacer()
-                        
                         currencyMenu(isSource: false)
+                            .fixedSize()
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 20)
