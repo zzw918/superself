@@ -15,6 +15,8 @@ struct ContentView: View {
     let latestWeightCloudKey = "latestWeight"
     let weightLogsCloudKey = "weightLogs"
     let fastingSessionsCloudKey = "fastingSessions"
+    let exerciseGoalsCloudKey = "exerciseGoals"
+    let exerciseRecordsCloudKey = "exerciseRecords"
     let fastingGoalHoursCloudKey = "fastingGoalHours"
     let eatingGoalHoursCloudKey = "eatingGoalHours"
     let dailyGoalCloudKey = "dailyGoal"
@@ -45,6 +47,8 @@ struct ContentView: View {
     @AppStorage("latestWeight") var latestWeight = ""
     @AppStorage("weightLogs") var weightLogsData = Data()
     @AppStorage("fastingSessions") var fastingSessionsData = Data()
+    @AppStorage("exerciseGoals") var exerciseGoalsData = Data()
+    @AppStorage("exerciseRecords") var exerciseRecordsData = Data()
     @AppStorage("todoTasks") var todoTasksData = Data()
     @AppStorage("memoNotes") var memoNotesData = Data()
     @AppStorage("wishlistItems") var wishlistItemsData = Data()
@@ -81,6 +85,14 @@ struct ContentView: View {
     @State var noteInput = ""
     @State var weightLogs: [FastingLog] = []
     @State var fastingSessions: [FastingSession] = []
+    @State var exerciseGoals: [ExerciseGoal] = ExerciseGoal.defaultGoals
+    @State var exerciseRecords: [ExerciseRecord] = []
+    @State var exerciseCalendarMonth = Date()
+    @State var exerciseCalendarSelectedDate: Date? = nil
+    @State var isShowingExerciseGoalSheet = false
+    @State var exerciseInputGoal: ExerciseGoal?
+    @State var exerciseInputDate: Date?
+    @State var exerciseInputValue: String = ""
     @State var todoTasks: [TodoTask] = []
     @State var memoNotes: [MemoNote] = []
     @State var wishlistItems: [WishlistItem] = []
@@ -266,6 +278,25 @@ struct ContentView: View {
         }
         .sheet(isPresented: $isShowingSectionManagement) {
             sectionManagementSheet
+        }
+        .sheet(isPresented: $isShowingExerciseGoalSheet) {
+            ExerciseGoalManagerSheet(
+                initialGoals: activeExerciseGoals,
+                onSave: { actions in
+                    for action in actions {
+                        switch action {
+                        case .add(let title, let targetCount, let unit):
+                            addExerciseGoal(title: title, targetCount: targetCount, unit: unit)
+                        case .update(let goal, let title, let targetCount, let unit):
+                            updateExerciseGoal(goal, title: title, targetCount: targetCount, unit: unit)
+                        case .deactivate(let goal):
+                            deactivateExerciseGoal(goal)
+                        }
+                    }
+                }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingWeightLog) { log in
             WeightLogEditorSheet(

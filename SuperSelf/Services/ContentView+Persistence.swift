@@ -136,6 +136,18 @@ extension ContentView {
         var order = prefs.order
         var visibleSections = prefs.visibleSections
 
+        if !order.contains(.exercise) {
+            if let moodIndex = order.firstIndex(of: .mood) {
+                order.insert(.exercise, at: moodIndex)
+            } else {
+                order.append(.exercise)
+            }
+        }
+
+        if !visibleSections.contains(.exercise) {
+            visibleSections.append(.exercise)
+        }
+
         if !order.contains(.mood) {
             order.append(.mood)
             visibleSections.append(.mood)
@@ -338,6 +350,8 @@ extension ContentView {
         loadSectionPreferences()
         loadWeightLogs()
         loadFastingSessions()
+        loadExerciseGoals()
+        loadExerciseRecords()
         loadCalculatorHistory()
         loadTodoTasks()
         loadMemoNotes()
@@ -1192,6 +1206,42 @@ extension ContentView {
         }
     }
 
+    func loadExerciseGoals() {
+        guard !exerciseGoalsData.isEmpty else {
+            exerciseGoals = ExerciseGoal.defaultGoals
+            return
+        }
+
+        if let decodedGoals = try? JSONDecoder().decode([ExerciseGoal].self, from: exerciseGoalsData) {
+            exerciseGoals = decodedGoals.isEmpty ? ExerciseGoal.defaultGoals : decodedGoals
+        }
+    }
+
+    func loadExerciseRecords() {
+        guard !exerciseRecordsData.isEmpty else { return }
+
+        if let decodedRecords = try? JSONDecoder().decode([ExerciseRecord].self, from: exerciseRecordsData) {
+            exerciseRecords = normalizedExerciseRecords(decodedRecords)
+        }
+    }
+
+    func persistExerciseGoals() {
+        if let encodedGoals = try? JSONEncoder().encode(exerciseGoals) {
+            exerciseGoalsData = encodedGoals
+            cloudStore.set(encodedGoals, forKey: exerciseGoalsCloudKey)
+            flushToICloud()
+        }
+    }
+
+    func persistExerciseRecords() {
+        exerciseRecords = normalizedExerciseRecords(exerciseRecords)
+        if let encodedRecords = try? JSONEncoder().encode(exerciseRecords) {
+            exerciseRecordsData = encodedRecords
+            cloudStore.set(encodedRecords, forKey: exerciseRecordsCloudKey)
+            flushToICloud()
+        }
+    }
+
     func pullFromICloud() {
         cloudStore.synchronize()
 
@@ -1203,6 +1253,16 @@ extension ContentView {
         if let cloudSessionsData = cloudStore.data(forKey: fastingSessionsCloudKey),
            let cloudSessions = try? JSONDecoder().decode([FastingSession].self, from: cloudSessionsData) {
             mergeFastingSessions(cloudSessions)
+        }
+
+        if let cloudExerciseGoalsData = cloudStore.data(forKey: exerciseGoalsCloudKey),
+           let cloudExerciseGoals = try? JSONDecoder().decode([ExerciseGoal].self, from: cloudExerciseGoalsData) {
+            mergeExerciseGoals(cloudExerciseGoals)
+        }
+
+        if let cloudExerciseRecordsData = cloudStore.data(forKey: exerciseRecordsCloudKey),
+           let cloudExerciseRecords = try? JSONDecoder().decode([ExerciseRecord].self, from: cloudExerciseRecordsData) {
+            mergeExerciseRecords(cloudExerciseRecords)
         }
 
         if let cloudTodoTasksData = cloudStore.data(forKey: todoTasksCloudKey),
@@ -1328,6 +1388,16 @@ extension ContentView {
 
         if let encodedSessions = try? JSONEncoder().encode(fastingSessions) {
             cloudStore.set(encodedSessions, forKey: fastingSessionsCloudKey)
+        }
+
+        if let encodedExerciseGoals = try? JSONEncoder().encode(exerciseGoals) {
+            exerciseGoalsData = encodedExerciseGoals
+            cloudStore.set(encodedExerciseGoals, forKey: exerciseGoalsCloudKey)
+        }
+
+        if let encodedExerciseRecords = try? JSONEncoder().encode(exerciseRecords) {
+            exerciseRecordsData = encodedExerciseRecords
+            cloudStore.set(encodedExerciseRecords, forKey: exerciseRecordsCloudKey)
         }
 
         if let encodedTodoTasks = try? JSONEncoder().encode(todoTasks) {
@@ -1539,6 +1609,63 @@ extension ContentView {
 
         if let encodedSessions = try? JSONEncoder().encode(fastingSessions) {
             fastingSessionsData = encodedSessions
+        }
+    }
+
+    func mergeExerciseGoals(_ cloudGoals: [ExerciseGoal]) {
+        var mergedGoalsByID = Dictionary(uniqueKeysWithValues: exerciseGoals.map { ($0.id, $0) })
+
+        for goal in cloudGoals {
+            if let localGoal = mergedGoalsByID[goal.id] {
+                mergedGoalsByID[goal.id] = goal.updatedAt >= localGoal.updatedAt ? goal : localGoal
+            } else {
+                mergedGoalsByID[goal.id] = goal
+            }
+        }
+
+        exerciseGoals = mergedGoalsByID.values.sorted {
+            if $0.isActive != $1.isActive {
+                return $0.isActive && !$1.isActive
+            }
+            return $0.createdAt < $1.createdAt
+        }
+
+        if let encodedGoals = try? JSONEncoder().encode(exerciseGoals) {
+            exerciseGoalsData = encodedGoals
+        }
+    }
+
+    func mergeExerciseRecords(_ cloudRecords: [ExerciseRecord]) {
+        exerciseRecords = normalizedExerciseRecords(exerciseRecords + cloudRecords)
+
+        if let encodedRecords = try? JSONEncoder().encode(exerciseRecords) {
+            exerciseRecordsData = encodedRecords
+        }
+    }
+
+    func normalizedExerciseRecords(_ records: [ExerciseRecord]) -> [ExerciseRecord] {
+        var recordsByDayAndGoal: [String: ExerciseRecord] = [:]
+
+        for record in records {
+            let day = Calendar.current.startOfDay(for: record.date)
+            let key = "\(record.goalID.uuidString)-\(Int(day.timeIntervalSince1970))"
+            var normalizedRecord = record
+            normalizedRecord.date = day
+
+            if let existing = recordsByDayAndGoal[key] {
+                if normalizedRecord.updatedAt >= existing.updatedAt {
+                    recordsByDayAndGoal[key] = normalizedRecord
+                }
+            } else {
+                recordsByDayAndGoal[key] = normalizedRecord
+            }
+        }
+
+        return recordsByDayAndGoal.values.sorted {
+            if $0.date != $1.date {
+                return $0.date > $1.date
+            }
+            return $0.updatedAt > $1.updatedAt
         }
     }
 

@@ -1483,4 +1483,922 @@ extension ContentView {
             isShowingWeightSheet = false
         }
     }
+
+    // MARK: - 锻炼
+
+    var exerciseSection: some View {
+        ScrollViewReader { proxy in
+            VStack(spacing: 20) {
+                exerciseTodayCard
+                exerciseCalendarCard
+                    .id("exerciseCalendarCard")
+            }
+            .alert("记录进度", isPresented: Binding(
+                get: { exerciseInputGoal != nil },
+                set: { if !$0 { exerciseInputGoal = nil; exerciseInputDate = nil } }
+            )) {
+                TextField("输入完成数量", text: $exerciseInputValue)
+                    .keyboardType(.numberPad)
+                Button("取消", role: .cancel) {
+                    exerciseInputGoal = nil
+                    exerciseInputDate = nil
+                }
+                // Add default keyboard shortcut so it's highlighted as the primary action in the alert
+                Button("确定") {
+                    if let goal = exerciseInputGoal, let val = Int(exerciseInputValue) {
+                        let dateToSave = exerciseInputDate ?? Date()
+                        setExerciseCount(val, for: goal, on: dateToSave)
+                    }
+                    exerciseInputGoal = nil
+                    exerciseInputDate = nil
+                }
+                .keyboardShortcut(.defaultAction)
+            } message: {
+                if let goal = exerciseInputGoal {
+                    Text(exerciseInputMessageText(for: goal))
+                }
+            }
+            .onChange(of: exerciseCalendarSelectedDate) { _, newValue in
+                if newValue != nil {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            proxy.scrollTo("exerciseCalendarCard", anchor: .top)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func exerciseInputMessageText(for goal: ExerciseGoal) -> String {
+        let dateToSave = exerciseInputDate ?? Date()
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M月d日"
+        let dateString = Calendar.current.isDateInToday(dateToSave) ? "今日" : formatter.string(from: dateToSave)
+        return "请输入「\(goal.title)」在 \(dateString) 的完成数量（\(exerciseUnit(for: goal, on: dateToSave))）"
+    }
+
+    var activeExerciseGoals: [ExerciseGoal] {
+        exerciseGoals
+            .filter(\.isActive)
+            .sorted { $0.createdAt < $1.createdAt }
+    }
+
+    var exerciseTodayCompletionText: String {
+        guard !activeExerciseGoals.isEmpty else { return "还没有目标" }
+        let completedCount = activeExerciseGoals.filter { isExerciseGoalCompleted($0, on: Date()) }.count
+        let totalCount = activeExerciseGoals.count
+
+        if completedCount == totalCount {
+            let encouragements = [
+                "太棒了 🎉",
+                "完美的一天 🌟",
+                "今日目标达成 💪",
+                "全部搞定 👏"
+            ]
+            // We use the day of the year to pick a pseudo-random but stable encouragement for today
+            let dayOfYear = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
+            return encouragements[dayOfYear % encouragements.count]
+        } else {
+            return "\(completedCount) / \(totalCount) 已完成"
+        }
+    }
+
+    var exerciseTodayCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "figure.strengthtraining.traditional")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.green)
+                    .frame(width: 42, height: 42)
+                    .background(Color.green.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("今日锻炼")
+                        .font(.title3.bold())
+                    Text(exerciseTodayCompletionText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button {
+                    isShowingExerciseGoalSheet = true
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "slider.horizontal.3")
+                        Text("目标设置")
+                    }
+                    .font(.caption.bold())
+                    .foregroundStyle(.green)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.green.opacity(0.12))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            if activeExerciseGoals.isEmpty {
+                Button {
+                    isShowingExerciseGoalSheet = true
+                } label: {
+                    Label("添加锻炼目标", systemImage: "plus")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.green)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.green.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(activeExerciseGoals) { goal in
+                        let count = exerciseCount(for: goal, on: Date())
+                        let target = exerciseTarget(for: goal, on: Date())
+                        let unit = exerciseUnit(for: goal, on: Date())
+                        ExerciseTodayGoalRow(
+                            goal: goal,
+                            count: count,
+                            targetCount: target,
+                            unit: unit,
+                            isCompleted: count >= target,
+                            onComplete: { completeExerciseGoal(goal, on: Date()) },
+                            onInput: {
+                                exerciseInputValue = "\(count)"
+                                exerciseInputGoal = goal
+                                exerciseInputDate = Date()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
+    }
+
+    var exerciseCalendarCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("锻炼日历")
+                    .font(.title3.bold())
+
+                Spacer()
+
+                HStack(spacing: 16) {
+                    if !exerciseCalendarIsViewingToday {
+                        Button("今天") {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                exerciseCalendarMonth = Date()
+                                exerciseCalendarSelectedDate = nil
+                            }
+                        }
+                        .font(.subheadline.bold())
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .foregroundStyle(.green)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.green.opacity(0.12), in: Capsule())
+                    }
+
+                    HStack(spacing: 8) {
+                        Button {
+                            moveExerciseCalendarMonth(by: -1)
+                        } label: {
+                            Image(systemName: "chevron.left")
+                        }
+
+                        Text(exerciseCalendarMonthTitle)
+                            .font(.subheadline.bold())
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+
+                        Button {
+                            moveExerciseCalendarMonth(by: 1)
+                        } label: {
+                            Image(systemName: "chevron.right")
+                        }
+                    }
+                }
+                .font(.caption.bold())
+                .foregroundStyle(.green)
+            }
+
+            HStack(spacing: 0) {
+                ForEach(["一", "二", "三", "四", "五", "六", "日"], id: \.self) { weekday in
+                    Text(weekday)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 8) {
+                ForEach(exerciseCalendarDays) { day in
+                    exerciseCalendarDayCell(day)
+                }
+            }
+
+            HStack(spacing: 12) {
+                ExerciseCalendarLegend(color: .green, title: "完成")
+                ExerciseCalendarLegend(color: .green.opacity(0.28), title: "部分完成")
+                ExerciseCalendarLegend(color: Color(.systemGray5), title: "未完成")
+                Spacer()
+                Text(exerciseCompletedDaysText)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            if let selectedDate = exerciseCalendarSelectedDate {
+                Divider()
+                    .padding(.vertical, 4)
+                exerciseCalendarSelectedDateDetails(for: selectedDate)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
+    }
+
+    var exerciseCalendarMonthTitle: String {
+        let isCurrentMonth = Calendar.current.isDate(exerciseCalendarMonth, equalTo: Date(), toGranularity: .month)
+        if isCurrentMonth {
+            return "本月"
+        } else {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "zh_CN")
+            formatter.dateFormat = "yyyy年M月"
+            return formatter.string(from: exerciseCalendarMonth)
+        }
+    }
+
+    var exerciseCalendarIsViewingToday: Bool {
+        if let selected = exerciseCalendarSelectedDate {
+            return Calendar.current.isDateInToday(selected)
+        } else {
+            return Calendar.current.isDate(exerciseCalendarMonth, equalTo: Date(), toGranularity: .month)
+        }
+    }
+
+    var exerciseCalendarDays: [ExerciseCalendarDay] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "zh_CN")
+        calendar.firstWeekday = 2
+
+        let monthStart = calendar.dateInterval(of: .month, for: exerciseCalendarMonth)?.start ?? calendar.startOfDay(for: exerciseCalendarMonth)
+        let weekday = calendar.component(.weekday, from: monthStart)
+        let leadingDays = (weekday + 5) % 7
+        let gridStart = calendar.date(byAdding: .day, value: -leadingDays, to: monthStart) ?? monthStart
+
+        return (0..<42).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: gridStart) else { return nil }
+            return ExerciseCalendarDay(
+                date: date,
+                isInDisplayedMonth: calendar.isDate(date, equalTo: monthStart, toGranularity: .month),
+                isToday: calendar.isDateInToday(date)
+            )
+        }
+    }
+
+    var exerciseCompletedDaysInMonth: Int {
+        exerciseCalendarDays.filter {
+            $0.isInDisplayedMonth && isExerciseDayCompleted($0.date)
+        }.count
+    }
+
+    var exerciseCompletedDaysText: String {
+        let calendar = Calendar.current
+        let isCurrentMonth = calendar.isDate(exerciseCalendarMonth, equalTo: Date(), toGranularity: .month)
+        if isCurrentMonth {
+            return "本月完成 \(exerciseCompletedDaysInMonth) 天"
+        } else {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "zh_CN")
+            formatter.dateFormat = "yyyy年M月"
+            let monthString = formatter.string(from: exerciseCalendarMonth)
+            return "\(monthString)完成 \(exerciseCompletedDaysInMonth) 天"
+        }
+    }
+
+    func exerciseCalendarSelectedDateDetails(for date: Date) -> some View {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M月d日"
+        let dateString = formatter.string(from: date)
+        
+        let goals = exerciseGoals(for: date)
+
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("\(dateString) 记录")
+                .font(.headline)
+
+            if goals.isEmpty {
+                Text("当天没有设置任何锻炼目标")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 12) {
+                    ForEach(goals) { goal in
+                        let count = exerciseCount(for: goal, on: date)
+                        let target = exerciseTarget(for: goal, on: date)
+                        let unit = exerciseUnit(for: goal, on: date)
+                        ExerciseTodayGoalRow(
+                            goal: goal,
+                            count: count,
+                            targetCount: target,
+                            unit: unit,
+                            isCompleted: count >= target,
+                            onComplete: { completeExerciseGoal(goal, on: date) },
+                            onInput: {
+                                exerciseInputValue = "\(count)"
+                                exerciseInputGoal = goal
+                                exerciseInputDate = date
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    func exerciseCalendarDayCell(_ day: ExerciseCalendarDay) -> some View {
+        let calendar = Calendar.current
+        let isFuture = calendar.startOfDay(for: day.date) > calendar.startOfDay(for: Date())
+        let fraction = exerciseCompletionFraction(on: day.date)
+        let isSelected = exerciseCalendarSelectedDate.map { calendar.isDate($0, inSameDayAs: day.date) } ?? false
+
+        let fillColor: Color = {
+            if isFuture || !day.isInDisplayedMonth {
+                return Color.clear
+            }
+            if fraction >= 1 {
+                return .green
+            }
+            if fraction > 0 {
+                return .green.opacity(0.28)
+            }
+            return Color(.systemGray5)
+        }()
+
+        let content = Text("\(calendar.component(.day, from: day.date))")
+            .font(.caption.weight(day.isToday ? .bold : .medium))
+            .foregroundStyle(fraction >= 1 && day.isInDisplayedMonth && !isFuture ? .white : (day.isInDisplayedMonth ? .primary : .secondary.opacity(0.35)))
+            .frame(width: 34, height: 34)
+            .background(fillColor, in: Circle())
+            .overlay {
+                if isSelected {
+                    Circle()
+                        .stroke(Color.primary.opacity(0.5), lineWidth: 2)
+                } else if day.isToday {
+                    Circle()
+                        .stroke(Color.green, lineWidth: 1.5)
+                }
+            }
+            .opacity(day.isInDisplayedMonth ? 1 : 0.45)
+
+        if isFuture || !day.isInDisplayedMonth {
+            return AnyView(content)
+        } else {
+            return AnyView(Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    if isSelected {
+                        exerciseCalendarSelectedDate = nil
+                    } else {
+                        exerciseCalendarSelectedDate = day.date
+                    }
+                }
+            } label: {
+                content
+            }
+            .buttonStyle(.plain))
+        }
+    }
+
+    func exerciseRecord(for goal: ExerciseGoal, on date: Date) -> ExerciseRecord? {
+        let day = Calendar.current.startOfDay(for: date)
+        return exerciseRecords.first { record in
+            record.goalID == goal.id && Calendar.current.isDate(record.date, inSameDayAs: day)
+        }
+    }
+
+    func exerciseCount(for goal: ExerciseGoal, on date: Date) -> Int {
+        exerciseRecord(for: goal, on: date)?.count ?? 0
+    }
+
+    func exerciseGoals(for date: Date) -> [ExerciseGoal] {
+        let isToday = Calendar.current.isDate(date, inSameDayAs: Date())
+        return exerciseGoals.filter { goal in
+            if isToday {
+                return goal.isActive
+            } else {
+                return exerciseRecord(for: goal, on: date) != nil
+            }
+        }.sorted { $0.createdAt < $1.createdAt }
+    }
+
+    func exerciseTarget(for goal: ExerciseGoal, on date: Date) -> Int {
+        exerciseRecord(for: goal, on: date)?.targetCount ?? goal.targetCount
+    }
+
+    func exerciseUnit(for goal: ExerciseGoal, on date: Date) -> String {
+        exerciseRecord(for: goal, on: date)?.unit ?? goal.unit
+    }
+
+    func isExerciseGoalCompleted(_ goal: ExerciseGoal, on date: Date) -> Bool {
+        exerciseCount(for: goal, on: date) >= exerciseTarget(for: goal, on: date)
+    }
+
+    func completedExerciseGoalCount(on date: Date) -> Int {
+        exerciseGoals(for: date).filter { isExerciseGoalCompleted($0, on: date) }.count
+    }
+
+    func exerciseCompletionFraction(on date: Date) -> Double {
+        let goals = exerciseGoals(for: date)
+        guard !goals.isEmpty else { return 0 }
+        return Double(goals.filter { isExerciseGoalCompleted($0, on: date) }.count) / Double(goals.count)
+    }
+
+    func isExerciseDayCompleted(_ date: Date) -> Bool {
+        let goals = exerciseGoals(for: date)
+        guard !goals.isEmpty else { return false }
+        return completedExerciseGoalCount(on: date) == goals.count
+    }
+
+    func setExerciseCount(_ count: Int, for goal: ExerciseGoal, on date: Date = Date()) {
+        let day = Calendar.current.startOfDay(for: date)
+        let normalizedCount = max(0, count)
+
+        if let index = exerciseRecords.firstIndex(where: { $0.goalID == goal.id && Calendar.current.isDate($0.date, inSameDayAs: day) }) {
+            exerciseRecords[index].count = normalizedCount
+            exerciseRecords[index].targetCount = goal.targetCount
+            exerciseRecords[index].unit = goal.unit
+            exerciseRecords[index].updatedAt = Date()
+        } else {
+            exerciseRecords.append(ExerciseRecord(
+                goalID: goal.id,
+                date: day,
+                count: normalizedCount,
+                targetCount: goal.targetCount,
+                unit: goal.unit
+            ))
+        }
+
+        persistExerciseRecords()
+    }
+
+    func adjustExerciseCount(for goal: ExerciseGoal, on date: Date = Date(), by delta: Int) {
+        setExerciseCount(exerciseCount(for: goal, on: date) + delta, for: goal, on: date)
+    }
+
+    func completeExerciseGoal(_ goal: ExerciseGoal, on date: Date = Date()) {
+        let target = exerciseTarget(for: goal, on: date)
+        setExerciseCount(target, for: goal, on: date)
+    }
+
+    func addExerciseGoal(title: String, targetCount: Int, unit: String) {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedUnit = unit.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return }
+        exerciseGoals.append(ExerciseGoal(title: trimmedTitle, targetCount: targetCount, unit: trimmedUnit.isEmpty ? "次" : trimmedUnit))
+        persistExerciseGoals()
+    }
+
+    func updateExerciseGoal(_ goal: ExerciseGoal, title: String, targetCount: Int, unit: String) {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedUnit = unit.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty,
+              let index = exerciseGoals.firstIndex(where: { $0.id == goal.id }) else { return }
+
+        exerciseGoals[index].title = trimmedTitle
+        exerciseGoals[index].targetCount = max(1, targetCount)
+        exerciseGoals[index].unit = trimmedUnit.isEmpty ? "次" : trimmedUnit
+        exerciseGoals[index].updatedAt = Date()
+        persistExerciseGoals()
+    }
+
+    func deactivateExerciseGoal(_ goal: ExerciseGoal) {
+        guard activeExerciseGoals.count > 1,
+              let index = exerciseGoals.firstIndex(where: { $0.id == goal.id }) else { return }
+
+        exerciseGoals[index].isActive = false
+        exerciseGoals[index].updatedAt = Date()
+        persistExerciseGoals()
+    }
+
+    func moveExerciseCalendarMonth(by value: Int) {
+        let calendar = Calendar.current
+        exerciseCalendarMonth = calendar.date(byAdding: .month, value: value, to: exerciseCalendarMonth) ?? exerciseCalendarMonth
+        
+        // When changing month, if we're viewing a month other than the current month,
+        // automatically select the 1st day of that month.
+        // If we are back to the current month, clear selection.
+        if calendar.isDate(exerciseCalendarMonth, equalTo: Date(), toGranularity: .month) {
+            exerciseCalendarSelectedDate = nil
+        } else {
+            let components = calendar.dateComponents([.year, .month], from: exerciseCalendarMonth)
+            if let firstDay = calendar.date(from: components) {
+                exerciseCalendarSelectedDate = firstDay
+            }
+        }
+    }
+
+    func smartExerciseStep(for target: Int) -> Int {
+        if target >= 1000 { return 100 }
+        if target >= 100 { return 10 }
+        if target >= 50 { return 5 }
+        return 1
+    }
+}
+
+struct ExerciseCalendarDay: Identifiable {
+    var date: Date
+    var isInDisplayedMonth: Bool
+    var isToday: Bool
+
+    var id: Date { date }
+}
+
+struct ExerciseTodayGoalRow: View {
+    let goal: ExerciseGoal
+    let count: Int
+    let targetCount: Int
+    let unit: String
+    let isCompleted: Bool
+    let onComplete: () -> Void
+    let onInput: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(goal.title)
+                    .font(.headline)
+                Text("目标 \(String(targetCount)) \(unit)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button(action: onInput) {
+                Text(String(count))
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(isCompleted ? .green : .primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color(.tertiarySystemFill))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onComplete) {
+                Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.title)
+                    .foregroundStyle(isCompleted ? .green : Color(.tertiaryLabel))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(isCompleted ? Color.green.opacity(0.08) : Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+struct ExerciseCalendarLegend: View {
+    let color: Color
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+enum ExerciseGoalAction {
+    case add(String, Int, String)
+    case update(ExerciseGoal, String, Int, String)
+    case deactivate(ExerciseGoal)
+}
+
+struct ExerciseGoalManagerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let initialGoals: [ExerciseGoal]
+    let onSave: ([ExerciseGoalAction]) -> Void
+
+    @State private var draftGoals: [ExerciseGoal] = []
+    @State private var pendingActions: [ExerciseGoalAction] = []
+
+    @State private var editingGoal: ExerciseGoal?
+    @State private var title = ""
+    @State private var targetCount = "5"
+    @State private var unit = "次"
+    @State private var isEditingFormVisible = false
+
+    private let unitSuggestions = ["次", "个", "步", "分钟", "秒", "公里", "组"]
+    private let titleSuggestionsAll = ["俯卧撑", "仰卧起坐", "蹲起", "步数", "引体向上", "平板支撑", "骑行"]
+
+    var titleSuggestions: [String] {
+        let existingTitles = Set(draftGoals.map { $0.title.trimmingCharacters(in: .whitespacesAndNewlines) })
+        let isWalkOrSteps = existingTitles.contains("步行") || existingTitles.contains("走路") || existingTitles.contains("步数")
+        
+        return titleSuggestionsAll.filter { suggestion in
+            if suggestion == "步数" && isWalkOrSteps {
+                return false
+            }
+            return !existingTitles.contains(suggestion)
+        }
+    }
+
+    var formTitle: String {
+        editingGoal == nil ? "新增目标" : "编辑目标"
+    }
+
+    var canSave: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && (Int(targetCount) ?? 0) > 0
+            && !unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(spacing: 10) {
+                        ForEach(draftGoals) { goal in
+                            ExerciseGoalManagerRow(
+                                goal: goal,
+                                canDeactivate: draftGoals.count > 1,
+                                onEdit: { beginEditExerciseGoal(goal) },
+                                onDeactivate: { handleDeactivate(goal) }
+                            )
+
+                            if isEditingFormVisible, editingGoal?.id == goal.id {
+                                exerciseGoalForm
+                                    .padding()
+                                    .background(Color(.secondarySystemGroupedBackground))
+                                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                    .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+                            }
+                        }
+                    }
+
+                    if isEditingFormVisible && editingGoal == nil {
+                        exerciseGoalForm
+                            .padding()
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+                    } else {
+                        Button {
+                            beginAddExerciseGoal()
+                        } label: {
+                            Label("新增目标", systemImage: "plus")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.green)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color.green.opacity(0.12))
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 4)
+                    }
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("目标设置")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") {
+                        onSave(pendingActions)
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                draftGoals = initialGoals
+            }
+        }
+    }
+
+    var exerciseGoalForm: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack {
+                Text(formTitle)
+                    .font(.headline)
+                Spacer()
+                Button {
+                    resetExerciseGoalForm()
+                } label: {
+                    Text("取消")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center) {
+                    TextField("运动名称", text: $title)
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .submitLabel(.done)
+
+                    if editingGoal == nil && !titleSuggestions.isEmpty {
+                        Menu {
+                            ForEach(titleSuggestions, id: \.self) { suggestion in
+                                Button(suggestion) {
+                                    title = suggestion
+                                    if suggestion == "步数" {
+                                        unit = "步"
+                                    } else if suggestion == "平板支撑" {
+                                        unit = "秒"
+                                    } else if suggestion == "骑行" {
+                                        unit = "公里"
+                                    } else {
+                                        unit = "个"
+                                    }
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "list.bullet.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(Color(.tertiaryLabel))
+                        }
+                    }
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    TextField("数量", text: $targetCount)
+                        .keyboardType(.numberPad)
+                        .font(.system(size: 32, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.green)
+                        .frame(maxWidth: 80)
+                        .minimumScaleFactor(0.5)
+
+                    TextField("单位", text: $unit)
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(unitSuggestions, id: \.self) { suggestion in
+                        Button {
+                            unit = suggestion
+                        } label: {
+                            Text(suggestion)
+                                .font(.subheadline.weight(.medium))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(unit == suggestion ? Color.green : Color(.tertiarySystemFill))
+                                .foregroundStyle(unit == suggestion ? .white : .primary)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
+            Button {
+                saveExerciseGoalForm()
+            } label: {
+                Text("保存")
+                    .font(.headline.bold())
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(canSave ? Color.green : Color(.tertiarySystemFill))
+                    .foregroundStyle(canSave ? .white : .secondary.opacity(0.6))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSave)
+        }
+        .padding(24)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 15, x: 0, y: 5)
+    }
+
+    func beginAddExerciseGoal() {
+        editingGoal = nil
+        title = ""
+        targetCount = "5"
+        unit = "次"
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+            isEditingFormVisible = true
+        }
+    }
+
+    func beginEditExerciseGoal(_ goal: ExerciseGoal) {
+        editingGoal = goal
+        title = goal.title
+        targetCount = "\(goal.targetCount)"
+        unit = goal.unit
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+            isEditingFormVisible = true
+        }
+    }
+
+    func resetExerciseGoalForm() {
+        editingGoal = nil
+        title = ""
+        targetCount = "5"
+        unit = "次"
+        withAnimation(.easeInOut(duration: 0.18)) {
+            isEditingFormVisible = false
+        }
+    }
+
+    func saveExerciseGoalForm() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedUnit = unit.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty, !trimmedUnit.isEmpty, let count = Int(targetCount), count > 0 else { return }
+
+        if let editingGoal {
+            if let index = draftGoals.firstIndex(where: { $0.id == editingGoal.id }) {
+                draftGoals[index].title = trimmedTitle
+                draftGoals[index].targetCount = count
+                draftGoals[index].unit = trimmedUnit
+            }
+            pendingActions.append(.update(editingGoal, trimmedTitle, count, trimmedUnit))
+        } else {
+            let newGoal = ExerciseGoal(title: trimmedTitle, targetCount: count, unit: trimmedUnit)
+            draftGoals.append(newGoal)
+            pendingActions.append(.add(trimmedTitle, count, trimmedUnit))
+        }
+        resetExerciseGoalForm()
+    }
+
+    func handleDeactivate(_ goal: ExerciseGoal) {
+        if let index = draftGoals.firstIndex(where: { $0.id == goal.id }) {
+            draftGoals.remove(at: index)
+        }
+        pendingActions.append(.deactivate(goal))
+    }
+}
+
+struct ExerciseGoalManagerRow: View {
+    let goal: ExerciseGoal
+    let canDeactivate: Bool
+    let onEdit: () -> Void
+    let onDeactivate: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(goal.title)
+                    .font(.headline)
+                Text("每天 \(String(goal.targetCount)) \(goal.unit)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button(action: onEdit) {
+                Image(systemName: "pencil")
+                    .font(.caption.bold())
+                    .foregroundStyle(.green)
+                    .frame(width: 34, height: 34)
+                    .background(Color.green.opacity(0.10), in: Circle())
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onDeactivate) {
+                Image(systemName: "trash")
+                    .font(.caption.bold())
+                    .foregroundStyle(.red.opacity(canDeactivate ? 1 : 0.35))
+                    .frame(width: 34, height: 34)
+                    .background(Color.red.opacity(canDeactivate ? 0.10 : 0.05), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!canDeactivate)
+        }
+        .padding(14)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
 }

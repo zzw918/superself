@@ -75,7 +75,7 @@ struct ExchangeRatePage: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .clipped()
                             .focused($isInputFocused)
-                            .onChange(of: amountText) { newValue in
+                            .onChange(of: amountText) { _, newValue in
                                 if isEditingTop {
                                     updateBottomAmount()
                                 }
@@ -128,7 +128,7 @@ struct ExchangeRatePage: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .clipped()
                             .focused($isInputFocused)
-                            .onChange(of: bottomAmountText) { newValue in
+                            .onChange(of: bottomAmountText) { _, newValue in
                                 if !isEditingTop {
                                     updateTopAmount()
                                 }
@@ -211,7 +211,7 @@ struct ExchangeRatePage: View {
                 updateBottomAmount()
             }
         }
-        .onChange(of: service.rates) { _ in
+        .onChange(of: service.rates) { _, _ in
             if isEditingTop {
                 updateBottomAmount()
             } else {

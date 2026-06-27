@@ -98,6 +98,7 @@ enum AppearanceMode: String, CaseIterable, Identifiable, Hashable {
 enum HealthSection: String, CaseIterable, Identifiable, Codable {
     case weight
     case fasting
+    case exercise
     case mood
 
     var id: String { rawValue }
@@ -108,6 +109,8 @@ enum HealthSection: String, CaseIterable, Identifiable, Codable {
             return "16 + 8"
         case .weight:
             return "体重"
+        case .exercise:
+            return "锻炼"
         case .mood:
             return "心情"
         }
@@ -119,6 +122,8 @@ enum HealthSection: String, CaseIterable, Identifiable, Codable {
             return "timer"
         case .weight:
             return "scalemass"
+        case .exercise:
+            return "figure.strengthtraining.traditional"
         case .mood:
             return "face.smiling"
         }
@@ -130,6 +135,8 @@ enum HealthSection: String, CaseIterable, Identifiable, Codable {
             return "断食计时与目标"
         case .weight:
             return "体重记录与趋势"
+        case .exercise:
+            return "每日动作与完成日历"
         case .mood:
             return "每日开心一刻"
         }

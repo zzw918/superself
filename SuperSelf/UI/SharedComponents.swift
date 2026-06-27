@@ -507,7 +507,7 @@ struct LongPressDeleteModifier: ViewModifier {
                             Color.clear.onAppear {
                                 itemFrame = geo.frame(in: .global)
                             }
-                            .onChange(of: geo.frame(in: .global)) { newFrame in
+                            .onChange(of: geo.frame(in: .global)) { _, newFrame in
                                 itemFrame = newFrame
                             }
                         }

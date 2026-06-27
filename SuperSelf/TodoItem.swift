@@ -45,6 +45,101 @@ struct FastingSession: Identifiable, Equatable, Codable {
     var completed: Bool
 }
 
+struct ExerciseGoal: Identifiable, Equatable, Codable {
+    var id: UUID
+    var title: String
+    var targetCount: Int
+    var unit: String
+    var isActive: Bool
+    var createdAt: Date
+    var updatedAt: Date
+
+    static let defaultGoals: [ExerciseGoal] = [
+        ExerciseGoal(title: "俯卧撑", targetCount: 5),
+        ExerciseGoal(title: "蹲起", targetCount: 5),
+        ExerciseGoal(title: "仰卧起坐", targetCount: 5)
+    ]
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, targetCount, unit, isActive, createdAt, updatedAt
+    }
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        targetCount: Int,
+        unit: String = "次",
+        isActive: Bool = true,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.title = title
+        self.targetCount = max(1, targetCount)
+        let trimmedUnit = unit.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.unit = trimmedUnit.isEmpty ? "次" : trimmedUnit
+        self.isActive = isActive
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        title = try container.decodeIfPresent(String.self, forKey: .title) ?? "锻炼"
+        targetCount = max(1, try container.decodeIfPresent(Int.self, forKey: .targetCount) ?? 5)
+        let decodedUnit = try container.decodeIfPresent(String.self, forKey: .unit) ?? "次"
+        let trimmedUnit = decodedUnit.trimmingCharacters(in: .whitespacesAndNewlines)
+        unit = trimmedUnit.isEmpty ? "次" : trimmedUnit
+        isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+    }
+}
+
+struct ExerciseRecord: Identifiable, Equatable, Codable {
+    var id: UUID
+    var goalID: UUID
+    var date: Date
+    var count: Int
+    var targetCount: Int?
+    var unit: String?
+    var updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id, goalID, date, count, targetCount, unit, updatedAt
+    }
+
+    init(
+        id: UUID = UUID(),
+        goalID: UUID,
+        date: Date,
+        count: Int,
+        targetCount: Int? = nil,
+        unit: String? = nil,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.goalID = goalID
+        self.date = Calendar.current.startOfDay(for: date)
+        self.count = max(0, count)
+        self.targetCount = targetCount
+        self.unit = unit
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        goalID = try container.decode(UUID.self, forKey: .goalID)
+        date = Calendar.current.startOfDay(for: try container.decode(Date.self, forKey: .date))
+        count = max(0, try container.decodeIfPresent(Int.self, forKey: .count) ?? 0)
+        targetCount = try container.decodeIfPresent(Int.self, forKey: .targetCount)
+        unit = try container.decodeIfPresent(String.self, forKey: .unit)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? date
+    }
+}
+
 enum TodoTaskStatus: String, CaseIterable, Identifiable, Codable {
     case pending
     case inProgress

@@ -160,7 +160,7 @@ struct ExchangeRateTrendPage: View {
             .onAppear {
                 fetchHistoricalData()
             }
-            .onChange(of: selectedRange) { _ in
+            .onChange(of: selectedRange) { _, _ in
                 fetchHistoricalData()
             }
         }
