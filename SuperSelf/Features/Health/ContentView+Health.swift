@@ -591,28 +591,27 @@ extension ContentView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        ZStack(alignment: .leading) {
-                            if weightInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                Text(weightInputPlaceholder)
-                                    .font(.system(size: 56, weight: .bold, design: .rounded))
-                                    .foregroundStyle(.tertiary)
-                                    .allowsHitTesting(false)
-                            }
-
-                            TextField("", text: $weightInput)
-                                .keyboardType(.decimalPad)
-                                .font(.system(size: 56, weight: .bold, design: .rounded))
-                                .foregroundStyle(.primary)
-                                .focused($focusedWeightSheetField, equals: .weight)
-                        }
-                        .fixedSize()
-
-                        Text("kg")
-                            .font(.title2.bold())
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("体重")
+                            .font(.caption.bold())
                             .foregroundStyle(.secondary)
 
-                        Spacer()
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            TextField(weightInputPlaceholder, text: $weightInput)
+                                .keyboardType(.decimalPad)
+                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                                .foregroundStyle(.primary)
+                                .focused($focusedWeightSheetField, equals: .weight)
+
+                            Text("kg")
+                                .font(.title3.bold())
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 18)
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
@@ -703,10 +702,10 @@ extension ContentView {
             }
             .onAppear {
                 didShowWeightSaveFeedback = false
-            }
-            .task {
-                try? await Task.sleep(nanoseconds: 350_000_000)
-                focusedWeightSheetField = .weight
+                focusedWeightSheetField = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    focusedWeightSheetField = .weight
+                }
             }
             .animation(.spring(response: 0.3, dampingFraction: 0.85), value: didShowWeightSaveFeedback)
         }
@@ -1429,6 +1428,7 @@ extension ContentView {
     func prepareWeightSheet() {
         weightInput = ""
         noteInput = ""
+        focusedWeightSheetField = nil
         didShowWeightSaveFeedback = false
     }
 

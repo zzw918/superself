@@ -123,6 +123,7 @@ struct TodoTaskRow: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(rowBackgroundColor)
         )
+        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(alignment: .trailing) {
             if isCelebratingCompletion {
                 HStack(spacing: 4) {
@@ -195,10 +196,6 @@ struct TodoTaskRow: View {
     private var rowBackgroundColor: Color {
         if isCelebratingCompletion {
             return Color.green.opacity(0.12)
-        }
-
-        if task.isInProgress {
-            return Color.blue.opacity(0.06)
         }
 
         return Color(.tertiarySystemGroupedBackground)
