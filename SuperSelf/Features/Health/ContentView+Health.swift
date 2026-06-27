@@ -1588,16 +1588,12 @@ extension ContentView {
                 Button {
                     isShowingExerciseGoalSheet = true
                 } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "slider.horizontal.3")
-                        Text("目标设置")
-                    }
-                    .font(.caption.bold())
-                    .foregroundStyle(.green)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.green.opacity(0.12))
-                    .clipShape(Capsule())
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.headline)
+                        .foregroundStyle(.green)
+                        .frame(width: 36, height: 36)
+                        .background(Color.green.opacity(0.12))
+                        .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
             }
@@ -1718,10 +1714,11 @@ extension ContentView {
                     .foregroundStyle(.secondary)
             }
 
-            if let selectedDate = exerciseCalendarSelectedDate {
+            let displayDate = exerciseCalendarSelectedDate ?? (Calendar.current.isDate(exerciseCalendarMonth, equalTo: Date(), toGranularity: .month) ? Date() : nil)
+            if let dateToShow = displayDate {
                 Divider()
                     .padding(.vertical, 4)
-                exerciseCalendarSelectedDateDetails(for: selectedDate)
+                exerciseCalendarSelectedDateDetails(for: dateToShow)
             }
         }
         .padding(18)
@@ -1785,7 +1782,7 @@ extension ContentView {
         } else {
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "zh_CN")
-            formatter.dateFormat = "yyyy年M月"
+            formatter.dateFormat = "M月"
             let monthString = formatter.string(from: exerciseCalendarMonth)
             return "\(monthString)完成 \(exerciseCompletedDaysInMonth) 天"
         }
@@ -2051,17 +2048,30 @@ struct ExerciseTodayGoalRow: View {
             Spacer()
 
             Button(action: onInput) {
-                Text(String(count))
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(isCompleted ? .green : .primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color(.tertiarySystemFill))
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                HStack(spacing: 4) {
+                    Text(String(count))
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(isCompleted ? .green : .primary)
+                    
+                    if !isCompleted {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(Color(.tertiaryLabel))
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
-            Button(action: onComplete) {
+            Button(action: {
+                if isCompleted {
+                    onInput()
+                } else {
+                    onComplete()
+                }
+            }) {
                 Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.title)
                     .foregroundStyle(isCompleted ? .green : Color(.tertiaryLabel))
@@ -2145,7 +2155,13 @@ struct ExerciseGoalManagerSheet: View {
                             ExerciseGoalManagerRow(
                                 goal: goal,
                                 canDeactivate: draftGoals.count > 1,
-                                onEdit: { beginEditExerciseGoal(goal) },
+                                onEdit: {
+                                    if isEditingFormVisible, editingGoal?.id == goal.id {
+                                        resetExerciseGoalForm()
+                                    } else {
+                                        beginEditExerciseGoal(goal)
+                                    }
+                                },
                                 onDeactivate: { handleDeactivate(goal) }
                             )
 
@@ -2195,6 +2211,8 @@ struct ExerciseGoalManagerSheet: View {
                         onSave(pendingActions)
                         dismiss()
                     }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.green)
                 }
             }
             .onAppear {
@@ -2283,15 +2301,17 @@ struct ExerciseGoalManagerSheet: View {
             }
 
             Button {
+                print("保存按钮被点击 - 前")
                 saveExerciseGoalForm()
+                print("保存按钮被点击 - 后")
             } label: {
                 Text("保存")
-                    .font(.headline.bold())
+                    .font(.subheadline.bold())
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 12)
                     .background(canSave ? Color.green : Color(.tertiarySystemFill))
                     .foregroundStyle(canSave ? .white : .secondary.opacity(0.6))
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .buttonStyle(.plain)
             .disabled(!canSave)
@@ -2368,19 +2388,19 @@ struct ExerciseGoalManagerRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(goal.title)
-                    .font(.headline)
-                Text("每天 \(String(goal.targetCount)) \(goal.unit)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text(goal.title)
+                .font(.headline)
 
             Spacer()
+            
+            Text("\(String(goal.targetCount)) \(goal.unit)")
+                .font(.system(.headline, design: .rounded).weight(.semibold))
+                .foregroundStyle(.green)
+                .padding(.trailing, 4)
 
             Button(action: onEdit) {
                 Image(systemName: "pencil")
-                    .font(.caption.bold())
+                    .font(.body.weight(.heavy))
                     .foregroundStyle(.green)
                     .frame(width: 34, height: 34)
                     .background(Color.green.opacity(0.10), in: Circle())
@@ -2389,10 +2409,10 @@ struct ExerciseGoalManagerRow: View {
 
             Button(action: onDeactivate) {
                 Image(systemName: "trash")
-                    .font(.caption.bold())
-                    .foregroundStyle(.red.opacity(canDeactivate ? 1 : 0.35))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.red.opacity(canDeactivate ? 0.75 : 0.35))
                     .frame(width: 34, height: 34)
-                    .background(Color.red.opacity(canDeactivate ? 0.10 : 0.05), in: Circle())
+                    .background(Color.red.opacity(canDeactivate ? 0.08 : 0.04), in: Circle())
             }
             .buttonStyle(.plain)
             .disabled(!canDeactivate)

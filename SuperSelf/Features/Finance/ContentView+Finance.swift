@@ -611,29 +611,19 @@ extension ContentView {
     }
 
     var expenseRecordsCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("支出明细")
-                        .font(.title3.bold())
-                    Text("\(expenseRecords.count) 笔")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+        let recentMonthDate = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+        let recentCount = expenseRecords.filter { $0.date >= recentMonthDate }.count
+
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("支出明细")
+                    .font(.title3.bold())
 
                 Spacer()
-
-                Button {
-                    isShowingExpenseRecordSheet = true
-                } label: {
-                    AppIconCircleButton(
-                        icon: "plus",
-                        tint: .blue,
-                        size: 32,
-                        iconFont: .subheadline.weight(.bold)
-                    )
-                }
-                .buttonStyle(.plain)
+                
+                Text("最近一个月支出 \(recentCount) 笔")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
 
             if expenseRecords.isEmpty {

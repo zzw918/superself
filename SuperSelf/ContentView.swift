@@ -295,7 +295,7 @@ struct ContentView: View {
                     }
                 }
             )
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingWeightLog) { log in

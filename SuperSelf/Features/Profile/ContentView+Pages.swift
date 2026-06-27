@@ -288,6 +288,19 @@ extension ContentView {
                         }
                         .padding(.trailing, 20)
                         .padding(.bottom, 20)
+                    } else if financeSection == .expenseBook {
+                        Button {
+                            isShowingExpenseRecordSheet = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.title3.weight(.medium))
+                                .foregroundStyle(.white)
+                                .frame(width: 48, height: 48)
+                                .background(Color.blue, in: Circle())
+                                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
                     }
                 }
             }
