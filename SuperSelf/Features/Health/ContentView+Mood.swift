@@ -81,19 +81,85 @@ extension ContentView {
 
     var myMoodEntriesCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("我的心情")
-                .font(.title3.bold())
+            HStack(spacing: 10) {
+                Text("我的心情")
+                    .font(.title3.bold())
 
-            if sortedMoodEntries.isEmpty {
+                Spacer(minLength: 0)
+
+                if !sortedMoodEntries.isEmpty {
+                    Button {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                            isMoodSearchExpanded.toggle()
+                            if isMoodSearchExpanded {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                    isMoodSearchFocused = true
+                                }
+                            } else {
+                                moodSearchText = ""
+                                isMoodSearchFocused = false
+                            }
+                        }
+                    } label: {
+                        Image(systemName: isMoodSearchExpanded ? "xmark" : "magnifyingglass")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(isMoodSearchExpanded || !moodSearchText.isEmpty ? .white : .pink)
+                            .frame(width: 36, height: 36)
+                            .background(
+                                (isMoodSearchExpanded || !moodSearchText.isEmpty) ? Color.pink : Color.pink.opacity(0.10),
+                                in: Circle()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isMoodSearchExpanded ? "收起搜索" : "搜索心情")
+                }
+            }
+
+            if isMoodSearchExpanded {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    TextField("搜索心情内容", text: $moodSearchText)
+                        .font(.subheadline)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.search)
+                        .focused($isMoodSearchFocused)
+
+                    if !moodSearchText.isEmpty {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.18)) {
+                                moodSearchText = ""
+                            }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    Color(.secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
+            if filteredMoodEntries.isEmpty {
                 AppEmptyState(
-                    title: "还没有心情",
+                    title: moodEntryEmptyTitle,
                     systemImage: "heart.text.square",
-                    description: "把这一刻的感受写下来，之后每天都会随机展示一条给你。"
+                    description: moodEntryEmptyDescription
                 )
                 .frame(maxWidth: .infinity, minHeight: 160)
             } else {
                 VStack(spacing: 10) {
-                    ForEach(sortedMoodEntries) { entry in
+                    ForEach(filteredMoodEntries) { entry in
                         MoodEntryRow(
                             entry: entry,
                             onEdit: {
@@ -112,6 +178,20 @@ extension ContentView {
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
+    }
+
+    var moodEntryEmptyTitle: String {
+        if !moodSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "没有搜到相关心情"
+        }
+        return "还没有心情"
+    }
+
+    var moodEntryEmptyDescription: String {
+        if !moodSearchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "换个关键词试试，搜索会匹配你写下的心情内容。"
+        }
+        return "把这一刻的感受写下来，之后每天都会随机展示一条给你。"
     }
 }
 

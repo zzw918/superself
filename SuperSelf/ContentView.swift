@@ -116,6 +116,8 @@ struct ContentView: View {
     @State var noteTagFilter: String?
     @State var noteSearchText = ""
     @State var isNoteSearchExpanded = false
+    @State var moodSearchText = ""
+    @State var isMoodSearchExpanded = false
     @State var isShowingNoteAddSheet = false
     @State var wishlistInput = ""
     @State var wishlistNoteInput = ""
@@ -210,6 +212,7 @@ struct ContentView: View {
     @FocusState var focusedWeightSheetField: WeightSheetField?
     @FocusState var isAnniversaryTitleFocused: Bool
     @FocusState var isNoteSearchFocused: Bool
+    @FocusState var isMoodSearchFocused: Bool
 
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 

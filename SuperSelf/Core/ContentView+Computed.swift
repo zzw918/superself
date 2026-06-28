@@ -87,6 +87,15 @@ extension ContentView {
         }
     }
 
+    var filteredMoodEntries: [MoodEntry] {
+        let keyword = moodSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !keyword.isEmpty else { return sortedMoodEntries }
+
+        return sortedMoodEntries.filter { entry in
+            entry.content.localizedCaseInsensitiveContains(keyword)
+        }
+    }
+
     var featuredMoodEntryForToday: MoodEntry? {
         let entries = sortedMoodEntries
         guard !entries.isEmpty else { return nil }
