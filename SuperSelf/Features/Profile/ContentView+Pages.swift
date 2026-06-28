@@ -472,76 +472,6 @@ extension ContentView {
                 exchangeRateRow
                     .profileCardRow()
 
-                profileSectionTitleRow("功能管理") {
-                    if isEditingTabs {
-                        HStack(spacing: 8) {
-                            Button {
-                                cancelTabEditMode()
-                            } label: {
-                                Image(systemName: "xmark")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 30, height: 30)
-                                    .background(Color(.tertiarySystemFill))
-                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
-
-                            Button {
-                                commitTabEditMode()
-                            } label: {
-                                Image(systemName: "checkmark")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.blue)
-                                    .frame(width: 30, height: 30)
-                                    .background(Color.blue.opacity(0.12))
-                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    } else {
-                        HStack(spacing: 8) {
-                            Button {
-                                isShowingSectionManagement = true
-                            } label: {
-                                Image(systemName: "gearshape")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 30, height: 30)
-                                    .background(Color(.secondarySystemFill).opacity(0.55))
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                            .stroke(Color(.separator).opacity(0.08), lineWidth: 1)
-                                    }
-                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
-
-                            Button {
-                                beginTabEditMode()
-                            } label: {
-                                Image(systemName: "square.and.pencil")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 30, height: 30)
-                                    .background(Color(.secondarySystemFill).opacity(0.55))
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                            .stroke(Color(.separator).opacity(0.08), lineWidth: 1)
-                                    }
-                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-
-                ForEach(mainTabOrder) { tab in
-                    profileTabCard(tab)
-                        .profileCardRow()
-                }
-                .onMove(perform: moveMainTabs)
-
                 profileSectionTitleRow("通用设置")
 
                 appearanceRow
@@ -554,6 +484,9 @@ extension ContentView {
                     .profileCardRow()
 
                 notificationSettingsRow
+                    .profileCardRow()
+
+                tabManagementRow
                     .profileCardRow()
 
                 profileSectionTitleRow("数据同步")
@@ -1278,6 +1211,106 @@ extension ContentView {
         formatter.maximumFractionDigits = 8
         formatter.minimumFractionDigits = 0
         return formatter.string(from: NSNumber(value: value)) ?? "0"
+    }
+
+    var tabManagementRow: some View {
+        HStack(spacing: 14) {
+            profileIcon("square.grid.2x2", tint: .teal)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("功能管理")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("管理健康、备忘、理财模块")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            NavigationLink {
+                AnyView(tabManagementPage)
+            } label: {
+                EmptyView()
+            }
+            .opacity(0)
+        }
+    }
+
+    var tabManagementPage: some View {
+        List {
+            profileSectionNoteRow("打开“调整模块”可拖动排序或隐藏健康、备忘、理财下的子功能；下方开关控制底部标签页的显示。", topInset: 0)
+
+            tabSectionEntryRow
+                .profileCardRow()
+
+            ForEach(mainTabOrder) { tab in
+                profileTabCard(tab)
+                    .profileCardRow()
+            }
+            .onMove(perform: moveMainTabs)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("功能管理")
+        .navigationBarTitleDisplayMode(.inline)
+        .environment(\.editMode, editMode)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if isEditingTabs {
+                    Button("完成") { commitTabEditMode() }
+                        .font(.subheadline.weight(.semibold))
+                } else {
+                    Button("排序") { beginTabEditMode() }
+                        .font(.subheadline.weight(.medium))
+                }
+            }
+        }
+        .onDisappear {
+            if isEditingTabs {
+                commitTabEditMode()
+            }
+        }
+    }
+
+    var tabSectionEntryRow: some View {
+        Button {
+            isShowingSectionManagement = true
+        } label: {
+            HStack(spacing: 14) {
+                profileIcon("slider.horizontal.3", tint: .indigo)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("调整模块")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("排序或隐藏各分类下的子功能")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tertiary)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.background)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+        }
+        .buttonStyle(.plain)
     }
 
     func profileTabCard(_ tab: MainAppTab) -> some View {
