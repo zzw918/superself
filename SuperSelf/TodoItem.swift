@@ -162,6 +162,7 @@ enum TodoTaskStatus: String, CaseIterable, Identifiable, Codable {
 struct TodoTask: Identifiable, Equatable, Codable {
     var id = UUID()
     var title: String
+    var detail: String = ""
     var createdAt: Date
     var updatedAt: Date?
     var completedAt: Date?
@@ -184,12 +185,13 @@ struct TodoTask: Identifiable, Equatable, Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, createdAt, updatedAt, completedAt, status, priority, dueDate, isPinned
+        case id, title, detail, createdAt, updatedAt, completedAt, status, priority, dueDate, isPinned
     }
 
     init(
         id: UUID = UUID(),
         title: String,
+        detail: String = "",
         createdAt: Date,
         updatedAt: Date? = nil,
         completedAt: Date? = nil,
@@ -200,6 +202,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
     ) {
         self.id = id
         self.title = title
+        self.detail = detail
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.completedAt = completedAt
@@ -213,6 +216,7 @@ struct TodoTask: Identifiable, Equatable, Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         title = try container.decode(String.self, forKey: .title)
+        detail = try container.decodeIfPresent(String.self, forKey: .detail) ?? ""
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
@@ -220,6 +224,74 @@ struct TodoTask: Identifiable, Equatable, Codable {
         priority = try container.decodeIfPresent(TodoPriority.self, forKey: .priority) ?? .importantNotUrgent
         dueDate = try container.decodeIfPresent(Date.self, forKey: .dueDate)
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+    }
+}
+
+struct MoodEntry: Identifiable, Equatable, Codable {
+    var id = UUID()
+    var title: String
+    var detail: String = ""
+    var createdAt: Date
+    var updatedAt: Date?
+
+    var content: String {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDetail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        switch (trimmedTitle.isEmpty, trimmedDetail.isEmpty) {
+        case (false, true):
+            return trimmedTitle
+        case (true, false):
+            return trimmedDetail
+        case (false, false):
+            return trimmedTitle + "\n\n" + trimmedDetail
+        case (true, true):
+            return ""
+        }
+    }
+
+    var lastActivityAt: Date {
+        updatedAt ?? createdAt
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, detail, createdAt, updatedAt
+    }
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        detail: String = "",
+        createdAt: Date = Date(),
+        updatedAt: Date? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.detail = detail
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    init(
+        id: UUID = UUID(),
+        content: String,
+        createdAt: Date = Date(),
+        updatedAt: Date? = nil
+    ) {
+        self.id = id
+        self.title = content
+        self.detail = ""
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        title = try container.decode(String.self, forKey: .title)
+        detail = try container.decodeIfPresent(String.self, forKey: .detail) ?? ""
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
     }
 }
 

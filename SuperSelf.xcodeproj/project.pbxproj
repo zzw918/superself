@@ -423,6 +423,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = SuperSelf;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于通过 Face ID 解锁和重置理财资产查看密码。";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于获取你所在城市的本地天气。";
+                                INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "用于将你选择分享的开心一刻图片保存到系统相册。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -458,6 +459,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = SuperSelf;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "用于通过 Face ID 解锁和重置理财资产查看密码。";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "用于获取你所在城市的本地天气。";
+                                INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "用于将你选择分享的开心一刻图片保存到系统相册。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

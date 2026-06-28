@@ -6,7 +6,6 @@ enum WeightSheetField: Hashable {
 }
 
 struct ContentView: View {
-    @Environment(\.editMode) var editMode
     @Environment(\.scenePhase) var scenePhase
 
     let cloudStore = NSUbiquitousKeyValueStore.default
@@ -20,6 +19,7 @@ struct ContentView: View {
     let fastingGoalHoursCloudKey = "fastingGoalHours"
     let eatingGoalHoursCloudKey = "eatingGoalHours"
     let dailyGoalCloudKey = "dailyGoal"
+    let moodEntriesCloudKey = "moodEntries"
     let todoTasksCloudKey = "todoTasks"
     let wishlistItemsCloudKey = "wishlistItems"
     let wishlistCategoriesCloudKey = "wishlistCategories"
@@ -49,6 +49,7 @@ struct ContentView: View {
     @AppStorage("fastingSessions") var fastingSessionsData = Data()
     @AppStorage("exerciseGoals") var exerciseGoalsData = Data()
     @AppStorage("exerciseRecords") var exerciseRecordsData = Data()
+    @AppStorage("moodEntries") var moodEntriesData = Data()
     @AppStorage("todoTasks") var todoTasksData = Data()
     @AppStorage("memoNotes") var memoNotesData = Data()
     @AppStorage("wishlistItems") var wishlistItemsData = Data()
@@ -70,6 +71,7 @@ struct ContentView: View {
     @AppStorage("roundStartWeight") var roundStartWeight = ""
     @AppStorage("appearanceMode") var appearanceModeRaw = AppearanceMode.system.rawValue
     @AppStorage("companionAnimal") var companionAnimalRaw = CompanionAnimal.default.rawValue
+    @AppStorage("isCompanionAnimalEnabled") var isCompanionAnimalEnabled = true
     @AppStorage("notifyEatingSoon") var notifyEatingSoon = false
     @AppStorage("notifyEatingStart") var notifyEatingStart = false
     @AppStorage("notifyFastingSoon") var notifyFastingSoon = false
@@ -94,6 +96,7 @@ struct ContentView: View {
     @State var exerciseInputGoal: ExerciseGoal?
     @State var exerciseInputDate: Date?
     @State var exerciseInputValue: String = ""
+    @State var moodEntries: [MoodEntry] = []
     @State var todoTasks: [TodoTask] = []
     @State var memoNotes: [MemoNote] = []
     @State var wishlistItems: [WishlistItem] = []
@@ -163,6 +166,7 @@ struct ContentView: View {
     @State var editingFinanceAsset: FinanceAsset?
     @State var editingExpenseRecord: ExpenseRecord?
     @State var editingStockResearchItem: StockResearchItem?
+    @State var editingMoodEntry: MoodEntry?
     @State var editingTodoTask: TodoTask?
     @State var editingMemoNote: MemoNote?
     @State var editingWishlistItem: WishlistItem?
@@ -174,6 +178,7 @@ struct ContentView: View {
     @State var visibleMainTabSet = Set(MainAppTab.allCases)
     @State var tabEditOriginalOrder = MainAppTab.allCases
     @State var tabEditOriginalVisibleSet = Set(MainAppTab.allCases)
+    @State var tabEditMode: EditMode = .inactive
     @State var didApplyColdStartSelection = false
     @State var syncStatus = "iCloud 同步准备中"
     @State var isSyncing = false
@@ -188,6 +193,7 @@ struct ContentView: View {
     @State var startTimeDraft = Date()
     @State var isShowingPlanSheet = false
     @State var isShowingStockAddAlert = false
+    @State var isShowingMoodEntryAddSheet = false
     @State var calculatorDisplay = "0"
     @State var calculatorStoredValue: Double?
     @State var calculatorPendingOperation: CalculatorOperation?
@@ -200,6 +206,7 @@ struct ContentView: View {
     @State var visibleWeightHistoryDays = 10
     @State var didShowWeightSaveFeedback = false
     @State var isShowingEndFastingConfirm = false
+    @State var isShowingBMIInfo = false
     @FocusState var focusedWeightSheetField: WeightSheetField?
     @FocusState var isAnniversaryTitleFocused: Bool
     @FocusState var isNoteSearchFocused: Bool
@@ -217,6 +224,13 @@ struct ContentView: View {
         Binding(
             get: { CompanionAnimal(rawValue: companionAnimalRaw) ?? .default },
             set: { companionAnimalRaw = $0.rawValue }
+        )
+    }
+
+    var companionAnimalEnabled: Binding<Bool> {
+        Binding(
+            get: { isCompanionAnimalEnabled },
+            set: { isCompanionAnimalEnabled = $0 }
         )
     }
 
@@ -306,6 +320,20 @@ struct ContentView: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $isShowingMoodEntryAddSheet) {
+            MoodEntryEditorSheet(entry: nil) { content in
+                addMoodEntry(content: content)
+            }
+            .presentationDetents([.height(620)])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $editingMoodEntry) { entry in
+            MoodEntryEditorSheet(entry: entry) { content in
+                updateMoodEntry(entry, content: content)
+            }
+            .presentationDetents([.height(620)])
+            .presentationDragIndicator(.visible)
+        }
         .sheet(item: $editingWeightLog) { log in
             WeightLogEditorSheet(
                 log: log,
@@ -319,6 +347,11 @@ struct ContentView: View {
         }
         .sheet(isPresented: $isShowingBodySettings) {
             bodySettingsSheet
+        }
+        .sheet(isPresented: $isShowingBMIInfo) {
+            bmiInfoSheet
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingFinanceAssetSheet) {
             financeAddAssetSheet
@@ -420,18 +453,18 @@ struct ContentView: View {
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingTodoAddSheet) {
-            TodoAddSheet(initialPriority: todoAddInitialPriority) { title, priority, dueDate in
-                todoTasks.insert(TodoTask(title: title, createdAt: Date(), priority: priority, dueDate: dueDate), at: 0)
+            TodoAddSheet(initialPriority: todoAddInitialPriority) { title, detail, priority, dueDate in
+                todoTasks.insert(TodoTask(title: title, detail: detail, createdAt: Date(), priority: priority, dueDate: dueDate), at: 0)
                 persistTodoTasks()
             }
-            .presentationDetents([.height(520)])
+            .presentationDetents([.height(640)])
             .presentationDragIndicator(.visible)
         }
         .sheet(item: $editingTodoTask) { task in
-            TodoEditorSheet(task: task) { newTitle, newPriority, newDueDate in
-                updateTodoTask(task, title: newTitle, priority: newPriority, dueDate: newDueDate)
+            TodoEditorSheet(task: task) { newTitle, newDetail, newPriority, newDueDate in
+                updateTodoTask(task, title: newTitle, detail: newDetail, priority: newPriority, dueDate: newDueDate)
             }
-            .presentationDetents([.height(520)])
+            .presentationDetents([.height(640)])
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingNoteAddSheet) {

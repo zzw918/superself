@@ -113,6 +113,22 @@ extension ContentView {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .padding(.top, visibleHealthSections.count > 1 ? 0 : 8)
+                .overlay(alignment: .bottomTrailing) {
+                    if healthSection == .mood {
+                        Button {
+                            isShowingMoodEntryAddSheet = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.title3.weight(.medium))
+                                .foregroundStyle(.white)
+                                .frame(width: 48, height: 48)
+                                .background(Color.pink, in: Circle())
+                                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
+                    }
+                }
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("健康")
@@ -1248,34 +1264,41 @@ extension ContentView {
 
     var tabManagementPage: some View {
         List {
-            profileSectionNoteRow("打开“调整模块”可拖动排序或隐藏健康、备忘、理财下的子功能；下方开关控制底部标签页的显示。", topInset: 0)
+            profileSectionTitleRow("Tab 管理") {
+                if isEditingTabs {
+                    HStack(spacing: 12) {
+                        Button("取消") { cancelTabEditMode() }
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
 
-            tabSectionEntryRow
-                .profileCardRow()
+                        Button("完成") { commitTabEditMode() }
+                            .font(.caption.weight(.semibold))
+                    }
+                } else {
+                    Button("排序") { beginTabEditMode() }
+                        .font(.caption.weight(.semibold))
+                }
+            }
 
             ForEach(mainTabOrder) { tab in
                 profileTabCard(tab)
                     .profileCardRow()
             }
             .onMove(perform: moveMainTabs)
+
+            profileSectionTitleRow("调整模块")
+
+            tabSectionEntryRow
+                .profileCardRow()
         }
+        .id("tab-management-\(isEditingTabs ? "editing" : "viewing")")
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color(.systemGroupedBackground))
         .navigationTitle("功能管理")
         .navigationBarTitleDisplayMode(.inline)
-        .environment(\.editMode, editMode)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                if isEditingTabs {
-                    Button("完成") { commitTabEditMode() }
-                        .font(.subheadline.weight(.semibold))
-                } else {
-                    Button("排序") { beginTabEditMode() }
-                        .font(.subheadline.weight(.medium))
-                }
-            }
-        }
+        .environment(\.layoutDirection, isEditingTabs ? .rightToLeft : .leftToRight)
+        .environment(\.editMode, $tabEditMode)
         .onDisappear {
             if isEditingTabs {
                 commitTabEditMode()
@@ -1309,19 +1332,13 @@ extension ContentView {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.background)
             .clipShape(RoundedRectangle(cornerRadius: 20))
+            .environment(\.layoutDirection, .leftToRight)
         }
         .buttonStyle(.plain)
     }
 
     func profileTabCard(_ tab: MainAppTab) -> some View {
         HStack(spacing: 14) {
-            if isEditingTabs {
-                Image(systemName: "line.3.horizontal")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-                    .transition(.opacity.combined(with: .move(edge: .leading)))
-            }
-
             profileIcon(tab.icon, tint: profileTabTint(tab))
 
             VStack(alignment: .leading, spacing: 3) {
@@ -1352,6 +1369,7 @@ extension ContentView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 20))
+        .environment(\.layoutDirection, .leftToRight)
         .overlay {
             if isEditingTabs {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -1667,7 +1685,7 @@ extension ContentView {
 
             Spacer(minLength: 8)
 
-            Text(companionAnimal.wrappedValue.name)
+            Text(companionAnimalEnabled.wrappedValue ? companionAnimal.wrappedValue.name : "已关闭")
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
 
@@ -1712,13 +1730,29 @@ extension ContentView {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("心情小动物")
                         .font(.headline)
-                    Text("当前：\(companionAnimal.wrappedValue.name)")
+                    Text(companionAnimalEnabled.wrappedValue ? "当前：\(companionAnimal.wrappedValue.name)" : "已关闭")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer(minLength: 8)
             }
+
+            Toggle(isOn: companionAnimalEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("开启心情小动物")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text("关闭后不再在心情页展示")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .tint(.pink)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(CompanionAnimal.allCases) { animal in
@@ -1818,6 +1852,7 @@ extension ContentView {
 
             trailing()
         }
+        .environment(\.layoutDirection, .leftToRight)
         .listRowInsets(EdgeInsets(top: 32, leading: 20, bottom: 6, trailing: 20))
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
@@ -1828,6 +1863,7 @@ extension ContentView {
             .font(.footnote)
             .foregroundStyle(.secondary)
             .lineSpacing(2)
+            .environment(\.layoutDirection, .leftToRight)
             .listRowInsets(EdgeInsets(top: topInset, leading: 20, bottom: 2, trailing: 20))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)

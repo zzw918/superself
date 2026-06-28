@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// 心情页里陪伴用户的小动物。12 生肖统一为圆润"团子"风格，
-/// 共用同一套身体与表情，仅以轮廓（耳朵/口鼻/犄角）和配色区分，保证整组风格一致又各有辨识度。
+/// 心情页里陪伴用户的小动物。12 生肖统一为"软萌玩偶"风格：
+/// 圆润的坐姿全身、柔和渐变体现立体感、大亮眼、腮红，部分还抱着标志性小道具。
+/// 全部用矢量绘制，背景透明、任意分辨率清晰、整组风格一致。
 enum CompanionAnimal: String, CaseIterable, Identifiable, Hashable {
     case rat, ox, tiger, rabbit, dragon, snake, horse, goat, monkey, rooster, dog, pig
 
@@ -26,44 +27,49 @@ enum CompanionAnimal: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// 身体主色（柔和、圆润、符合中国审美的可爱配色）。
-    var bodyColor: Color {
+    var bodyRGB: (Double, Double, Double) {
         switch self {
-        case .rat: return Color(red: 0.80, green: 0.82, blue: 0.88)
-        case .ox: return Color(red: 0.78, green: 0.66, blue: 0.55)
-        case .tiger: return Color(red: 0.99, green: 0.74, blue: 0.43)
-        case .rabbit: return Color(red: 0.99, green: 0.95, blue: 0.96)
-        case .dragon: return Color(red: 0.50, green: 0.80, blue: 0.62)
-        case .snake: return Color(red: 0.76, green: 0.86, blue: 0.62)
-        case .horse: return Color(red: 0.80, green: 0.58, blue: 0.40)
-        case .goat: return Color(red: 0.98, green: 0.96, blue: 0.91)
-        case .monkey: return Color(red: 0.84, green: 0.66, blue: 0.49)
-        case .rooster: return Color(red: 0.99, green: 0.91, blue: 0.56)
-        case .dog: return Color(red: 0.94, green: 0.84, blue: 0.68)
-        case .pig: return Color(red: 1.00, green: 0.78, blue: 0.83)
+        case .rat: return (0.74, 0.70, 0.66)
+        case .ox: return (0.80, 0.66, 0.52)
+        case .tiger: return (0.98, 0.69, 0.36)
+        case .rabbit: return (1.00, 0.98, 0.98)
+        case .dragon: return (0.55, 0.80, 0.55)
+        case .snake: return (0.62, 0.80, 0.50)
+        case .horse: return (0.84, 0.60, 0.39)
+        case .goat: return (1.00, 0.99, 0.97)
+        case .monkey: return (0.66, 0.45, 0.33)
+        case .rooster: return (1.00, 0.90, 0.50)
+        case .dog: return (0.93, 0.83, 0.66)
+        case .pig: return (1.00, 0.78, 0.82)
         }
     }
 
-    /// 特征色：犄角/鸡冠/喙/口鼻等装饰用色。
-    var featureColor: Color {
+    var featureRGB: (Double, Double, Double) {
         switch self {
-        case .rat: return Color(red: 0.63, green: 0.66, blue: 0.74)
-        case .ox: return Color(red: 0.96, green: 0.93, blue: 0.86)
-        case .tiger: return Color(red: 0.36, green: 0.27, blue: 0.22)
-        case .rabbit: return Color(red: 0.98, green: 0.78, blue: 0.82)
-        case .dragon: return Color(red: 0.98, green: 0.82, blue: 0.40)
-        case .snake: return Color(red: 0.55, green: 0.71, blue: 0.42)
-        case .horse: return Color(red: 0.45, green: 0.32, blue: 0.22)
-        case .goat: return Color(red: 0.80, green: 0.74, blue: 0.64)
-        case .monkey: return Color(red: 0.98, green: 0.86, blue: 0.74)
-        case .rooster: return Color(red: 0.95, green: 0.38, blue: 0.34)
-        case .dog: return Color(red: 0.66, green: 0.52, blue: 0.37)
-        case .pig: return Color(red: 0.98, green: 0.62, blue: 0.69)
+        case .rat: return (0.97, 0.78, 0.80)
+        case .ox: return (0.42, 0.30, 0.22)
+        case .tiger: return (0.32, 0.22, 0.18)
+        case .rabbit: return (0.98, 0.80, 0.83)
+        case .dragon: return (0.97, 0.83, 0.38)
+        case .snake: return (0.96, 0.94, 0.78)
+        case .horse: return (0.40, 0.27, 0.18)
+        case .goat: return (0.86, 0.82, 0.74)
+        case .monkey: return (0.95, 0.82, 0.68)
+        case .rooster: return (0.93, 0.33, 0.30)
+        case .dog: return (0.64, 0.49, 0.34)
+        case .pig: return (0.97, 0.60, 0.66)
         }
+    }
+
+    var bodyColor: Color { Self.color(bodyRGB) }
+    var featureColor: Color { Self.color(featureRGB) }
+
+    static func color(_ c: (Double, Double, Double)) -> Color {
+        Color(red: c.0, green: c.1, blue: c.2)
     }
 }
 
-/// 把 CompanionAnimal 画成统一团子风格的矢量小动物，背景透明、任意分辨率清晰。
+/// 把 CompanionAnimal 画成统一软萌玩偶风格的矢量小动物，背景透明、任意分辨率清晰。
 struct CompanionAnimalView: View {
     let animal: CompanionAnimal
 
@@ -75,426 +81,513 @@ struct CompanionAnimalView: View {
 }
 
 private enum CompanionAnimalRenderer {
-    private static let eyeColor = Color(red: 0.20, green: 0.16, blue: 0.18)
-    private static let blushColor = Color(red: 1.0, green: 0.66, blue: 0.71)
+    private static let ink = Color(red: 0.24, green: 0.18, blue: 0.18)
+    private static let blush = Color(red: 1.0, green: 0.62, blue: 0.66)
+
+    // MARK: - 颜色工具
+
+    static func lighten(_ c: (Double, Double, Double), _ f: Double) -> Color {
+        Color(red: c.0 + (1 - c.0) * f, green: c.1 + (1 - c.1) * f, blue: c.2 + (1 - c.2) * f)
+    }
+    static func darken(_ c: (Double, Double, Double), _ f: Double) -> Color {
+        Color(red: c.0 * (1 - f), green: c.1 * (1 - f), blue: c.2 * (1 - f))
+    }
+    /// 竖直方向的柔和渐变，营造玩偶的体积感（上亮下暗）。
+    static func plush(_ c: (Double, Double, Double), _ rect: CGRect, top: Double = 0.26, bottom: Double = 0.16) -> GraphicsContext.Shading {
+        .linearGradient(
+            Gradient(colors: [lighten(c, top), CompanionAnimal.color(c), darken(c, bottom)]),
+            startPoint: CGPoint(x: rect.midX, y: rect.minY),
+            endPoint: CGPoint(x: rect.midX, y: rect.maxY)
+        )
+    }
+
+    // MARK: - 入口
 
     static func draw(_ animal: CompanionAnimal, in context: GraphicsContext, size: CGSize) {
-        let w = size.width
-        let h = size.height
-        let bodyW = w * (animal == .pig ? 0.70 : 0.64)
-        let bodyH = h * (animal == .pig ? 0.56 : 0.54)
-        let body = CGRect(x: (w - bodyW) / 2, y: h * 0.30, width: bodyW, height: bodyH)
+        let w = size.width, h = size.height
+        let body = bodyRect(animal, w: w, h: h)
+        let head = headRect(animal, w: w, h: h)
 
-        drawBehind(animal, context: context, body: body)
-        // 突出的口鼻（马/牛/狗/龙）：先画与身体同色的底，再被身体盖住上半，留下伸出的下半，轮廓自然。
-        if let m = protrudingMuzzleRect(animal, body) {
-            context.fill(Path(ellipseIn: m), with: .color(animal.bodyColor))
-        }
-        context.fill(Path(ellipseIn: body), with: .color(animal.bodyColor))
-        drawBelly(context: context, body: body)
-        drawFront(animal, context: context, body: body)
+        drawTail(animal, context: context, body: body, head: head)
+        drawBehindHead(animal, context: context, head: head)
+        drawBodyAndFeet(animal, context: context, body: body, head: head)
+        drawArmsAndProps(animal, context: context, body: body, head: head, back: true)
+        drawHead(animal, context: context, head: head)
+        drawFace(animal, context: context, head: head)
+        drawArmsAndProps(animal, context: context, body: body, head: head, back: false)
     }
 
-    // MARK: - 突出口鼻的尺寸
-
-    private static func protrudingMuzzleRect(_ animal: CompanionAnimal, _ body: CGRect) -> CGRect? {
-        func rect(_ wF: CGFloat, _ hF: CGFloat, _ centerY: CGFloat) -> CGRect {
-            let sw = body.width * wF
-            let sh = body.height * hF
-            return CGRect(x: body.midX - sw / 2, y: centerY - sh / 2, width: sw, height: sh)
-        }
+    private static func headRect(_ animal: CompanionAnimal, w: CGFloat, h: CGFloat) -> CGRect {
+        let r: CGFloat
         switch animal {
-        case .horse: return rect(0.42, 0.46, body.maxY - body.height * 0.02)
-        case .ox: return rect(0.62, 0.38, body.maxY + body.height * 0.02)
-        case .dog: return rect(0.50, 0.36, body.maxY + body.height * 0.02)
-        case .dragon: return rect(0.44, 0.34, body.maxY + body.height * 0.02)
-        default: return nil
+        case .pig, .tiger, .rabbit, .rat: r = w * 0.27
+        case .snake: r = w * 0.20
+        default: r = w * 0.25
+        }
+        let cy = h * (animal == .snake ? 0.30 : 0.345)
+        return CGRect(x: w / 2 - r, y: cy - r, width: r * 2, height: r * 2)
+    }
+
+    private static func bodyRect(_ animal: CompanionAnimal, w: CGFloat, h: CGFloat) -> CGRect {
+        let bw = w * (animal == .pig ? 0.58 : 0.52)
+        let bh = h * 0.46
+        return CGRect(x: w / 2 - bw / 2, y: h * 0.92 - bh, width: bw, height: bh)
+    }
+
+    // MARK: - 身体 + 脚
+
+    private static func drawBodyAndFeet(_ animal: CompanionAnimal, context: GraphicsContext, body: CGRect, head: CGRect) {
+        let comp = animal.bodyRGB
+
+        // 脚
+        let footW = body.width * 0.30, footH = body.height * 0.20
+        for sign in [-1.0, 1.0] {
+            let fx = body.midX + CGFloat(sign) * body.width * 0.24
+            let rect = CGRect(x: fx - footW / 2, y: body.maxY - footH * 0.7, width: footW, height: footH)
+            context.fill(Path(ellipseIn: rect), with: .color(darken(comp, 0.04)))
+            context.fill(Path(ellipseIn: rect.insetBy(dx: footW * 0.28, dy: footH * 0.30)), with: .color(animal.featureColor.opacity(0.5)))
+        }
+
+        // 身体（坐姿圆胖）
+        let bodyPath = Path(roundedRect: body, cornerSize: CGSize(width: body.width * 0.5, height: body.height * 0.46))
+        context.fill(bodyPath, with: plush(comp, body))
+
+        // 肚皮浅色高光
+        let bellyW = body.width * 0.52, bellyH = body.height * 0.66
+        let belly = CGRect(x: body.midX - bellyW / 2, y: body.maxY - bellyH - body.height * 0.04, width: bellyW, height: bellyH)
+        context.fill(Path(ellipseIn: belly), with: .color(lighten(comp, 0.34).opacity(0.55)))
+    }
+
+    // MARK: - 头
+
+    private static func drawHead(_ animal: CompanionAnimal, context: GraphicsContext, head: CGRect) {
+        let comp = animal.bodyRGB
+        context.fill(Path(ellipseIn: head), with: plush(comp, head, top: 0.30, bottom: 0.12))
+        // 顶部柔光
+        let glowW = head.width * 0.5, glowH = head.height * 0.34
+        let glow = CGRect(x: head.midX - glowW / 2, y: head.minY + head.height * 0.08, width: glowW, height: glowH)
+        context.fill(Path(ellipseIn: glow), with: .color(lighten(comp, 0.30).opacity(0.5)))
+    }
+
+    // MARK: - 尾巴（身体后方）
+
+    private static func drawTail(_ animal: CompanionAnimal, context: GraphicsContext, body: CGRect, head: CGRect) {
+        let comp = animal.bodyRGB
+        switch animal {
+        case .rat:
+            var tail = Path()
+            tail.move(to: CGPoint(x: body.maxX - body.width * 0.10, y: body.maxY - body.height * 0.30))
+            tail.addQuadCurve(to: CGPoint(x: body.maxX + body.width * 0.28, y: body.maxY - body.height * 0.10),
+                              control: CGPoint(x: body.maxX + body.width * 0.30, y: body.maxY - body.height * 0.50))
+            context.stroke(tail, with: .color(CompanionAnimal.color(animal.featureRGB)), style: StrokeStyle(lineWidth: body.width * 0.05, lineCap: .round))
+        case .monkey:
+            var tail = Path()
+            tail.move(to: CGPoint(x: body.minX + body.width * 0.06, y: body.maxY - body.height * 0.30))
+            tail.addQuadCurve(to: CGPoint(x: body.minX - body.width * 0.22, y: body.maxY - body.height * 0.50),
+                              control: CGPoint(x: body.minX - body.width * 0.26, y: body.maxY - body.height * 0.05))
+            context.stroke(tail, with: .color(darken(comp, 0.05)), style: StrokeStyle(lineWidth: body.width * 0.08, lineCap: .round))
+        case .pig:
+            var tail = Path()
+            let sx = body.maxX - body.width * 0.04
+            let sy = body.maxY - body.height * 0.40
+            tail.move(to: CGPoint(x: sx, y: sy))
+            tail.addCurve(to: CGPoint(x: sx + body.width * 0.16, y: sy - body.height * 0.06),
+                          control1: CGPoint(x: sx + body.width * 0.20, y: sy + body.height * 0.04),
+                          control2: CGPoint(x: sx + body.width * 0.18, y: sy - body.height * 0.16))
+            context.stroke(tail, with: .color(CompanionAnimal.color(animal.featureRGB)), style: StrokeStyle(lineWidth: body.width * 0.045, lineCap: .round))
+        case .ox, .horse:
+            var tail = Path()
+            tail.move(to: CGPoint(x: body.maxX - body.width * 0.08, y: body.maxY - body.height * 0.34))
+            tail.addQuadCurve(to: CGPoint(x: body.maxX + body.width * 0.16, y: body.maxY + body.height * 0.02),
+                              control: CGPoint(x: body.maxX + body.width * 0.22, y: body.maxY - body.height * 0.30))
+            context.stroke(tail, with: .color(CompanionAnimal.color(animal.featureRGB)), style: StrokeStyle(lineWidth: body.width * 0.06, lineCap: .round))
+        case .tiger:
+            var tail = Path()
+            tail.move(to: CGPoint(x: body.maxX - body.width * 0.08, y: body.maxY - body.height * 0.28))
+            tail.addQuadCurve(to: CGPoint(x: body.maxX + body.width * 0.22, y: body.maxY - body.height * 0.46),
+                              control: CGPoint(x: body.maxX + body.width * 0.26, y: body.maxY - body.height * 0.02))
+            context.stroke(tail, with: .color(darken(comp, 0.02)), style: StrokeStyle(lineWidth: body.width * 0.09, lineCap: .round))
+        default:
+            break
         }
     }
 
-    // MARK: - Shared pieces
+    // MARK: - 头后方：耳朵 / 犄角 / 鸡冠 / 鬃毛
 
-    private static func drawBelly(context: GraphicsContext, body: CGRect) {
-        let bellyW = body.width * 0.50
-        let bellyH = body.height * 0.46
-        let belly = CGRect(x: body.midX - bellyW / 2, y: body.maxY - bellyH - body.height * 0.04, width: bellyW, height: bellyH)
-        context.fill(Path(ellipseIn: belly), with: .color(.white.opacity(0.35)))
-    }
-
-    // MARK: - 身体后方的耳朵/犄角/鬃毛
-
-    private static func drawBehind(_ animal: CompanionAnimal, context: GraphicsContext, body: CGRect) {
-        let cx = body.midX
-        let topY = body.minY
+    private static func drawBehindHead(_ animal: CompanionAnimal, context: GraphicsContext, head: CGRect) {
+        let cx = head.midX, topY = head.minY, comp = animal.bodyRGB
 
         switch animal {
         case .rat:
-            let r = body.width * 0.25
             for sign in [-1.0, 1.0] {
-                roundEar(context: context, center: CGPoint(x: cx + CGFloat(sign) * body.width * 0.34, y: topY + body.height * 0.06), radius: r, outer: animal.bodyColor, inner: animal.featureColor)
+                ear(context, CGPoint(x: cx + CGFloat(sign) * head.width * 0.34, y: topY + head.height * 0.10), head.width * 0.28, comp, animal.featureColor)
             }
         case .monkey:
-            let r = body.width * 0.20
             for sign in [-1.0, 1.0] {
-                roundEar(context: context, center: CGPoint(x: cx + CGFloat(sign) * body.width * 0.46, y: topY + body.height * 0.34), radius: r, outer: animal.bodyColor, inner: animal.featureColor)
+                ear(context, CGPoint(x: cx + CGFloat(sign) * head.width * 0.50, y: head.midY), head.width * 0.20, comp, animal.featureColor)
             }
         case .tiger:
             for sign in [-1.0, 1.0] {
-                roundEar(context: context, center: CGPoint(x: cx + CGFloat(sign) * body.width * 0.30, y: topY + body.height * 0.02), radius: body.width * 0.16, outer: animal.bodyColor, inner: animal.featureColor.opacity(0.5))
-            }
-        case .rabbit:
-            let earW = body.width * 0.22
-            let earH = body.height * 0.66
-            for sign in [-1.0, 1.0] {
-                let rect = CGRect(x: cx + CGFloat(sign) * body.width * 0.20 - earW / 2, y: topY - earH * 0.78, width: earW, height: earH)
-                context.fill(Path(ellipseIn: rect), with: .color(animal.bodyColor))
-                context.fill(Path(ellipseIn: rect.insetBy(dx: earW * 0.28, dy: earH * 0.18)), with: .color(animal.featureColor))
+                ear(context, CGPoint(x: cx + CGFloat(sign) * head.width * 0.32, y: topY + head.height * 0.06), head.width * 0.18, comp, Color(red: 0.32, green: 0.22, blue: 0.18).opacity(0.5))
             }
         case .pig:
             for sign in [-1.0, 1.0] {
-                var ear = Path()
-                let bx = cx + CGFloat(sign) * body.width * 0.32
-                ear.move(to: CGPoint(x: bx - CGFloat(sign) * body.width * 0.04, y: topY + body.height * 0.04))
-                ear.addQuadCurve(to: CGPoint(x: bx + CGFloat(sign) * body.width * 0.18, y: topY + body.height * 0.22),
-                                 control: CGPoint(x: bx + CGFloat(sign) * body.width * 0.22, y: topY - body.height * 0.04))
-                ear.addQuadCurve(to: CGPoint(x: bx, y: topY + body.height * 0.16),
-                                 control: CGPoint(x: bx + CGFloat(sign) * body.width * 0.04, y: topY + body.height * 0.22))
-                ear.closeSubpath()
-                context.fill(ear, with: .color(animal.bodyColor))
-                context.fill(ear, with: .color(animal.featureColor.opacity(0.35)))
+                var e = Path()
+                let bx = cx + CGFloat(sign) * head.width * 0.30
+                e.move(to: CGPoint(x: bx - CGFloat(sign) * head.width * 0.06, y: topY + head.height * 0.10))
+                e.addQuadCurve(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.20, y: topY + head.height * 0.04),
+                               control: CGPoint(x: bx + CGFloat(sign) * head.width * 0.16, y: topY - head.height * 0.10))
+                e.addQuadCurve(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.02, y: topY + head.height * 0.26),
+                               control: CGPoint(x: bx + CGFloat(sign) * head.width * 0.22, y: topY + head.height * 0.22))
+                e.closeSubpath()
+                context.fill(e, with: .color(CompanionAnimal.color(comp)))
+                context.fill(e, with: .color(animal.featureColor.opacity(0.4)))
+            }
+        case .rabbit:
+            let ew = head.width * 0.24, eh = head.height * 0.78
+            for sign in [-1.0, 1.0] {
+                let rect = CGRect(x: cx + CGFloat(sign) * head.width * 0.22 - ew / 2, y: topY - eh * 0.74, width: ew, height: eh)
+                context.fill(Path(ellipseIn: rect), with: .color(CompanionAnimal.color(comp)))
+                context.fill(Path(ellipseIn: rect.insetBy(dx: ew * 0.30, dy: eh * 0.16)), with: .color(animal.featureColor))
+            }
+        case .horse:
+            for sign in [-1.0, 1.0] {
+                var e = Path()
+                let bx = cx + CGFloat(sign) * head.width * 0.28
+                e.move(to: CGPoint(x: bx, y: topY + head.height * 0.18))
+                e.addLine(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.02, y: topY - head.height * 0.20))
+                e.addLine(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.18, y: topY + head.height * 0.12))
+                e.closeSubpath()
+                context.fill(e, with: .color(CompanionAnimal.color(comp)))
+            }
+            // 鬃毛
+            var mane = Path()
+            mane.move(to: CGPoint(x: cx - head.width * 0.10, y: topY + head.height * 0.04))
+            mane.addQuadCurve(to: CGPoint(x: cx, y: topY - head.height * 0.22), control: CGPoint(x: cx - head.width * 0.12, y: topY - head.height * 0.18))
+            mane.addQuadCurve(to: CGPoint(x: cx + head.width * 0.10, y: topY + head.height * 0.04), control: CGPoint(x: cx + head.width * 0.12, y: topY - head.height * 0.18))
+            mane.addQuadCurve(to: CGPoint(x: cx, y: topY + head.height * 0.20), control: CGPoint(x: cx, y: topY + head.height * 0.12))
+            mane.closeSubpath()
+            context.fill(mane, with: .color(CompanionAnimal.color(animal.featureRGB)))
+        case .dog:
+            let ew = head.width * 0.30, eh = head.height * 0.66
+            for sign in [-1.0, 1.0] {
+                let rect = CGRect(x: cx + CGFloat(sign) * head.width * 0.40 - ew / 2, y: topY + head.height * 0.04, width: ew, height: eh)
+                context.fill(Path(ellipseIn: rect), with: .color(CompanionAnimal.color(animal.featureRGB)))
             }
         case .ox:
             for sign in [-1.0, 1.0] {
-                let er = body.width * 0.16
-                context.fill(Path(ellipseIn: CGRect(x: cx + CGFloat(sign) * body.width * 0.50 - er, y: topY + body.height * 0.26, width: er * 2, height: er * 1.4)), with: .color(animal.bodyColor))
+                let er = head.width * 0.16
+                context.fill(Path(ellipseIn: CGRect(x: cx + CGFloat(sign) * head.width * 0.46 - er, y: topY + head.height * 0.20, width: er * 2, height: er * 1.5)), with: .color(CompanionAnimal.color(comp)))
             }
-            for sign in [-1.0, 1.0] { oxHorn(context: context, body: body, sign: sign, color: animal.featureColor) }
-        case .horse:
-            for sign in [-1.0, 1.0] {
-                var ear = Path()
-                let bx = cx + CGFloat(sign) * body.width * 0.26
-                ear.move(to: CGPoint(x: bx, y: topY + body.height * 0.14))
-                ear.addLine(to: CGPoint(x: bx + CGFloat(sign) * body.width * 0.02, y: topY - body.height * 0.22))
-                ear.addLine(to: CGPoint(x: bx + CGFloat(sign) * body.width * 0.18, y: topY + body.height * 0.08))
-                ear.closeSubpath()
-                context.fill(ear, with: .color(animal.bodyColor))
-            }
-            // 鬃毛：头顶居中的一簇，向下垂到额前
-            var mane = Path()
-            mane.move(to: CGPoint(x: cx - body.width * 0.10, y: topY + body.height * 0.06))
-            mane.addQuadCurve(to: CGPoint(x: cx, y: topY - body.height * 0.20), control: CGPoint(x: cx - body.width * 0.10, y: topY - body.height * 0.16))
-            mane.addQuadCurve(to: CGPoint(x: cx + body.width * 0.10, y: topY + body.height * 0.06), control: CGPoint(x: cx + body.width * 0.10, y: topY - body.height * 0.16))
-            mane.addQuadCurve(to: CGPoint(x: cx, y: topY + body.height * 0.20), control: CGPoint(x: cx, y: topY + body.height * 0.10))
-            mane.closeSubpath()
-            context.fill(mane, with: .color(animal.featureColor.opacity(0.9)))
-        case .dog:
-            for sign in [-1.0, 1.0] {
-                let earW = body.width * 0.28
-                let earH = body.height * 0.60
-                let rect = CGRect(x: cx + CGFloat(sign) * body.width * 0.40 - earW / 2, y: topY + body.height * 0.00, width: earW, height: earH)
-                context.fill(Path(ellipseIn: rect), with: .color(animal.featureColor))
-            }
+            for sign in [-1.0, 1.0] { oxHorn(context, head, sign) }
         case .goat:
-            for sign in [-1.0, 1.0] { goatHorn(context: context, body: body, sign: sign, color: animal.featureColor) }
             for sign in [-1.0, 1.0] {
-                let earW = body.width * 0.24
-                let earH = body.height * 0.22
-                let rect = CGRect(x: cx + CGFloat(sign) * body.width * 0.44 - earW / 2, y: topY + body.height * 0.30, width: earW, height: earH)
-                context.fill(Path(ellipseIn: rect), with: .color(animal.bodyColor))
+                let er = head.width * 0.18
+                context.fill(Path(ellipseIn: CGRect(x: cx + CGFloat(sign) * head.width * 0.46 - er, y: topY + head.height * 0.26, width: er * 2, height: er * 1.4)), with: .color(CompanionAnimal.color(comp)))
             }
-            for i in -2...2 {
-                let r = body.width * 0.12
-                context.fill(Path(ellipseIn: CGRect(x: cx + CGFloat(i) * body.width * 0.15 - r, y: topY - r * 0.5, width: r * 2, height: r * 2)), with: .color(animal.bodyColor))
-            }
+            for sign in [-1.0, 1.0] { goatHorn(context, head, sign, animal.featureColor) }
         case .dragon:
-            for sign in [-1.0, 1.0] { dragonAntler(context: context, body: body, sign: sign, color: animal.featureColor) }
+            for sign in [-1.0, 1.0] { dragonHorn(context, head, sign, animal.featureColor) }
+            // 背鳍/小刺沿头顶
+            for i in -1...1 {
+                var spike = Path()
+                let sx = cx + CGFloat(i) * head.width * 0.16
+                spike.move(to: CGPoint(x: sx - head.width * 0.06, y: topY + head.height * 0.06))
+                spike.addLine(to: CGPoint(x: sx, y: topY - head.height * 0.10))
+                spike.addLine(to: CGPoint(x: sx + head.width * 0.06, y: topY + head.height * 0.06))
+                spike.closeSubpath()
+                context.fill(spike, with: .color(CompanionAnimal.color(animal.featureRGB).opacity(0.9)))
+            }
         case .rooster:
             for i in -1...1 {
-                let r = body.width * 0.11 * (i == 0 ? 1.25 : 1.0)
-                context.fill(Path(ellipseIn: CGRect(x: cx + CGFloat(i) * body.width * 0.15 - r, y: topY - body.height * 0.14, width: r * 2, height: r * 2)), with: .color(animal.featureColor))
+                let r = head.width * 0.12 * (i == 0 ? 1.25 : 1.0)
+                context.fill(Path(ellipseIn: CGRect(x: cx + CGFloat(i) * head.width * 0.16 - r, y: topY - head.height * 0.16, width: r * 2, height: r * 2)), with: .color(animal.featureColor))
             }
         case .snake:
             break
         }
     }
 
-    // MARK: - 身体前方：脸盘、眼睛、口鼻、装饰
+    // MARK: - 脸：眼睛 / 腮红 / 口鼻 / 花纹
 
-    private static func drawFront(_ animal: CompanionAnimal, context: GraphicsContext, body: CGRect) {
-        let cx = body.midX
-        let muzzle = protrudingMuzzleRect(animal, body)
+    private static func drawFace(_ animal: CompanionAnimal, context: GraphicsContext, head: CGRect) {
+        let cx = head.midX
 
-        // 突出口鼻上的浅色斑
-        if let m = muzzle {
-            let patch = CGRect(x: m.minX + m.width * 0.10, y: m.midY - m.height * 0.06, width: m.width * 0.80, height: m.height * 0.58)
-            let color: Color = (animal == .ox) ? animal.featureColor : (animal == .dragon ? animal.bodyColor.opacity(0.001) : .white.opacity(0.30))
-            if animal != .dragon {
-                context.fill(Path(ellipseIn: patch), with: .color(color))
-            }
-        }
-
-        // 猴：桃心脸盘
-        if animal == .monkey {
-            let fw = body.width * 0.60, fh = body.height * 0.76
-            context.fill(Path(ellipseIn: CGRect(x: cx - fw / 2, y: body.minY + body.height * 0.22, width: fw, height: fh)), with: .color(animal.featureColor))
-        }
-        // 虎：浅色嘴鼻区
-        if animal == .tiger {
-            let fw = body.width * 0.46, fh = body.height * 0.42
-            context.fill(Path(ellipseIn: CGRect(x: cx - fw / 2, y: body.minY + body.height * 0.46, width: fw, height: fh)), with: .color(.white.opacity(0.55)))
-        }
-
-        let eyeY = eyeBaseline(animal, body)
-        let metrics = eyeMetrics(animal, body)
-        drawEyes(context: context, body: body, dx: metrics.dx, y: eyeY, r: metrics.r)
-        drawBlush(animal, context: context, body: body, y: eyeY + body.height * 0.13)
-        drawMuzzleDetails(animal, context: context, body: body, eyeY: eyeY, muzzle: muzzle)
-        drawOverlays(animal, context: context, body: body, eyeY: eyeY)
-    }
-
-    private static func eyeBaseline(_ animal: CompanionAnimal, _ body: CGRect) -> CGFloat {
-        let f: CGFloat
+        // 浅色脸盘 / 嘴鼻区
         switch animal {
-        case .horse: f = 0.32
-        case .ox, .dog, .dragon: f = 0.36
-        default: f = 0.40
+        case .monkey:
+            let fw = head.width * 0.66, fh = head.height * 0.74
+            context.fill(Path(ellipseIn: CGRect(x: cx - fw / 2, y: head.minY + head.height * 0.24, width: fw, height: fh)), with: .color(animal.featureColor))
+        case .tiger:
+            let fw = head.width * 0.52, fh = head.height * 0.40
+            context.fill(Path(ellipseIn: CGRect(x: cx - fw / 2, y: head.minY + head.height * 0.50, width: fw, height: fh)), with: .color(.white.opacity(0.7)))
+        case .dog, .ox, .horse:
+            let fw = head.width * 0.50, fh = head.height * 0.40
+            context.fill(Path(ellipseIn: CGRect(x: cx - fw / 2, y: head.minY + head.height * 0.50, width: fw, height: fh)), with: .color(.white.opacity(animal == .ox ? 0.4 : 0.35)))
+        default:
+            break
         }
-        return body.minY + body.height * f
-    }
 
-    private static func eyeMetrics(_ animal: CompanionAnimal, _ body: CGRect) -> (dx: CGFloat, r: CGFloat) {
-        switch animal {
-        case .pig: return (body.width * 0.20, body.width * 0.088)
-        case .dragon: return (body.width * 0.17, body.width * 0.090)
-        case .horse: return (body.width * 0.15, body.width * 0.066)
-        case .snake: return (body.width * 0.14, body.width * 0.072)
-        case .ox: return (body.width * 0.20, body.width * 0.075)
-        case .dog: return (body.width * 0.18, body.width * 0.078)
-        case .monkey: return (body.width * 0.16, body.width * 0.072)
-        default: return (body.width * 0.19, body.width * 0.075)
-        }
-    }
+        let eyeY = head.minY + head.height * (animal == .snake ? 0.42 : 0.50)
+        let eyeDX = head.width * (animal == .snake ? 0.22 : 0.24)
+        let eyeR = head.width * 0.10
 
-    private static func drawEyes(context: GraphicsContext, body: CGRect, dx: CGFloat, y: CGFloat, r: CGFloat) {
         for sign in [-1.0, 1.0] {
-            let cx = body.midX + CGFloat(sign) * dx
-            let eye = CGRect(x: cx - r, y: y - r * 1.15, width: r * 2, height: r * 2.3)
-            context.fill(Path(ellipseIn: eye), with: .color(eyeColor))
-            let glintR = r * 0.42
-            let glint = CGRect(x: cx - glintR + r * 0.35, y: eye.minY + r * 0.45, width: glintR * 2, height: glintR * 2)
-            context.fill(Path(ellipseIn: glint), with: .color(.white.opacity(0.9)))
+            let ex = cx + CGFloat(sign) * eyeDX
+            let eye = CGRect(x: ex - eyeR, y: eyeY - eyeR * 1.1, width: eyeR * 2, height: eyeR * 2.2)
+            context.fill(Path(ellipseIn: eye), with: .color(ink))
+            // 大高光 + 小高光
+            let g1 = eyeR * 0.46
+            context.fill(Path(ellipseIn: CGRect(x: ex - g1 + eyeR * 0.30, y: eye.minY + eyeR * 0.35, width: g1 * 2, height: g1 * 2)), with: .color(.white.opacity(0.95)))
+            let g2 = eyeR * 0.20
+            context.fill(Path(ellipseIn: CGRect(x: ex - g2 - eyeR * 0.30, y: eye.maxY - eyeR * 0.9, width: g2 * 2, height: g2 * 2)), with: .color(.white.opacity(0.7)))
         }
-    }
 
-    private static func drawBlush(_ animal: CompanionAnimal, context: GraphicsContext, body: CGRect, y: CGFloat) {
-        let blushR = body.width * (animal == .pig ? 0.10 : 0.085)
+        // 腮红
+        let blushR = head.width * 0.11
+        let blushY = eyeY + head.height * 0.14
         for sign in [-1.0, 1.0] {
-            let cx = body.midX + CGFloat(sign) * body.width * 0.30
-            let rect = CGRect(x: cx - blushR, y: y - blushR * 0.62, width: blushR * 2, height: blushR * 1.24)
-            context.fill(Path(ellipseIn: rect), with: .color(blushColor.opacity(animal == .pig ? 0.6 : 0.5)))
+            let bx = cx + CGFloat(sign) * head.width * 0.36
+            context.fill(Path(ellipseIn: CGRect(x: bx - blushR, y: blushY - blushR * 0.6, width: blushR * 2, height: blushR * 1.2)), with: .color(blush.opacity(0.5)))
         }
+
+        drawMuzzle(animal, context: context, head: head, eyeY: eyeY)
+        drawFaceMarks(animal, context: context, head: head, eyeY: eyeY)
     }
 
-    private static func drawMuzzleDetails(_ animal: CompanionAnimal, context: GraphicsContext, body: CGRect, eyeY: CGFloat, muzzle: CGRect?) {
-        let cx = body.midX
+    private static func drawMuzzle(_ animal: CompanionAnimal, context: GraphicsContext, head: CGRect, eyeY: CGFloat) {
+        let cx = head.midX
+        let noseY = eyeY + head.height * 0.20
 
         switch animal {
         case .pig:
-            let snoutW = body.width * 0.38
-            let snoutH = body.height * 0.26
-            let snoutY = eyeY + body.height * 0.22
-            let snout = CGRect(x: cx - snoutW / 2, y: snoutY - snoutH / 2, width: snoutW, height: snoutH)
-            context.fill(Path(ellipseIn: snout), with: .color(animal.featureColor))
-            context.fill(Path(ellipseIn: snout.insetBy(dx: snoutW * 0.30, dy: snoutH * 0.18).offsetBy(dx: -snoutW * 0.12, dy: -snoutH * 0.18)), with: .color(.white.opacity(0.35)))
-            let nostrilW = snoutW * 0.16, nostrilH = snoutH * 0.42
+            let sw = head.width * 0.40, sh = head.height * 0.28
+            let snout = CGRect(x: cx - sw / 2, y: noseY - sh / 2, width: sw, height: sh)
+            context.fill(Path(ellipseIn: snout), with: plush(animal.featureRGB, snout, top: 0.18, bottom: 0.12))
+            let nw = sw * 0.15, nh = sh * 0.42
             for sign in [-1.0, 1.0] {
-                let nx = cx + CGFloat(sign) * snoutW * 0.18
-                context.fill(Path(ellipseIn: CGRect(x: nx - nostrilW / 2, y: snoutY - nostrilH / 2, width: nostrilW, height: nostrilH)), with: .color(eyeColor.opacity(0.7)))
+                let nx = cx + CGFloat(sign) * sw * 0.18
+                context.fill(Path(ellipseIn: CGRect(x: nx - nw / 2, y: noseY - nh / 2, width: nw, height: nh)), with: .color(ink.opacity(0.65)))
             }
         case .rooster:
-            let beakW = body.width * 0.20, beakH = body.height * 0.13
-            let by = eyeY + body.height * 0.18
+            let bw = head.width * 0.22, bh = head.height * 0.14
             var beak = Path()
-            beak.move(to: CGPoint(x: cx - beakW / 2, y: by))
-            beak.addLine(to: CGPoint(x: cx + beakW / 2, y: by))
-            beak.addLine(to: CGPoint(x: cx, y: by + beakH))
+            beak.move(to: CGPoint(x: cx - bw / 2, y: noseY - bh * 0.2))
+            beak.addLine(to: CGPoint(x: cx + bw / 2, y: noseY - bh * 0.2))
+            beak.addLine(to: CGPoint(x: cx, y: noseY + bh))
             beak.closeSubpath()
-            context.fill(beak, with: .color(Color(red: 0.96, green: 0.62, blue: 0.24)))
+            context.fill(beak, with: .color(Color(red: 0.97, green: 0.62, blue: 0.20)))
         case .snake:
-            let ny = eyeY + body.height * 0.14
-            drawNoseDot(context: context, cx: cx, noseY: ny, r: body.width * 0.03)
+            noseDot(context, cx, noseY - head.height * 0.02, head.width * 0.035)
             var tongue = Path()
-            let ty = ny + body.height * 0.08
+            let ty = noseY + head.height * 0.06
             tongue.move(to: CGPoint(x: cx, y: ty))
-            tongue.addLine(to: CGPoint(x: cx, y: ty + body.height * 0.10))
-            tongue.addLine(to: CGPoint(x: cx - body.width * 0.05, y: ty + body.height * 0.16))
-            tongue.move(to: CGPoint(x: cx, y: ty + body.height * 0.10))
-            tongue.addLine(to: CGPoint(x: cx + body.width * 0.05, y: ty + body.height * 0.16))
-            context.stroke(tongue, with: .color(Color(red: 0.92, green: 0.34, blue: 0.40)), lineWidth: body.width * 0.022)
-        case .horse:
-            if let m = muzzle {
-                let nostrilW = m.width * 0.16, nostrilH = m.height * 0.16
-                let ny = m.maxY - m.height * 0.26
-                for sign in [-1.0, 1.0] {
-                    let nx = cx + CGFloat(sign) * m.width * 0.18
-                    context.fill(Path(ellipseIn: CGRect(x: nx - nostrilW / 2, y: ny - nostrilH / 2, width: nostrilW, height: nostrilH)), with: .color(eyeColor.opacity(0.55)))
-                }
-            }
-        case .ox:
-            if let m = muzzle {
-                let nostrilW = m.width * 0.10, nostrilH = m.height * 0.30
-                let ny = m.midY + m.height * 0.04
-                for sign in [-1.0, 1.0] {
-                    let nx = cx + CGFloat(sign) * m.width * 0.16
-                    context.fill(Path(ellipseIn: CGRect(x: nx - nostrilW / 2, y: ny - nostrilH / 2, width: nostrilW, height: nostrilH)), with: .color(eyeColor.opacity(0.5)))
-                }
+            tongue.addLine(to: CGPoint(x: cx, y: ty + head.height * 0.12))
+            tongue.addLine(to: CGPoint(x: cx - head.width * 0.06, y: ty + head.height * 0.18))
+            tongue.move(to: CGPoint(x: cx, y: ty + head.height * 0.12))
+            tongue.addLine(to: CGPoint(x: cx + head.width * 0.06, y: ty + head.height * 0.18))
+            context.stroke(tongue, with: .color(Color(red: 0.92, green: 0.34, blue: 0.40)), style: StrokeStyle(lineWidth: head.width * 0.028, lineCap: .round))
+        case .horse, .ox:
+            let nw = head.width * 0.07, nh = head.height * 0.10
+            let ny = noseY + head.height * 0.02
+            for sign in [-1.0, 1.0] {
+                let nx = cx + CGFloat(sign) * head.width * 0.12
+                context.fill(Path(ellipseIn: CGRect(x: nx - nw / 2, y: ny - nh / 2, width: nw, height: nh)), with: .color(ink.opacity(0.5)))
             }
         case .dog:
-            if let m = muzzle {
-                let noseR = m.width * 0.13
-                let nrect = CGRect(x: cx - noseR, y: m.minY + m.height * 0.12, width: noseR * 2, height: noseR * 1.7)
-                context.fill(Path(roundedRect: nrect, cornerRadius: noseR * 0.6), with: .color(eyeColor.opacity(0.9)))
-                var mouth = Path()
-                let my = nrect.maxY + m.height * 0.10
-                mouth.move(to: CGPoint(x: cx, y: nrect.maxY))
-                mouth.addLine(to: CGPoint(x: cx, y: my))
-                mouth.addQuadCurve(to: CGPoint(x: cx - m.width * 0.16, y: my + m.height * 0.04), control: CGPoint(x: cx - m.width * 0.08, y: my + m.height * 0.06))
-                mouth.move(to: CGPoint(x: cx, y: my))
-                mouth.addQuadCurve(to: CGPoint(x: cx + m.width * 0.16, y: my + m.height * 0.04), control: CGPoint(x: cx + m.width * 0.08, y: my + m.height * 0.06))
-                context.stroke(mouth, with: .color(eyeColor.opacity(0.6)), lineWidth: body.width * 0.022)
-            }
+            let nr = head.width * 0.075
+            context.fill(Path(ellipseIn: CGRect(x: cx - nr, y: noseY - head.height * 0.06, width: nr * 2, height: nr * 1.7)), with: .color(ink.opacity(0.9)))
+            smile(context, cx: cx, y: noseY + head.height * 0.08, w: head.width * 0.12, h: head.height * 0.05)
         case .dragon:
-            if let m = muzzle {
-                let nostrilR = m.width * 0.06
-                let ny = m.minY + m.height * 0.16
-                for sign in [-1.0, 1.0] {
-                    let nx = cx + CGFloat(sign) * m.width * 0.16
-                    context.fill(Path(ellipseIn: CGRect(x: nx - nostrilR, y: ny - nostrilR, width: nostrilR * 2, height: nostrilR * 1.6)), with: .color(eyeColor.opacity(0.55)))
-                }
-                var mouth = Path()
-                let my = m.midY + m.height * 0.18
-                mouth.move(to: CGPoint(x: cx - m.width * 0.20, y: my))
-                mouth.addQuadCurve(to: CGPoint(x: cx + m.width * 0.20, y: my), control: CGPoint(x: cx, y: my + m.height * 0.20))
-                context.stroke(mouth, with: .color(eyeColor.opacity(0.5)), lineWidth: body.width * 0.02)
-            }
+            noseDot(context, cx - head.width * 0.07, noseY - head.height * 0.04, head.width * 0.028)
+            noseDot(context, cx + head.width * 0.07, noseY - head.height * 0.04, head.width * 0.028)
+            smile(context, cx: cx, y: noseY + head.height * 0.04, w: head.width * 0.16, h: head.height * 0.05)
         default:
-            let noseY = eyeY + body.height * 0.18
-            drawNoseDot(context: context, cx: cx, noseY: noseY, r: body.width * 0.045)
-            var mouth = Path()
-            let my = noseY + body.height * 0.06
-            mouth.move(to: CGPoint(x: cx - body.width * 0.06, y: my))
-            mouth.addQuadCurve(to: CGPoint(x: cx, y: my + body.height * 0.04), control: CGPoint(x: cx - body.width * 0.03, y: my + body.height * 0.05))
-            mouth.addQuadCurve(to: CGPoint(x: cx + body.width * 0.06, y: my), control: CGPoint(x: cx + body.width * 0.03, y: my + body.height * 0.05))
-            context.stroke(mouth, with: .color(eyeColor.opacity(0.7)), lineWidth: body.width * 0.02)
+            noseDot(context, cx, noseY - head.height * 0.02, head.width * 0.05)
+            smile(context, cx: cx, y: noseY + head.height * 0.05, w: head.width * 0.12, h: head.height * 0.05)
         }
     }
 
-    private static func drawOverlays(_ animal: CompanionAnimal, context: GraphicsContext, body: CGRect, eyeY: CGFloat) {
-        let cx = body.midX
-
+    private static func drawFaceMarks(_ animal: CompanionAnimal, context: GraphicsContext, head: CGRect, eyeY: CGFloat) {
+        let cx = head.midX
         switch animal {
         case .tiger:
             for sign in [-1.0, 0.0, 1.0] {
-                var stripe = Path()
-                let sx = cx + CGFloat(sign) * body.width * 0.11
-                stripe.move(to: CGPoint(x: sx, y: body.minY + body.height * 0.06))
-                stripe.addLine(to: CGPoint(x: sx, y: body.minY + body.height * 0.22))
-                context.stroke(stripe, with: .color(animal.featureColor.opacity(0.85)), lineWidth: body.width * 0.03)
+                var s = Path()
+                let sx = cx + CGFloat(sign) * head.width * 0.12
+                s.move(to: CGPoint(x: sx, y: head.minY + head.height * 0.10))
+                s.addLine(to: CGPoint(x: sx, y: head.minY + head.height * 0.26))
+                context.stroke(s, with: .color(animal.featureColor.opacity(0.85)), style: StrokeStyle(lineWidth: head.width * 0.03, lineCap: .round))
             }
             for sign in [-1.0, 1.0] {
-                for j in 0..<2 {
-                    var stripe = Path()
-                    let sx = cx + CGFloat(sign) * body.width * (0.30 + CGFloat(j) * 0.08)
-                    stripe.move(to: CGPoint(x: sx, y: eyeY - body.height * 0.02))
-                    stripe.addLine(to: CGPoint(x: sx + CGFloat(sign) * body.width * 0.04, y: eyeY + body.height * 0.10))
-                    context.stroke(stripe, with: .color(animal.featureColor.opacity(0.7)), lineWidth: body.width * 0.025)
-                }
+                var s = Path()
+                let sx = cx + CGFloat(sign) * head.width * 0.40
+                s.move(to: CGPoint(x: sx, y: eyeY - head.height * 0.02))
+                s.addLine(to: CGPoint(x: sx + CGFloat(sign) * head.width * 0.06, y: eyeY + head.height * 0.10))
+                context.stroke(s, with: .color(animal.featureColor.opacity(0.7)), style: StrokeStyle(lineWidth: head.width * 0.025, lineCap: .round))
             }
         case .dragon:
             for sign in [-1.0, 1.0] {
-                var whisker = Path()
-                let sx = cx + CGFloat(sign) * body.width * 0.22
-                let sy = eyeY + body.height * 0.16
-                whisker.move(to: CGPoint(x: sx, y: sy))
-                whisker.addQuadCurve(to: CGPoint(x: sx + CGFloat(sign) * body.width * 0.34, y: sy + body.height * 0.06), control: CGPoint(x: sx + CGFloat(sign) * body.width * 0.26, y: sy - body.height * 0.10))
-                context.stroke(whisker, with: .color(animal.featureColor.opacity(0.95)), lineWidth: body.width * 0.02)
+                var wsk = Path()
+                let sx = cx + CGFloat(sign) * head.width * 0.24
+                let sy = eyeY + head.height * 0.16
+                wsk.move(to: CGPoint(x: sx, y: sy))
+                wsk.addQuadCurve(to: CGPoint(x: sx + CGFloat(sign) * head.width * 0.34, y: sy + head.height * 0.04),
+                                 control: CGPoint(x: sx + CGFloat(sign) * head.width * 0.26, y: sy - head.height * 0.12))
+                context.stroke(wsk, with: .color(CompanionAnimal.color(animal.featureRGB)), style: StrokeStyle(lineWidth: head.width * 0.022, lineCap: .round))
             }
-            // 眉毛
-            for sign in [-1.0, 1.0] {
-                var brow = Path()
-                let bx = cx + CGFloat(sign) * body.width * 0.17
-                brow.move(to: CGPoint(x: bx - body.width * 0.06, y: eyeY - body.height * 0.14))
-                brow.addQuadCurve(to: CGPoint(x: bx + body.width * 0.06, y: eyeY - body.height * 0.16), control: CGPoint(x: bx, y: eyeY - body.height * 0.22))
-                context.stroke(brow, with: .color(animal.featureColor.opacity(0.8)), lineWidth: body.width * 0.022)
-            }
-        case .goat:
-            let r = body.width * 0.07
-            let rect = CGRect(x: cx - r, y: body.maxY - body.height * 0.02, width: r * 2, height: r * 2.6)
-            context.fill(Path(ellipseIn: rect), with: .color(animal.bodyColor))
-        case .rooster:
-            let r = body.width * 0.07
-            let rect = CGRect(x: cx - r, y: eyeY + body.height * 0.30, width: r * 2, height: r * 2.2)
-            context.fill(Path(ellipseIn: rect), with: .color(animal.featureColor))
         default:
             break
         }
     }
 
-    private static func drawNoseDot(context: GraphicsContext, cx: CGFloat, noseY: CGFloat, r: CGFloat) {
-        let rect = CGRect(x: cx - r, y: noseY - r, width: r * 2, height: r * 1.7)
-        context.fill(Path(ellipseIn: rect), with: .color(eyeColor.opacity(0.85)))
+    // MARK: - 手臂 + 道具
+
+    private static func drawArmsAndProps(_ animal: CompanionAnimal, context: GraphicsContext, body: CGRect, head: CGRect, back: Bool) {
+        switch animal {
+        case .rat:
+            if back { return }
+            paws(context, body, animal)
+            cheese(context, CGRect(x: body.midX - body.width * 0.22, y: body.midY - body.height * 0.04, width: body.width * 0.44, height: body.height * 0.40))
+        case .rabbit:
+            if back { return }
+            paws(context, body, animal)
+            carrot(context, CGRect(x: body.midX - body.width * 0.15, y: body.midY - body.height * 0.16, width: body.width * 0.30, height: body.height * 0.58))
+        case .monkey:
+            if back { return }
+            paws(context, body, animal)
+            banana(context, CGRect(x: body.midX - body.width * 0.26, y: body.midY - body.height * 0.02, width: body.width * 0.52, height: body.height * 0.34))
+        case .dog:
+            if back { return }
+            bone(context, CGRect(x: body.midX - body.width * 0.24, y: body.maxY - body.height * 0.18, width: body.width * 0.48, height: body.height * 0.16))
+        case .rooster:
+            if !back { wing(context, body, animal) }
+        default:
+            break
+        }
     }
 
-    // MARK: - Primitives
+    // MARK: - 零件
 
-    private static func roundEar(context: GraphicsContext, center: CGPoint, radius: CGFloat, outer: Color, inner: Color) {
+    private static func paws(_ context: GraphicsContext, _ body: CGRect, _ animal: CompanionAnimal) {
+        let pw = body.width * 0.16
+        for sign in [-1.0, 1.0] {
+            let px = body.midX + CGFloat(sign) * body.width * 0.18
+            context.fill(Path(ellipseIn: CGRect(x: px - pw / 2, y: body.midY + body.height * 0.06, width: pw, height: pw)), with: .color(animal.bodyColor))
+        }
+    }
+
+    private static func wing(_ context: GraphicsContext, _ body: CGRect, _ animal: CompanionAnimal) {
+        let w = body.width * 0.30, h = body.height * 0.42
+        let rect = CGRect(x: body.midX - body.width * 0.02, y: body.midY - body.height * 0.06, width: w, height: h)
+        context.fill(Path(ellipseIn: rect), with: .color(darken(animal.bodyRGB, 0.10)))
+    }
+
+    private static func ear(_ context: GraphicsContext, _ center: CGPoint, _ radius: CGFloat, _ outer: (Double, Double, Double), _ inner: Color) {
         let rect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
-        context.fill(Path(ellipseIn: rect), with: .color(outer))
-        let innerR = radius * 0.55
-        context.fill(Path(ellipseIn: CGRect(x: center.x - innerR, y: center.y - innerR, width: innerR * 2, height: innerR * 2)), with: .color(inner))
+        context.fill(Path(ellipseIn: rect), with: .color(CompanionAnimal.color(outer)))
+        let ir = radius * 0.55
+        context.fill(Path(ellipseIn: CGRect(x: center.x - ir, y: center.y - ir, width: ir * 2, height: ir * 2)), with: .color(inner))
     }
 
-    private static func oxHorn(context: GraphicsContext, body: CGRect, sign: Double, color: Color) {
-        let cx = body.midX
-        let topY = body.minY
+    private static func noseDot(_ context: GraphicsContext, _ cx: CGFloat, _ y: CGFloat, _ r: CGFloat) {
+        context.fill(Path(ellipseIn: CGRect(x: cx - r, y: y - r, width: r * 2, height: r * 1.7)), with: .color(ink.opacity(0.85)))
+    }
+
+    private static func smile(_ context: GraphicsContext, cx: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) {
+        var m = Path()
+        m.move(to: CGPoint(x: cx - w, y: y))
+        m.addQuadCurve(to: CGPoint(x: cx, y: y + h), control: CGPoint(x: cx - w * 0.5, y: y + h * 1.1))
+        m.addQuadCurve(to: CGPoint(x: cx + w, y: y), control: CGPoint(x: cx + w * 0.5, y: y + h * 1.1))
+        context.stroke(m, with: .color(ink.opacity(0.65)), style: StrokeStyle(lineWidth: w * 0.16, lineCap: .round))
+    }
+
+    private static func oxHorn(_ context: GraphicsContext, _ head: CGRect, _ sign: Double) {
+        let cx = head.midX, topY = head.minY
         var horn = Path()
-        let baseX = cx + CGFloat(sign) * body.width * 0.16
-        horn.move(to: CGPoint(x: baseX, y: topY + body.height * 0.08))
-        horn.addQuadCurve(to: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.40, y: topY - body.height * 0.14), control: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.34, y: topY + body.height * 0.14))
-        horn.addQuadCurve(to: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.30, y: topY - body.height * 0.06), control: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.34, y: topY - body.height * 0.12))
-        horn.addQuadCurve(to: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.04, y: topY + body.height * 0.06), control: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.18, y: topY + body.height * 0.02))
+        let bx = cx + CGFloat(sign) * head.width * 0.16
+        horn.move(to: CGPoint(x: bx, y: topY + head.height * 0.10))
+        horn.addQuadCurve(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.42, y: topY - head.height * 0.10), control: CGPoint(x: bx + CGFloat(sign) * head.width * 0.36, y: topY + head.height * 0.16))
+        horn.addQuadCurve(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.30, y: topY - head.height * 0.02), control: CGPoint(x: bx + CGFloat(sign) * head.width * 0.36, y: topY - head.height * 0.08))
+        horn.addQuadCurve(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.04, y: topY + head.height * 0.08), control: CGPoint(x: bx + CGFloat(sign) * head.width * 0.18, y: topY + head.height * 0.04))
+        horn.closeSubpath()
+        context.fill(horn, with: .color(Color(red: 0.96, green: 0.93, blue: 0.86)))
+    }
+
+    private static func goatHorn(_ context: GraphicsContext, _ head: CGRect, _ sign: Double, _ color: Color) {
+        let cx = head.midX, topY = head.minY
+        var horn = Path()
+        let bx = cx + CGFloat(sign) * head.width * 0.20
+        horn.move(to: CGPoint(x: bx, y: topY + head.height * 0.06))
+        horn.addQuadCurve(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.22, y: topY - head.height * 0.28), control: CGPoint(x: bx + CGFloat(sign) * head.width * 0.30, y: topY - head.height * 0.02))
+        horn.addQuadCurve(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.06, y: topY + head.height * 0.02), control: CGPoint(x: bx + CGFloat(sign) * head.width * 0.14, y: topY - head.height * 0.12))
         horn.closeSubpath()
         context.fill(horn, with: .color(color))
     }
 
-    private static func goatHorn(context: GraphicsContext, body: CGRect, sign: Double, color: Color) {
-        let cx = body.midX
-        let topY = body.minY
-        var horn = Path()
-        let baseX = cx + CGFloat(sign) * body.width * 0.18
-        horn.move(to: CGPoint(x: baseX, y: topY + body.height * 0.06))
-        horn.addQuadCurve(to: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.24, y: topY - body.height * 0.30), control: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.30, y: topY - body.height * 0.04))
-        horn.addQuadCurve(to: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.08, y: topY + body.height * 0.02), control: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.16, y: topY - body.height * 0.12))
-        horn.closeSubpath()
-        context.fill(horn, with: .color(color))
-    }
-
-    private static func dragonAntler(context: GraphicsContext, body: CGRect, sign: Double, color: Color) {
-        let topY = body.minY
-        let baseX = body.midX + CGFloat(sign) * body.width * 0.14
-        // 主干
+    private static func dragonHorn(_ context: GraphicsContext, _ head: CGRect, _ sign: Double, _ color: Color) {
+        let cx = head.midX, topY = head.minY
+        let bx = cx + CGFloat(sign) * head.width * 0.16
         var stem = Path()
-        stem.move(to: CGPoint(x: baseX, y: topY + body.height * 0.08))
-        stem.addLine(to: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.10, y: topY - body.height * 0.34))
-        context.stroke(stem, with: .color(color), lineWidth: body.width * 0.05)
-        // 分叉
+        stem.move(to: CGPoint(x: bx, y: topY + head.height * 0.08))
+        stem.addLine(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.10, y: topY - head.height * 0.30))
+        context.stroke(stem, with: .color(color), style: StrokeStyle(lineWidth: head.width * 0.06, lineCap: .round))
         var branch = Path()
-        branch.move(to: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.05, y: topY - body.height * 0.10))
-        branch.addLine(to: CGPoint(x: baseX + CGFloat(sign) * body.width * 0.22, y: topY - body.height * 0.18))
-        context.stroke(branch, with: .color(color), lineWidth: body.width * 0.04)
-        // 顶端圆球
-        let r = body.width * 0.05
-        context.fill(Path(ellipseIn: CGRect(x: baseX + CGFloat(sign) * body.width * 0.10 - r, y: topY - body.height * 0.34 - r, width: r * 2, height: r * 2)), with: .color(color))
-        context.fill(Path(ellipseIn: CGRect(x: baseX + CGFloat(sign) * body.width * 0.22 - r * 0.8, y: topY - body.height * 0.18 - r * 0.8, width: r * 1.6, height: r * 1.6)), with: .color(color))
+        branch.move(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.05, y: topY - head.height * 0.08))
+        branch.addLine(to: CGPoint(x: bx + CGFloat(sign) * head.width * 0.22, y: topY - head.height * 0.14))
+        context.stroke(branch, with: .color(color), style: StrokeStyle(lineWidth: head.width * 0.045, lineCap: .round))
+        let r = head.width * 0.05
+        context.fill(Path(ellipseIn: CGRect(x: bx + CGFloat(sign) * head.width * 0.10 - r, y: topY - head.height * 0.30 - r, width: r * 2, height: r * 2)), with: .color(color))
+    }
+
+    // MARK: - 道具
+
+    private static func cheese(_ context: GraphicsContext, _ rect: CGRect) {
+        var wedge = Path()
+        wedge.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        wedge.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        wedge.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        wedge.closeSubpath()
+        context.fill(wedge, with: .color(Color(red: 0.99, green: 0.83, blue: 0.32)))
+        for p in [CGPoint(x: rect.minX + rect.width * 0.30, y: rect.maxY - rect.height * 0.25),
+                  CGPoint(x: rect.minX + rect.width * 0.18, y: rect.maxY - rect.height * 0.55)] {
+            let hr = rect.width * 0.07
+            context.fill(Path(ellipseIn: CGRect(x: p.x - hr, y: p.y - hr, width: hr * 2, height: hr * 2)), with: .color(Color(red: 0.95, green: 0.72, blue: 0.20)))
+        }
+    }
+
+    private static func carrot(_ context: GraphicsContext, _ rect: CGRect) {
+        var body = Path()
+        body.move(to: CGPoint(x: rect.midX - rect.width * 0.5, y: rect.minY + rect.height * 0.30))
+        body.addLine(to: CGPoint(x: rect.midX + rect.width * 0.5, y: rect.minY + rect.height * 0.30))
+        body.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        body.closeSubpath()
+        context.fill(body, with: .color(Color(red: 0.96, green: 0.55, blue: 0.22)))
+        for sign in [-0.5, 0.3, 1.0] {
+            let lr = rect.width * 0.22
+            let lx = rect.midX + CGFloat(sign) * rect.width * 0.22
+            context.fill(Path(ellipseIn: CGRect(x: lx - lr / 2, y: rect.minY, width: lr, height: rect.height * 0.32)), with: .color(Color(red: 0.40, green: 0.72, blue: 0.38)))
+        }
+    }
+
+    private static func banana(_ context: GraphicsContext, _ rect: CGRect) {
+        var b = Path()
+        b.move(to: CGPoint(x: rect.minX, y: rect.minY + rect.height * 0.2))
+        b.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY + rect.height * 0.2), control: CGPoint(x: rect.midX, y: rect.maxY + rect.height * 0.8))
+        b.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.minY + rect.height * 0.2), control: CGPoint(x: rect.midX, y: rect.maxY))
+        b.closeSubpath()
+        context.fill(b, with: .color(Color(red: 0.99, green: 0.84, blue: 0.32)))
+    }
+
+    private static func bone(_ context: GraphicsContext, _ rect: CGRect) {
+        let knob = rect.height * 0.55
+        let midY = rect.midY
+        context.fill(Path(roundedRect: CGRect(x: rect.minX + knob * 0.6, y: midY - rect.height * 0.18, width: rect.width - knob * 1.2, height: rect.height * 0.36), cornerRadius: rect.height * 0.18), with: .color(Color(red: 0.98, green: 0.96, blue: 0.90)))
+        for sign in [-1.0, 1.0] {
+            let cxk = sign < 0 ? rect.minX + knob * 0.5 : rect.maxX - knob * 0.5
+            for dy in [-1.0, 1.0] {
+                context.fill(Path(ellipseIn: CGRect(x: cxk - knob / 2, y: midY + CGFloat(dy) * knob * 0.3 - knob / 2, width: knob, height: knob)), with: .color(Color(red: 0.98, green: 0.96, blue: 0.90)))
+            }
+        }
     }
 }

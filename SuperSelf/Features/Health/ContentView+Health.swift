@@ -539,52 +539,231 @@ extension ContentView {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    @ViewBuilder
     var weightBMIBlock: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("BMI")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+        Button {
+            isShowingBMIInfo = true
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 6) {
+                    Text("BMI")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
 
-            if let bmiValue {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(String(format: "%.1f", bmiValue))
-                        .font(.system(size: 26, weight: .heavy, design: .rounded))
-                        .foregroundStyle(bmiColor(for: bmiValue))
-                    Text(bmiStatusText)
-                        .font(.caption.bold())
-                        .foregroundStyle(bmiColor(for: bmiValue))
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "questionmark.circle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
 
-                BMIRangeBar(bmi: bmiValue)
+                if let bmiValue {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(String(format: "%.1f", bmiValue))
+                            .font(.system(size: 26, weight: .heavy, design: .rounded))
+                            .foregroundStyle(bmiColor(for: bmiValue))
+                        Text(bmiStatusText)
+                            .font(.caption.bold())
+                            .foregroundStyle(bmiColor(for: bmiValue))
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
 
-                HStack(spacing: 0) {
-                    Text("偏瘦")
-                    Spacer(minLength: 0)
-                    Text("正常")
-                    Spacer(minLength: 0)
-                    Text("偏胖")
-                    Spacer(minLength: 0)
-                    Text("肥胖")
+                    BMIRangeBar(bmi: bmiValue)
+
+                    HStack(spacing: 0) {
+                        Text("偏瘦")
+                        Spacer(minLength: 0)
+                        Text("正常")
+                        Spacer(minLength: 0)
+                        Text("偏胖")
+                        Spacer(minLength: 0)
+                        Text("肥胖")
+                    }
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.secondary)
+                } else {
+                    Text("未生成")
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                    Text(heightValue == nil ? "先填身高" : "先记体重")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(.secondary)
-            } else {
-                Text("未生成")
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.secondary)
-                Text(heightValue == nil ? "先填身高" : "先记体重")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("点按查看 BMI 的计算规则和区间说明")
+    }
+
+    var bmiInfoSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("BMI 是身体质量指数，用来粗略判断体重和身高是否匹配。")
+                            .font(.headline)
+
+                        Text("它不是越低越好，也不是唯一标准，但对大多数成年人来说，是一个很常用、很容易看懂的参考值。")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("你的当前结果")
+                            .font(.headline)
+
+                        if let bmiValue {
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(String(format: "%.1f", bmiValue))
+                                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                                    .foregroundStyle(bmiColor(for: bmiValue))
+                                Text(bmiStatusText)
+                                    .font(.headline)
+                                    .foregroundStyle(bmiColor(for: bmiValue))
+                            }
+
+                            Text(currentBMIExplanation)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("还无法计算 BMI")
+                                .font(.headline)
+                            Text(heightValue == nil ? "先填写身高，再记录体重，系统就会自动算出 BMI。" : "先记录一次当前体重，系统就会自动算出 BMI。")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("BMI 怎么算")
+                            .font(.headline)
+
+                        Text("计算公式：BMI = 体重（kg）÷ 身高（m）²")
+                            .font(.body.weight(.semibold))
+
+                        Text("比如身高 1.70 米、体重 68.8 kg，BMI = 68.8 ÷ 1.70²，大约就是 23.8。")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("怎么看区间")
+                            .font(.headline)
+
+                        bmiRangeRow(
+                            title: "偏瘦",
+                            range: "< 18.5",
+                            tint: .blue,
+                            description: "说明体重相对偏低。可以先看看最近是不是吃得少、睡得少，或者运动后恢复不够。"
+                        )
+                        bmiRangeRow(
+                            title: "正常",
+                            range: "18.5 - 23.9",
+                            tint: .green,
+                            description: "对大多数成年人来说，这是更常见也更稳妥的参考范围。能长期维持，比短期冲低更重要。"
+                        )
+                        bmiRangeRow(
+                            title: "偏胖",
+                            range: "24.0 - 27.9",
+                            tint: .orange,
+                            description: "说明体重有点超出理想范围了。通常可以先从少喝含糖饮料、多走路、规律吃饭开始，不必太激进。"
+                        )
+                        bmiRangeRow(
+                            title: "肥胖",
+                            range: "≥ 28.0",
+                            tint: .red,
+                            description: "说明超重程度更明显，建议尽早系统减重；如果还伴随腰围大、血压血糖异常，更值得认真关注。"
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("怎样算比较合理")
+                            .font(.headline)
+
+                        Text("如果你是普通成年人，把 BMI 大致维持在 18.5 到 23.9 之间，同时体重波动不要太剧烈，通常就可以认为比较合理。")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        Text("更重要的是：精神状态稳定、吃得下睡得着、运动后恢复正常、腰围没有持续上涨。BMI 只是一个起点，不需要把它当成唯一目标。")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("补充说明")
+                            .font(.headline)
+
+                        Text("本应用按中国成年人常用分界值显示：18.5、24、28。未成年人、孕期、老年人、健身增肌人群，BMI 的参考意义会打折，最好结合体脂率、腰围和医生建议一起看。")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(20)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("BMI 说明")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("完成") {
+                        isShowingBMIInfo = false
+                    }
+                }
             }
         }
+    }
+
+    func bmiRangeRow(title: String, range: String, tint: Color, description: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(tint)
+                    .frame(width: 10, height: 10)
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+
+                Text(range)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(description)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .frame(maxHeight: .infinity, alignment: .top)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    var currentBMIExplanation: String {
+        guard let bmiValue else {
+            return ""
+        }
+
+        switch bmiValue {
+        case ..<18.5:
+            return "你现在属于偏瘦区间。不是立刻有问题，但如果长期偏低，建议顺手关注一下饮食、作息和力量训练。"
+        case 18.5..<24:
+            return "你现在处于正常区间。对大多数成年人来说，这是比较理想的范围，保持现在这种稳定状态就很好。"
+        case 24..<28:
+            return "你现在处于偏胖区间。通常不需要极端减肥，先把饮食节奏、活动量和睡眠慢慢拉回规律，会更容易坚持。"
+        default:
+            return "你现在处于肥胖区间。建议把减重当成一个长期计划来做，如果还有腰围偏大或体检指标异常，更值得认真管理。"
+        }
     }
 
     var addWeightSheet: some View {
@@ -1848,21 +2027,44 @@ extension ContentView {
             return Color(.systemGray5)
         }()
 
-        let content = Text("\(calendar.component(.day, from: day.date))")
-            .font(.caption.weight(day.isToday ? .bold : .medium))
-            .foregroundStyle(fraction >= 1 && day.isInDisplayedMonth && !isFuture ? .white : (day.isInDisplayedMonth ? .primary : .secondary.opacity(0.35)))
-            .frame(width: 34, height: 34)
-            .background(fillColor, in: Circle())
-            .overlay {
-                if isSelected {
-                    Circle()
-                        .stroke(Color.primary.opacity(0.5), lineWidth: 2)
-                } else if day.isToday {
-                    Circle()
-                        .stroke(Color.green, lineWidth: 1.5)
-                }
+        let content = ZStack {
+            if day.isToday {
+                Circle()
+                    .fill(Color.green.opacity(day.isInDisplayedMonth && !isFuture ? 0.16 : 0.08))
+                    .frame(width: 44, height: 44)
             }
-            .opacity(day.isInDisplayedMonth ? 1 : 0.45)
+
+            Text("\(calendar.component(.day, from: day.date))")
+                .font(.caption.weight(day.isToday ? .bold : .medium))
+                .foregroundStyle(fraction >= 1 && day.isInDisplayedMonth && !isFuture ? .white : (day.isInDisplayedMonth ? .primary : .secondary.opacity(0.35)))
+                .frame(width: 36, height: 36)
+                .background(fillColor, in: Circle())
+                .overlay {
+                    if day.isToday {
+                        Circle()
+                            .stroke(Color.green, lineWidth: 2.5)
+                            .padding(-4)
+                    }
+
+                    if isSelected {
+                        Circle()
+                            .stroke(Color.primary.opacity(0.58), lineWidth: 2)
+                            .padding(day.isToday ? -7 : -3)
+                    }
+                }
+                .overlay(alignment: .topTrailing) {
+                    if day.isToday {
+                        Text("今")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 15, height: 15)
+                            .background(Color.green, in: Circle())
+                            .offset(x: 4, y: -4)
+                    }
+                }
+        }
+        .frame(width: 46, height: 46)
+        .opacity(day.isInDisplayedMonth ? 1 : 0.45)
 
         if isFuture || !day.isInDisplayedMonth {
             return AnyView(content)

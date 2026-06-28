@@ -78,6 +78,27 @@ extension ContentView {
         sortedWeightLogs.last
     }
 
+    var sortedMoodEntries: [MoodEntry] {
+        moodEntries.sorted { lhs, rhs in
+            if lhs.lastActivityAt != rhs.lastActivityAt {
+                return lhs.lastActivityAt > rhs.lastActivityAt
+            }
+            return lhs.createdAt > rhs.createdAt
+        }
+    }
+
+    var featuredMoodEntryForToday: MoodEntry? {
+        let entries = sortedMoodEntries
+        guard !entries.isEmpty else { return nil }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyyMMdd"
+        let seed = Int(formatter.string(from: Date())) ?? 0
+        let index = abs(seed) % entries.count
+        return entries[index]
+    }
+
     var sortedFastingSessions: [FastingSession] {
         fastingSessions.sorted { $0.endDate > $1.endDate }
     }
@@ -261,7 +282,7 @@ extension ContentView {
     }
 
     var isEditingTabs: Bool {
-        editMode?.wrappedValue.isEditing == true
+        tabEditMode.isEditing
     }
 
     var visibleMainTabs: [MainAppTab] {

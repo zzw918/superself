@@ -92,13 +92,13 @@ extension ContentView {
         tabEditOriginalOrder = mainTabOrder
         tabEditOriginalVisibleSet = visibleMainTabSet
         withAnimation {
-            editMode?.wrappedValue = .active
+            tabEditMode = .active
         }
     }
 
     func commitTabEditMode() {
         withAnimation {
-            editMode?.wrappedValue = .inactive
+            tabEditMode = .inactive
         }
         persistMainTabPreferences()
     }
@@ -107,7 +107,7 @@ extension ContentView {
         mainTabOrder = tabEditOriginalOrder
         visibleMainTabSet = tabEditOriginalVisibleSet
         withAnimation {
-            editMode?.wrappedValue = .inactive
+            tabEditMode = .inactive
         }
         persistMainTabPreferences()
     }
@@ -352,6 +352,7 @@ extension ContentView {
         loadFastingSessions()
         loadExerciseGoals()
         loadExerciseRecords()
+        loadMoodEntries()
         loadCalculatorHistory()
         loadTodoTasks()
         loadMemoNotes()
@@ -457,6 +458,14 @@ extension ContentView {
         }
     }
 
+    func loadMoodEntries() {
+        guard !moodEntriesData.isEmpty else { return }
+
+        if let decodedEntries = try? JSONDecoder().decode([MoodEntry].self, from: moodEntriesData) {
+            moodEntries = decodedEntries
+        }
+    }
+
     func loadCalculatorHistory() {
         guard !calculatorHistoryData.isEmpty else { return }
 
@@ -483,6 +492,32 @@ extension ContentView {
         persistTodoTasks()
     }
 
+    func addMoodEntry(content: String) {
+        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedContent.isEmpty else { return }
+
+        moodEntries.insert(MoodEntry(content: trimmedContent, createdAt: Date()), at: 0)
+        persistMoodEntries()
+    }
+
+    func updateMoodEntry(_ entry: MoodEntry, content: String) {
+        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedContent.isEmpty,
+              let index = moodEntries.firstIndex(where: { $0.id == entry.id }) else { return }
+
+        guard moodEntries[index].content != trimmedContent else { return }
+
+        moodEntries[index].title = trimmedContent
+        moodEntries[index].detail = ""
+        moodEntries[index].updatedAt = Date()
+        persistMoodEntries()
+    }
+
+    func deleteMoodEntry(_ entry: MoodEntry) {
+        moodEntries.removeAll { $0.id == entry.id }
+        persistMoodEntries()
+    }
+
     func toggleTodoTask(_ task: TodoTask) {
         setTodoTaskStatus(task, status: task.isCompleted ? .pending : .completed)
     }
@@ -503,16 +538,19 @@ extension ContentView {
         persistTodoTasks()
     }
 
-    func updateTodoTask(_ task: TodoTask, title: String, priority: TodoPriority, dueDate: Date?) {
+    func updateTodoTask(_ task: TodoTask, title: String, detail: String, priority: TodoPriority, dueDate: Date?) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDetail = detail.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty,
               let index = todoTasks.firstIndex(where: { $0.id == task.id }) else { return }
 
         guard todoTasks[index].title != trimmed
+                || todoTasks[index].detail != trimmedDetail
                 || todoTasks[index].priority != priority
                 || todoTasks[index].dueDate != dueDate else { return }
 
         todoTasks[index].title = trimmed
+        todoTasks[index].detail = trimmedDetail
         todoTasks[index].priority = priority
         todoTasks[index].dueDate = dueDate
         todoTasks[index].updatedAt = Date()
@@ -530,6 +568,14 @@ extension ContentView {
         if let encodedTasks = try? JSONEncoder().encode(todoTasks) {
             todoTasksData = encodedTasks
             cloudStore.set(encodedTasks, forKey: todoTasksCloudKey)
+            flushToICloud()
+        }
+    }
+
+    func persistMoodEntries() {
+        if let encodedEntries = try? JSONEncoder().encode(moodEntries) {
+            moodEntriesData = encodedEntries
+            cloudStore.set(encodedEntries, forKey: moodEntriesCloudKey)
             flushToICloud()
         }
     }
@@ -1265,6 +1311,11 @@ extension ContentView {
             mergeExerciseRecords(cloudExerciseRecords)
         }
 
+        if let cloudMoodEntriesData = cloudStore.data(forKey: moodEntriesCloudKey),
+           let cloudMoodEntries = try? JSONDecoder().decode([MoodEntry].self, from: cloudMoodEntriesData) {
+            mergeMoodEntries(cloudMoodEntries)
+        }
+
         if let cloudTodoTasksData = cloudStore.data(forKey: todoTasksCloudKey),
            let cloudTodoTasks = try? JSONDecoder().decode([TodoTask].self, from: cloudTodoTasksData) {
             mergeTodoTasks(cloudTodoTasks)
@@ -1398,6 +1449,11 @@ extension ContentView {
         if let encodedExerciseRecords = try? JSONEncoder().encode(exerciseRecords) {
             exerciseRecordsData = encodedExerciseRecords
             cloudStore.set(encodedExerciseRecords, forKey: exerciseRecordsCloudKey)
+        }
+
+        if let encodedMoodEntries = try? JSONEncoder().encode(moodEntries) {
+            moodEntriesData = encodedMoodEntries
+            cloudStore.set(encodedMoodEntries, forKey: moodEntriesCloudKey)
         }
 
         if let encodedTodoTasks = try? JSONEncoder().encode(todoTasks) {
@@ -1683,6 +1739,28 @@ extension ContentView {
 
         if let encodedTasks = try? JSONEncoder().encode(todoTasks) {
             todoTasksData = encodedTasks
+        }
+    }
+
+    func mergeMoodEntries(_ cloudEntries: [MoodEntry]) {
+        var mergedEntriesByID = Dictionary(uniqueKeysWithValues: moodEntries.map { ($0.id, $0) })
+
+        for entry in cloudEntries {
+            if let local = mergedEntriesByID[entry.id], local.lastActivityAt > entry.lastActivityAt {
+                continue
+            }
+            mergedEntriesByID[entry.id] = entry
+        }
+
+        moodEntries = mergedEntriesByID.values.sorted { lhs, rhs in
+            if lhs.lastActivityAt != rhs.lastActivityAt {
+                return lhs.lastActivityAt > rhs.lastActivityAt
+            }
+            return lhs.createdAt > rhs.createdAt
+        }
+
+        if let encodedEntries = try? JSONEncoder().encode(moodEntries) {
+            moodEntriesData = encodedEntries
         }
     }
 
