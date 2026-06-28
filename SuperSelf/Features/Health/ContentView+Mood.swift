@@ -1,6 +1,4 @@
 import SwiftUI
-import UIKit
-import ImageIO
 
 extension ContentView {
     var moodSection: some View {
@@ -11,7 +9,7 @@ extension ContentView {
             }
             .zIndex(1)
 
-            RunningPigView()
+            RunningCompanionView()
                 .zIndex(2)
         }
         .frame(maxWidth: .infinity)
@@ -19,13 +17,20 @@ extension ContentView {
     }
 }
 
-struct RunningPigView: View {
+struct RunningCompanionView: View {
+    @AppStorage("companionAnimal") private var companionRaw = CompanionAnimal.default.rawValue
+
     @State private var position: CGPoint = CGPoint(x: 100, y: 100)
     @State private var isFacingRight: Bool = false
     @State private var containerSize: CGSize = .zero
+    @State private var isHopping = false
 
     private let moveDuration: TimeInterval = 2.6
     private let moveTimer = Timer.publish(every: 2.5, on: .main, in: .common).autoconnect()
+
+    private var animal: CompanionAnimal {
+        CompanionAnimal(rawValue: companionRaw) ?? .default
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -33,6 +38,7 @@ struct RunningPigView: View {
                 .onAppear {
                     containerSize = geometry.size
                     position = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    startHopping()
                     moveToNextPoint()
                 }
                 .onChange(of: geometry.size) { _, newSize in
@@ -41,10 +47,17 @@ struct RunningPigView: View {
                         position = CGPoint(x: newSize.width / 2, y: newSize.height / 2)
                     }
                 }
+                .allowsHitTesting(false)
 
-            AnimatedPigView(resourceName: "cute_pig_walk")
-                .frame(width: 100, height: 140)
+            CompanionAnimalView(animal: animal)
+                .frame(width: 96, height: 108)
                 .scaleEffect(x: isFacingRight ? 1 : -1, y: 1)
+                .rotationEffect(.degrees(isHopping ? 3 : -3))
+                .offset(y: isHopping ? -10 : 6)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    moveToNextPoint()
+                }
                 .position(position)
                 .opacity(containerSize == .zero ? 0 : 1)
                 .animation(.linear(duration: moveDuration), value: position)
@@ -52,7 +65,12 @@ struct RunningPigView: View {
         .onReceive(moveTimer) { _ in
             moveToNextPoint()
         }
-        .allowsHitTesting(false)
+    }
+
+    private func startHopping() {
+        withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
+            isHopping = true
+        }
     }
 
     private func moveToNextPoint() {
@@ -82,65 +100,8 @@ struct RunningPigView: View {
             }
         }
 
-        let newX = nextPoint.x
-        let newY = nextPoint.y
-        isFacingRight = newX > position.x
+        isFacingRight = nextPoint.x > position.x
         position = nextPoint
-    }
-}
-
-private struct AnimatedPigView: UIViewRepresentable {
-    let resourceName: String
-
-    func makeUIView(context: Context) -> UIImageView {
-        let imageView = UIImageView()
-        imageView.contentMode = .scaleAspectFit
-        imageView.backgroundColor = .clear
-        imageView.image = animatedImage()
-        imageView.startAnimating()
-        return imageView
-    }
-
-    func updateUIView(_ imageView: UIImageView, context: Context) {
-        if imageView.image == nil {
-            imageView.image = animatedImage()
-        }
-
-        if !imageView.isAnimating {
-            imageView.startAnimating()
-        }
-    }
-
-    private func animatedImage() -> UIImage? {
-        guard let url = Bundle.main.url(forResource: resourceName, withExtension: "gif"),
-              let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
-            assertionFailure("Missing animated pig resource: \(resourceName).gif")
-            return nil
-        }
-
-        let frameCount = CGImageSourceGetCount(source)
-        var frames: [UIImage] = []
-        var duration: TimeInterval = 0
-
-        for index in 0..<frameCount {
-            guard let cgImage = CGImageSourceCreateImageAtIndex(source, index, nil) else { continue }
-            let delay = frameDelay(at: index, source: source)
-            duration += delay
-            frames.append(UIImage(cgImage: cgImage, scale: UIScreen.main.scale, orientation: .up))
-        }
-
-        return UIImage.animatedImage(with: frames, duration: duration)
-    }
-
-    private func frameDelay(at index: Int, source: CGImageSource) -> TimeInterval {
-        guard let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any],
-              let gifProperties = properties[kCGImagePropertyGIFDictionary] as? [CFString: Any] else {
-            return 0.05
-        }
-
-        return gifProperties[kCGImagePropertyGIFUnclampedDelayTime] as? TimeInterval
-            ?? gifProperties[kCGImagePropertyGIFDelayTime] as? TimeInterval
-            ?? 0.05
     }
 }
 

@@ -69,6 +69,7 @@ struct ContentView: View {
     @AppStorage("targetWeight") var targetWeight = ""
     @AppStorage("roundStartWeight") var roundStartWeight = ""
     @AppStorage("appearanceMode") var appearanceModeRaw = AppearanceMode.system.rawValue
+    @AppStorage("companionAnimal") var companionAnimalRaw = CompanionAnimal.default.rawValue
     @AppStorage("notifyEatingSoon") var notifyEatingSoon = false
     @AppStorage("notifyEatingStart") var notifyEatingStart = false
     @AppStorage("notifyFastingSoon") var notifyFastingSoon = false
@@ -209,6 +210,13 @@ struct ContentView: View {
         Binding(
             get: { AppearanceMode(rawValue: appearanceModeRaw) ?? .system },
             set: { appearanceModeRaw = $0.rawValue }
+        )
+    }
+
+    var companionAnimal: Binding<CompanionAnimal> {
+        Binding(
+            get: { CompanionAnimal(rawValue: companionAnimalRaw) ?? .default },
+            set: { companionAnimalRaw = $0.rawValue }
         )
     }
 

@@ -542,17 +542,16 @@ extension ContentView {
                 }
                 .onMove(perform: moveMainTabs)
 
-                profileSectionTitleRow("外观")
+                profileSectionTitleRow("通用设置")
 
                 appearanceRow
                     .profileCardRow()
 
-                profileSectionTitleRow("安全")
+                companionAnimalRow
+                    .profileCardRow()
 
                 securitySettingsRow
                     .profileCardRow()
-
-                profileSectionTitleRow("通知")
 
                 notificationSettingsRow
                     .profileCardRow()
@@ -1618,6 +1617,114 @@ extension ContentView {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("外观")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    var companionAnimalRow: some View {
+        HStack(spacing: 14) {
+            profileIcon("pawprint.fill", tint: .pink)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("心情小动物")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text("心情页陪伴你的小伙伴")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(companionAnimal.wrappedValue.name)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundStyle(.tertiary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay {
+            NavigationLink {
+                AnyView(companionAnimalSettingsPage)
+            } label: {
+                EmptyView()
+            }
+            .opacity(0)
+        }
+    }
+
+    var companionAnimalSettingsPage: some View {
+        List {
+            companionAnimalCard
+                .profileCardRow()
+
+            profileSectionNoteRow("选一只生肖小动物，它会在“健康-心情”页面陪着你蹦跶；点它一下还会换个位置。")
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("心情小动物")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    var companionAnimalCard: some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 14) {
+                profileIcon("pawprint.fill", tint: .pink)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("心情小动物")
+                        .font(.headline)
+                    Text("当前：\(companionAnimal.wrappedValue.name)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 8)
+            }
+
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(CompanionAnimal.allCases) { animal in
+                    companionAnimalCell(animal)
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+    }
+
+    func companionAnimalCell(_ animal: CompanionAnimal) -> some View {
+        let isSelected = companionAnimal.wrappedValue == animal
+        return Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                companionAnimal.wrappedValue = animal
+            }
+        } label: {
+            VStack(spacing: 6) {
+                CompanionAnimalView(animal: animal)
+                    .frame(width: 48, height: 52)
+                Text(animal.name)
+                    .font(.subheadline.weight(isSelected ? .bold : .medium))
+                    .foregroundStyle(isSelected ? Color.pink : .secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isSelected ? Color.pink.opacity(0.12) : Color(.secondarySystemGroupedBackground))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSelected ? Color.pink.opacity(0.6) : Color(.separator).opacity(0.12), lineWidth: isSelected ? 2 : 1)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     var appearanceCard: some View {
