@@ -299,6 +299,10 @@ extension ContentView {
         return orderedVisibleTabs.isEmpty ? [.health] : orderedVisibleTabs
     }
 
+    var visibleRootTabs: [RootAppTab] {
+        visibleMainTabs.map(RootAppTab.init(mainTab:)) + [.profile]
+    }
+
     var visibleHealthSections: [HealthSection] {
         healthSectionPrefs.orderedVisible
     }

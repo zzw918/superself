@@ -280,6 +280,52 @@ enum MainAppTab: String, CaseIterable, Identifiable, Codable, Hashable {
     }
 }
 
+enum RootAppTab: String, Identifiable, Hashable {
+    case health
+    case todo
+    case finance
+    case profile
+
+    var id: String { rawValue }
+
+    init(mainTab: MainAppTab) {
+        switch mainTab {
+        case .health:
+            self = .health
+        case .todo:
+            self = .todo
+        case .finance:
+            self = .finance
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .health:
+            return "健康"
+        case .todo:
+            return "备忘"
+        case .finance:
+            return "理财"
+        case .profile:
+            return "我的"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .health:
+            return "heart"
+        case .todo:
+            return "note.text"
+        case .finance:
+            return "yensign.circle"
+        case .profile:
+            return "person.crop.circle"
+        }
+    }
+}
+
 struct MainTabPreferences: Codable {
     var order: [MainAppTab]
     var visibleTabs: [MainAppTab]

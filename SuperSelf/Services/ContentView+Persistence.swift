@@ -40,6 +40,7 @@ extension ContentView {
 
         let validVisibleTabs = Set(preferences.visibleTabs.filter { MainAppTab.allCases.contains($0) })
         visibleMainTabSet = validVisibleTabs.isEmpty ? Set(MainAppTab.allCases) : validVisibleTabs
+        clampMainTabSelection()
 
         if let encodedPreferences = try? JSONEncoder().encode(
             MainTabPreferences(order: mainTabOrder, visibleTabs: Array(visibleMainTabSet))
@@ -66,6 +67,7 @@ extension ContentView {
             visibleMainTabSet.remove(tab)
         }
 
+        clampMainTabSelection(preferredFallback: .profile)
         persistMainTabPreferences()
     }
 
@@ -106,10 +108,24 @@ extension ContentView {
     func cancelTabEditMode() {
         mainTabOrder = tabEditOriginalOrder
         visibleMainTabSet = tabEditOriginalVisibleSet
+        clampMainTabSelection()
         withAnimation {
             tabEditMode = .inactive
         }
         persistMainTabPreferences()
+    }
+
+    func clampMainTabSelection(preferredFallback: RootAppTab = .health) {
+        let availableIDs = Set(visibleRootTabs.map(\.rawValue))
+        guard !availableIDs.contains(selectedTabID) else { return }
+
+        if availableIDs.contains(preferredFallback.rawValue) {
+            selectedTabID = preferredFallback.rawValue
+        } else if let firstVisibleMainTab = visibleMainTabs.first {
+            selectedTabID = firstVisibleMainTab.rawValue
+        } else {
+            selectedTabID = RootAppTab.profile.rawValue
+        }
     }
 
     // MARK: - 各 tab 内分区偏好（顺序 / 显示隐藏）

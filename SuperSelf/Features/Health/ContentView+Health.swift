@@ -9,6 +9,9 @@ extension ContentView {
         let ringInterval = reached ? overtime : (isFasting ? elapsed : remaining)
         let ringText = timerDisplayText(from: ringInterval)
         let ringFontSize: CGFloat = ringText.count >= 8 ? 40 : (ringText.count >= 7 ? 36 : 34)
+        let phaseGoalHint = isFasting ? "需断食 \(fastingGoalHours) 小时" : "需进食 \(eatingGoalHours) 小时"
+        let displayProgress = reached ? 1.0 : progress
+        let ringLineCap: CGLineCap = reached ? .round : .butt
 
         let conclusion: String = isFasting ? "可以开吃了" : "该开始断食了"
         let subtitle: String = reached
@@ -27,9 +30,13 @@ extension ContentView {
                             .font(.headline)
                             .foregroundStyle(overtimeAccent)
                     } else {
-                        Image(systemName: isFasting ? "hourglass" : "fork.knife")
-                            .font(.title2)
-                            .foregroundStyle(accent)
+                        if isFasting {
+                            AnimatedHourglassIcon(tint: accent)
+                        } else {
+                            Image(systemName: "fork.knife")
+                                .font(.title2)
+                                .foregroundStyle(accent)
+                        }
                     }
                 }
                 Text(subtitle)
@@ -47,14 +54,14 @@ extension ContentView {
                     .stroke(Color(.systemGray5), lineWidth: 16)
 
                 Circle()
-                    .trim(from: 0, to: progress)
+                    .trim(from: 0, to: displayProgress)
                     .stroke(
                         AngularGradient(colors: gradientColors, center: .center),
-                        style: StrokeStyle(lineWidth: 16, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 16, lineCap: ringLineCap)
                     )
                     .rotationEffect(.degrees(-90))
                     .shadow(color: accent.opacity(0.35), radius: 6, x: 0, y: 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.9), value: progress)
+                    .animation(.spring(response: 0.5, dampingFraction: 0.9), value: displayProgress)
 
                 VStack(spacing: 6) {
                     Text(reached ? "已超时" : (isFasting ? "已断食时间" : "剩余时间"))
@@ -69,6 +76,10 @@ extension ContentView {
                         .allowsTightening(true)
                         .lineLimit(1)
                         .foregroundStyle(reached ? overtimeAccent : .primary)
+
+                    Text(phaseGoalHint)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 28)
             }
@@ -1821,7 +1832,7 @@ extension ContentView {
     }
 
     var exerciseCalendarCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("锻炼日历")
                     .font(.title3.bold())
@@ -1841,7 +1852,7 @@ extension ContentView {
                         .fixedSize(horizontal: true, vertical: false)
                         .foregroundStyle(.green)
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 5)
                         .background(Color.green.opacity(0.12), in: Capsule())
                     }
 
@@ -1877,30 +1888,30 @@ extension ContentView {
                 }
             }
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
                 ForEach(exerciseCalendarDays) { day in
                     exerciseCalendarDayCell(day)
                 }
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
                 ExerciseCalendarLegend(color: .green, title: "完成")
                 ExerciseCalendarLegend(color: .green.opacity(0.28), title: "部分完成")
                 ExerciseCalendarLegend(color: Color(.systemGray5), title: "未完成")
                 Spacer()
                 Text(exerciseCompletedDaysText)
-                    .font(.caption.weight(.medium))
+                    .font(.caption2.weight(.medium))
                     .foregroundStyle(.secondary)
             }
 
             let displayDate = exerciseCalendarSelectedDate ?? (Calendar.current.isDate(exerciseCalendarMonth, equalTo: Date(), toGranularity: .month) ? Date() : nil)
             if let dateToShow = displayDate {
                 Divider()
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 1)
                 exerciseCalendarSelectedDateDetails(for: dateToShow)
             }
         }
-        .padding(18)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -1933,11 +1944,16 @@ extension ContentView {
         calendar.firstWeekday = 2
 
         let monthStart = calendar.dateInterval(of: .month, for: exerciseCalendarMonth)?.start ?? calendar.startOfDay(for: exerciseCalendarMonth)
+        let monthInterval = calendar.dateInterval(of: .month, for: exerciseCalendarMonth)
+        let monthEnd = calendar.date(byAdding: .day, value: -1, to: monthInterval?.end ?? monthStart) ?? monthStart
         let weekday = calendar.component(.weekday, from: monthStart)
         let leadingDays = (weekday + 5) % 7
         let gridStart = calendar.date(byAdding: .day, value: -leadingDays, to: monthStart) ?? monthStart
+        let trailingDays = (7 - ((leadingDays + calendar.component(.day, from: monthEnd)) % 7)) % 7
+        let naturalCellCount = leadingDays + calendar.component(.day, from: monthEnd) + trailingDays
+        let totalCellCount = max(35, naturalCellCount)
 
-        return (0..<42).compactMap { offset in
+        return (0..<totalCellCount).compactMap { offset in
             guard let date = calendar.date(byAdding: .day, value: offset, to: gridStart) else { return nil }
             return ExerciseCalendarDay(
                 date: date,
@@ -1975,35 +1991,39 @@ extension ContentView {
         
         let goals = exerciseGoals(for: date)
 
-        return VStack(alignment: .leading, spacing: 16) {
-            Text("\(dateString) 记录")
-                .font(.headline)
+        return VStack(alignment: .leading, spacing: 14) {
+            Text("\(dateString)锻炼详情")
+                .font(.subheadline.weight(.semibold))
 
             if goals.isEmpty {
                 Text("当天没有设置任何锻炼目标")
-                    .font(.subheadline)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
-                VStack(spacing: 12) {
+                VStack(spacing: 0) {
+                    ExerciseHistoryTableHeader()
+
                     ForEach(goals) { goal in
                         let count = exerciseCount(for: goal, on: date)
                         let target = exerciseTarget(for: goal, on: date)
                         let unit = exerciseUnit(for: goal, on: date)
-                        ExerciseTodayGoalRow(
+                        ExerciseHistoryTableRow(
                             goal: goal,
                             count: count,
                             targetCount: target,
                             unit: unit,
-                            isCompleted: count >= target,
-                            onComplete: { completeExerciseGoal(goal, on: date) },
-                            onInput: {
-                                exerciseInputValue = "\(count)"
-                                exerciseInputGoal = goal
-                                exerciseInputDate = date
-                            }
+                            isCompleted: count >= target
                         )
+
+                        if goal.id != goals.last?.id {
+                            Divider()
+                                .padding(.leading, 12)
+                        }
                     }
                 }
+                .padding(.vertical, 4)
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
     }
@@ -2031,25 +2051,25 @@ extension ContentView {
             if day.isToday {
                 Circle()
                     .fill(Color.green.opacity(day.isInDisplayedMonth && !isFuture ? 0.16 : 0.08))
-                    .frame(width: 44, height: 44)
+                    .frame(width: 40, height: 40)
             }
 
             Text("\(calendar.component(.day, from: day.date))")
                 .font(.caption.weight(day.isToday ? .bold : .medium))
                 .foregroundStyle(fraction >= 1 && day.isInDisplayedMonth && !isFuture ? .white : (day.isInDisplayedMonth ? .primary : .secondary.opacity(0.35)))
-                .frame(width: 36, height: 36)
+                .frame(width: 32, height: 32)
                 .background(fillColor, in: Circle())
                 .overlay {
                     if day.isToday {
                         Circle()
                             .stroke(Color.green, lineWidth: 2.5)
-                            .padding(-4)
+                            .padding(-3)
                     }
 
                     if isSelected {
                         Circle()
                             .stroke(Color.primary.opacity(0.58), lineWidth: 2)
-                            .padding(day.isToday ? -7 : -3)
+                            .padding(day.isToday ? -6 : -2)
                     }
                 }
                 .overlay(alignment: .topTrailing) {
@@ -2057,13 +2077,13 @@ extension ContentView {
                         Text("今")
                             .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(.white)
-                            .frame(width: 15, height: 15)
+                            .frame(width: 14, height: 14)
                             .background(Color.green, in: Circle())
-                            .offset(x: 4, y: -4)
+                            .offset(x: 3, y: -3)
                     }
                 }
         }
-        .frame(width: 46, height: 46)
+        .frame(width: 42, height: 42)
         .opacity(day.isInDisplayedMonth ? 1 : 0.45)
 
         if isFuture || !day.isInDisplayedMonth {
@@ -2220,6 +2240,59 @@ extension ContentView {
     }
 }
 
+struct AnimatedHourglassIcon: View {
+    let tint: Color
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let iconSize: CGFloat = 21
+    private let cycleDuration: TimeInterval = 2.5
+
+    var body: some View {
+        if reduceMotion {
+            baseHourglass
+        } else {
+            TimelineView(.animation(minimumInterval: 1.0 / 18.0, paused: false)) { context in
+                let progress = (context.date.timeIntervalSinceReferenceDate / cycleDuration)
+                    .truncatingRemainder(dividingBy: 1)
+                let topOpacity = max(0.22, 1 - progress * 1.15)
+                let bottomOpacity = min(1, max(0.16, (progress - 0.12) / 0.88))
+                let streamOpacity = progress > 0.06 && progress < 0.94 ? 0.95 : 0
+
+                ZStack {
+                    baseHourglass
+
+                    Image(systemName: "hourglass.tophalf.filled")
+                        .font(.system(size: iconSize, weight: .light))
+                        .foregroundStyle(tint.opacity(topOpacity))
+
+                    Image(systemName: "hourglass.bottomhalf.filled")
+                        .font(.system(size: iconSize, weight: .light))
+                        .foregroundStyle(tint.opacity(bottomOpacity))
+
+                    Capsule()
+                        .fill(tint.opacity(streamOpacity))
+                        .frame(width: 2.4, height: progress < 0.9 ? 9 : 4)
+                        .offset(y: -4 + progress * 9)
+
+                    Circle()
+                        .fill(tint.opacity(streamOpacity * 0.9))
+                        .frame(width: 3.4, height: 3.4)
+                        .offset(y: 1 + progress * 7)
+                }
+                .frame(width: 24, height: 24)
+            }
+        }
+    }
+
+    private var baseHourglass: some View {
+        Image(systemName: "hourglass")
+            .font(.system(size: iconSize, weight: .light))
+            .foregroundStyle(tint)
+            .frame(width: 24, height: 24)
+    }
+}
+
 struct ExerciseCalendarDay: Identifiable {
     var date: Date
     var isInDisplayedMonth: Bool
@@ -2287,17 +2360,75 @@ struct ExerciseTodayGoalRow: View {
     }
 }
 
+struct ExerciseHistoryTableHeader: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Text("运动")
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text("目标")
+                .frame(width: 78, alignment: .leading)
+
+            Text("实际")
+                .frame(width: 62, alignment: .leading)
+
+            Text("状态")
+                .frame(width: 44, alignment: .leading)
+        }
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
+    }
+}
+
+struct ExerciseHistoryTableRow: View {
+    let goal: ExerciseGoal
+    let count: Int
+    let targetCount: Int
+    let unit: String
+    let isCompleted: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(goal.title)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text("\(String(targetCount)) \(unit)")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(width: 78, alignment: .leading)
+
+            Text(String(count))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isCompleted ? .green : .primary)
+                .frame(width: 62, alignment: .leading)
+
+            Text(isCompleted ? "完成" : "未完成")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isCompleted ? .green : .secondary)
+                .frame(width: 44, alignment: .leading)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+    }
+}
+
 struct ExerciseCalendarLegend: View {
     let color: Color
     let title: String
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             Circle()
                 .fill(color)
-                .frame(width: 8, height: 8)
+                .frame(width: 7, height: 7)
             Text(title)
-                .font(.caption2)
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
         }
     }
@@ -2322,9 +2453,14 @@ struct ExerciseGoalManagerSheet: View {
     @State private var targetCount = "5"
     @State private var unit = "次"
     @State private var isEditingFormVisible = false
+    @FocusState private var focusedField: Field?
 
     private let unitSuggestions = ["次", "个", "步", "分钟", "秒", "公里", "组"]
     private let titleSuggestionsAll = ["俯卧撑", "仰卧起坐", "蹲起", "步数", "引体向上", "平板支撑", "骑行"]
+
+    private enum Field {
+        case title
+    }
 
     var titleSuggestions: [String] {
         let existingTitles = Set(draftGoals.map { $0.title.trimmingCharacters(in: .whitespacesAndNewlines) })
@@ -2444,6 +2580,7 @@ struct ExerciseGoalManagerSheet: View {
                     TextField("运动名称", text: $title)
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .submitLabel(.done)
+                            .focused($focusedField, equals: .title)
 
                     if editingGoal == nil && !titleSuggestions.isEmpty {
                         Menu {
@@ -2532,6 +2669,9 @@ struct ExerciseGoalManagerSheet: View {
         withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
             isEditingFormVisible = true
         }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            focusedField = .title
+        }
     }
 
     func beginEditExerciseGoal(_ goal: ExerciseGoal) {
@@ -2545,6 +2685,7 @@ struct ExerciseGoalManagerSheet: View {
     }
 
     func resetExerciseGoalForm() {
+        focusedField = nil
         editingGoal = nil
         title = ""
         targetCount = "5"
@@ -2595,10 +2736,15 @@ struct ExerciseGoalManagerRow: View {
 
             Spacer()
             
-            Text("\(String(goal.targetCount)) \(goal.unit)")
-                .font(.system(.headline, design: .rounded).weight(.semibold))
-                .foregroundStyle(.green)
-                .padding(.trailing, 4)
+            Button(action: onEdit) {
+                Text("\(String(goal.targetCount)) \(goal.unit)")
+                    .font(.system(.headline, design: .rounded).weight(.semibold))
+                    .foregroundStyle(.green)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
 
             Button(action: onEdit) {
                 Image(systemName: "pencil")

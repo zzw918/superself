@@ -239,19 +239,13 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTabID) {
-            ForEach(visibleMainTabs) { tab in
-                mainTabContent(for: tab)
+            ForEach(visibleRootTabs) { tab in
+                rootTabContent(for: tab)
                     .tag(tab.rawValue)
                     .tabItem {
                         Label(tab.title, systemImage: tab.icon)
                     }
             }
-
-            profilePage
-                .tag("profile")
-                .tabItem {
-                    Label("我的", systemImage: "person.crop.circle")
-                }
         }
         .preferredColorScheme(appearanceMode.wrappedValue.colorScheme)
         .onReceive(notificationRouter.$route.compactMap { $0 }) { route in
@@ -564,6 +558,19 @@ struct ContentView: View {
             return AnyView(memoPage)
         case .finance:
             return AnyView(financePage)
+        }
+    }
+
+    func rootTabContent(for tab: RootAppTab) -> AnyView {
+        switch tab {
+        case .health:
+            return mainTabContent(for: .health)
+        case .todo:
+            return mainTabContent(for: .todo)
+        case .finance:
+            return mainTabContent(for: .finance)
+        case .profile:
+            return AnyView(profilePage)
         }
     }
 }
