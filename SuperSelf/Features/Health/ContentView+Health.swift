@@ -944,6 +944,52 @@ extension ContentView {
         .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
     }
 
+    var weightLossTipCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: "lightbulb.max.fill")
+                    .font(.headline)
+                    .foregroundStyle(.blue)
+                    .frame(width: 38, height: 38)
+                    .background(Color.blue.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                Text("减脂技巧")
+                    .font(.title3.bold())
+
+                Spacer()
+
+                Button {
+                    refreshWeightLossTip()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.blue)
+                        .padding(4)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Text(currentWeightLossTip)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
+        .onAppear(perform: ensureWeightLossTipForToday)
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                ensureWeightLossTipForToday()
+            }
+        }
+    }
+
     var bmiCard: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
@@ -1545,11 +1591,97 @@ extension ContentView {
         ]
     }
 
+    var weightLossTips: [String] {
+        [
+            "当我们想吃东西时，需要问问自己：究竟是饿了、还是馋了？不饿就不吃，饿了再等等吧",
+            "多喝水很重要！多喝水可以增加饱腹感、帮助肠胃蠕动和促进排泄、有利于加速脂肪燃烧。",
+            "靠饿瘦下来会反弹？可如果不瘦下来连反弹的机会都没有，先瘦下来再考虑反弹吧",
+            "你已经很瘦不需要再减了吗？算算 BMI，如果没再正常范围内就别犹豫，继续减吧",
+            "16 + 8 是控制热量最好的方法，只要坚持就一定可以瘦下来",
+            "每天都要记录体重，而不是因为担心胖就不敢称了，每天记录才能防止自己持续变胖",
+            "减肥后身体健康、轻盈，这种快乐是长久的快乐，才是真正的快乐",
+            "小减降体重，大减换人生。",
+            "每餐保证有鸡蛋、鸡胸、牛肉、鱼等优质蛋白，能明显减少饥饿感",
+            "不要吃太快，要慢吃，才能更好控制热量",
+            "无论如何，瘦下来一定是要比胖更好看的。",
+            "对大部分来说，饿才是唯一有效的变瘦方法。",
+            "对于正常体质的人而言，减肥是一辈子都要做的事情。要保持健康的体重，就得控制食欲。",
+            "人不是一天胖起来的，也不是一天瘦下去的。",
+            "有时候吃了过咸的食物容易使身体吸收很多水而导致 “变胖”，但这种情况下的胖是虚胖，过两天就会恢复了。",
+            "16 + 8 最大的好处是可以让我们有固定的一段时间不吃饭，这样就避免因为馋而吃东西了。",
+            "减肥最重要的是少吃，而不是运动。",
+            "很多明星都会通过少吃来减肥，比如黄晓明、沈腾、杨紫、宁静、朱洁静、刘宇宁、王一博等。"
+        ]
+    }
+
+    var currentWeightLossTip: String {
+        guard !weightLossTips.isEmpty else { return "今天先从按时吃饭、规律记录开始。" }
+        return weightLossTips[currentWeightLossTipIndex]
+    }
+
+    var currentWeightLossTipIndex: Int {
+        guard !weightLossTips.isEmpty else { return 0 }
+        if weightLossTips.indices.contains(weightLossTipIndex) {
+            return weightLossTipIndex
+        }
+        return dailyWeightLossTipIndex(for: Date())
+    }
+
     func hasWeightNoteSuggestion(_ suggestion: String) -> Bool {
         noteInput
             .split(separator: "、")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .contains(suggestion)
+    }
+
+    func dailyWeightLossTipIndex(for date: Date) -> Int {
+        guard !weightLossTips.isEmpty else { return 0 }
+        let calendar = Calendar.current
+        let year = calendar.component(.year, from: date)
+        let day = calendar.ordinality(of: .day, in: .year, for: date) ?? 0
+        return abs(year * 1000 + day) % weightLossTips.count
+    }
+
+    func weightLossTipKey(for date: Date) -> String {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(
+            format: "%04d-%02d-%02d",
+            components.year ?? 0,
+            components.month ?? 0,
+            components.day ?? 0
+        )
+    }
+
+    func ensureWeightLossTipForToday() {
+        guard !weightLossTips.isEmpty else { return }
+        let todayKey = weightLossTipKey(for: Date())
+        let hasValidStoredIndex = weightLossTips.indices.contains(weightLossTipIndex)
+
+        guard weightLossTipDayKey != todayKey || !hasValidStoredIndex else { return }
+
+        weightLossTipDayKey = todayKey
+        weightLossTipIndex = dailyWeightLossTipIndex(for: Date())
+    }
+
+    func refreshWeightLossTip() {
+        guard !weightLossTips.isEmpty else { return }
+
+        ensureWeightLossTipForToday()
+        let todayKey = weightLossTipKey(for: Date())
+        guard weightLossTips.count > 1 else {
+            weightLossTipDayKey = todayKey
+            weightLossTipIndex = 0
+            return
+        }
+
+        var nextIndex = Int.random(in: 0..<weightLossTips.count)
+        while nextIndex == currentWeightLossTipIndex {
+            nextIndex = Int.random(in: 0..<weightLossTips.count)
+        }
+
+        weightLossTipDayKey = todayKey
+        weightLossTipIndex = nextIndex
     }
 
     var changeText: String? {

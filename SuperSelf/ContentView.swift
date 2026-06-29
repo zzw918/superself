@@ -69,6 +69,8 @@ struct ContentView: View {
     @AppStorage("heightCm") var heightCm = ""
     @AppStorage("targetWeight") var targetWeight = ""
     @AppStorage("roundStartWeight") var roundStartWeight = ""
+    @AppStorage("weightLossTipDayKey") var weightLossTipDayKey = ""
+    @AppStorage("weightLossTipIndex") var weightLossTipIndex = -1
     @AppStorage("appearanceMode") var appearanceModeRaw = AppearanceMode.system.rawValue
     @AppStorage("companionAnimal") var companionAnimalRaw = CompanionAnimal.default.rawValue
     @AppStorage("isCompanionAnimalEnabled") var isCompanionAnimalEnabled = true

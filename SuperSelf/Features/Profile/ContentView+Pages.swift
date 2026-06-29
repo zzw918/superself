@@ -183,6 +183,7 @@ extension ContentView {
     var weightSection: some View {
         VStack(spacing: 20) {
             weightOverviewCard
+            weightLossTipCard
             trendCard
             historyCard
         }
