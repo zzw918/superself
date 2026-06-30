@@ -468,6 +468,8 @@ extension ContentView {
                 weightBMIBlock
             }
             .fixedSize(horizontal: false, vertical: true)
+
+            weightLossTipInlineBlock
         }
 
         .padding(18)
@@ -944,44 +946,33 @@ extension ContentView {
         .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
     }
 
-    var weightLossTipCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
-                Image(systemName: "lightbulb.max.fill")
-                    .font(.headline)
-                    .foregroundStyle(.blue)
-                    .frame(width: 38, height: 38)
-                    .background(Color.blue.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    var weightLossTipInlineBlock: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "lightbulb.max.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.blue)
+                .padding(.top, 1)
 
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text("减脂技巧")
-                    .font(.title3.bold())
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: true, vertical: false)
 
-                Spacer()
-
-                Button {
-                    refreshWeightLossTip()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.blue)
-                        .padding(4)
-                }
-                .buttonStyle(.plain)
+                Text(currentWeightLossTip)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(Color.primary.opacity(0.72))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Text(currentWeightLossTip)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.primary)
-                .lineSpacing(4)
-                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding()
+        .padding(.leading, 0)
+        .padding(.trailing, 12)
+        .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 4)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .onAppear(perform: ensureWeightLossTipForToday)
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
@@ -1934,7 +1925,7 @@ extension ContentView {
                 }
                 .buttonStyle(.plain)
             } else {
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     ForEach(activeExerciseGoals) { goal in
                         let count = exerciseCount(for: goal, on: Date())
                         let target = exerciseTarget(for: goal, on: Date())
@@ -2443,10 +2434,10 @@ struct ExerciseTodayGoalRow: View {
     let onInput: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(goal.title)
-                    .font(.headline)
+                    .font(.subheadline.weight(.semibold))
                 Text("目标 \(String(targetCount)) \(unit)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -2457,17 +2448,17 @@ struct ExerciseTodayGoalRow: View {
             Button(action: onInput) {
                 HStack(spacing: 4) {
                     Text(String(count))
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(isCompleted ? .green : .primary)
                     
                     if !isCompleted {
                         Image(systemName: "pencil")
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(Color(.tertiaryLabel))
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -2480,15 +2471,15 @@ struct ExerciseTodayGoalRow: View {
                 }
             }) {
                 Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.title)
+                    .font(.title2)
                     .foregroundStyle(isCompleted ? .green : Color(.tertiaryLabel))
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(isCompleted ? Color.green.opacity(0.08) : Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
