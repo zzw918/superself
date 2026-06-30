@@ -76,11 +76,31 @@ struct DailyWeatherInfo: Equatable, Identifiable {
     var weatherCode: Int
     var maxTemperature: Double
     var minTemperature: Double
+    var precipitationSum: Double?
+    var rainSum: Double?
+    var showersSum: Double?
+    var snowfallSum: Double?
     var sunrise: Date?
     var sunset: Date?
     
-    var symbolName: String { WeatherInfo.symbol(for: weatherCode) }
-    var conditionText: String { WeatherInfo.condition(for: weatherCode) }
+    var symbolName: String {
+        WeatherInfo.dailySymbol(
+            for: weatherCode,
+            precipitationSum: precipitationSum,
+            rainSum: rainSum,
+            showersSum: showersSum,
+            snowfallSum: snowfallSum
+        )
+    }
+    var conditionText: String {
+        WeatherInfo.dailyCondition(
+            for: weatherCode,
+            precipitationSum: precipitationSum,
+            rainSum: rainSum,
+            showersSum: showersSum,
+            snowfallSum: snowfallSum
+        )
+    }
     var maxTemperatureText: String { "\(Int(maxTemperature.rounded()))°" }
     var minTemperatureText: String { "\(Int(minTemperature.rounded()))°" }
 }
@@ -117,9 +137,96 @@ struct WeatherInfo: Equatable {
         case 71, 73, 75, 77: return "雪"
         case 80, 81, 82: return "阵雨"
         case 85, 86: return "阵雪"
-        case 95: return "雷雨"
-        case 96, 99: return "雷雨伴冰雹"
+        case 95, 96, 99: return "雷阵雨"
         default: return "未知"
+        }
+    }
+
+    static func dailyCondition(
+        for code: Int,
+        precipitationSum: Double?,
+        rainSum: Double?,
+        showersSum: Double?,
+        snowfallSum: Double?
+    ) -> String {
+        if [71, 73, 75, 77, 85, 86].contains(code) || (snowfallSum ?? 0) >= 0.1 {
+            return condition(for: code)
+        }
+
+        let totalPrecipitation = precipitationSum ?? ((rainSum ?? 0) + (showersSum ?? 0))
+        guard totalPrecipitation >= 0.1 else {
+            return condition(for: code)
+        }
+
+        switch code {
+        case 51...67, 80...82, 95...99:
+            return dailyRainText(
+                totalPrecipitation: totalPrecipitation,
+                rainSum: rainSum,
+                showersSum: showersSum,
+                weatherCode: code
+            )
+        default:
+            return condition(for: code)
+        }
+    }
+
+    static func dailyRainText(
+        totalPrecipitation: Double,
+        rainSum: Double?,
+        showersSum: Double?,
+        weatherCode: Int
+    ) -> String {
+        let rainAmount = rainSum ?? 0
+        let showerAmount = showersSum ?? 0
+        let isShowery = (80...82).contains(weatherCode)
+            || (95...99).contains(weatherCode)
+            || showerAmount > rainAmount
+
+        if isShowery && totalPrecipitation < 10 {
+            return "阵雨"
+        }
+
+        switch totalPrecipitation {
+        case ..<10:
+            return "小雨"
+        case ..<25:
+            return "中雨"
+        case ..<50:
+            return "大雨"
+        case ..<100:
+            return "暴雨"
+        case ..<250:
+            return "大暴雨"
+        default:
+            return "特大暴雨"
+        }
+    }
+
+    static func dailySymbol(
+        for code: Int,
+        precipitationSum: Double?,
+        rainSum: Double?,
+        showersSum: Double?,
+        snowfallSum: Double?
+    ) -> String {
+        let text = dailyCondition(
+            for: code,
+            precipitationSum: precipitationSum,
+            rainSum: rainSum,
+            showersSum: showersSum,
+            snowfallSum: snowfallSum
+        )
+
+        switch text {
+        case "阵雨":
+            return "cloud.sun.rain.fill"
+        case "小雨", "中雨":
+            return "cloud.rain.fill"
+        case "大雨", "暴雨", "大暴雨", "特大暴雨":
+            return "cloud.heavyrain.fill"
+        default:
+            return symbol(for: code)
         }
     }
 
@@ -300,6 +407,10 @@ final class WeatherStore: NSObject, ObservableObject {
             let weather_code: [Int]
             let temperature_2m_max: [Double]
             let temperature_2m_min: [Double]
+            let precipitation_sum: [Double]?
+            let rain_sum: [Double]?
+            let showers_sum: [Double]?
+            let snowfall_sum: [Double]?
             let sunrise: [String]?
             let sunset: [String]?
         }
@@ -313,7 +424,7 @@ final class WeatherStore: NSObject, ObservableObject {
             URLQueryItem(name: "latitude", value: String(coordinate.latitude)),
             URLQueryItem(name: "longitude", value: String(coordinate.longitude)),
             URLQueryItem(name: "current", value: "temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code"),
-            URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset"),
+            URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,showers_sum,snowfall_sum,sunrise,sunset"),
             URLQueryItem(name: "timezone", value: "auto"),
             URLQueryItem(name: "forecast_days", value: "10")
         ]
@@ -344,6 +455,10 @@ final class WeatherStore: NSObject, ObservableObject {
                             weatherCode: daily.weather_code[i],
                             maxTemperature: daily.temperature_2m_max[i],
                             minTemperature: daily.temperature_2m_min[i],
+                            precipitationSum: daily.precipitation_sum.flatMap { i < $0.count ? $0[i] : nil },
+                            rainSum: daily.rain_sum.flatMap { i < $0.count ? $0[i] : nil },
+                            showersSum: daily.showers_sum.flatMap { i < $0.count ? $0[i] : nil },
+                            snowfallSum: daily.snowfall_sum.flatMap { i < $0.count ? $0[i] : nil },
                             sunrise: daily.sunrise.flatMap { i < $0.count ? timeFormatter.date(from: $0[i]) : nil },
                             sunset: daily.sunset.flatMap { i < $0.count ? timeFormatter.date(from: $0[i]) : nil }
                         ))

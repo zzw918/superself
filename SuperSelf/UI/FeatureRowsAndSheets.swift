@@ -4312,18 +4312,20 @@ struct WeatherForecastPage: View {
     @ViewBuilder
     private func weatherIcon(for daily: DailyWeatherInfo) -> some View {
         let img = Image(systemName: daily.symbolName).font(.title3)
-        switch daily.weatherCode {
-        case 0:
+        switch daily.symbolName {
+        case "sun.max.fill":
             img.symbolRenderingMode(.palette).foregroundStyle(.orange)
-        case 1, 2:
+        case "cloud.sun.fill":
             img.symbolRenderingMode(.palette).foregroundStyle(.gray, .orange)
-        case 3, 45, 48:
+        case "cloud.sun.rain.fill":
+            img.symbolRenderingMode(.palette).foregroundStyle(.gray, .orange, .blue)
+        case "cloud.fill", "cloud.fog.fill":
             img.symbolRenderingMode(.palette).foregroundStyle(.gray)
-        case 51...67, 80...82:
+        case "cloud.drizzle.fill", "cloud.rain.fill", "cloud.heavyrain.fill":
             img.symbolRenderingMode(.palette).foregroundStyle(.gray, .blue)
-        case 71...77, 85...86:
+        case "cloud.snow.fill":
             img.symbolRenderingMode(.palette).foregroundStyle(.gray, .cyan)
-        case 95...99:
+        case "cloud.bolt.rain.fill":
             img.symbolRenderingMode(.palette).foregroundStyle(.gray, .yellow, .blue)
         default:
             img.symbolRenderingMode(.palette).foregroundStyle(.gray)
