@@ -140,6 +140,49 @@ struct ExerciseRecord: Identifiable, Equatable, Codable {
     }
 }
 
+struct ExerciseDayNote: Identifiable, Equatable, Codable {
+    var id: UUID
+    var date: Date
+    var content: String
+    var updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id, date, content, updatedAt
+    }
+
+    init(
+        id: UUID = UUID(),
+        date: Date,
+        content: String,
+        updatedAt: Date = Date()
+    ) {
+        self.id = id
+        self.date = Calendar.current.startOfDay(for: date)
+        self.content = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.updatedAt = updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        date = Calendar.current.startOfDay(for: try container.decode(Date.self, forKey: .date))
+        content = try container.decodeIfPresent(String.self, forKey: .content) ?? ""
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? date
+    }
+}
+
+struct ExerciseDayNoteSheetTarget: Identifiable, Equatable {
+    let date: Date
+
+    init(date: Date) {
+        self.date = Calendar.current.startOfDay(for: date)
+    }
+
+    var id: TimeInterval {
+        date.timeIntervalSince1970
+    }
+}
+
 enum TodoTaskStatus: String, CaseIterable, Identifiable, Codable {
     case pending
     case inProgress

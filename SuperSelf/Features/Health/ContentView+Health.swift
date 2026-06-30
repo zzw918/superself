@@ -947,32 +947,33 @@ extension ContentView {
     }
 
     var weightLossTipInlineBlock: some View {
-        HStack(alignment: .top, spacing: 6) {
+        HStack(alignment: .center, spacing: 5) {
             Image(systemName: "lightbulb.max.fill")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.blue)
-                .padding(.top, 1)
 
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .center, spacing: 6) {
                 Text("减脂技巧")
-                    .font(.footnote.weight(.semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: true, vertical: false)
 
-                Text(currentWeightLossTip)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.primary.opacity(0.72))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+                SingleLineMarqueeText(
+                    text: currentWeightLossTip,
+                    fontSize: 12,
+                    fontWeight: .medium,
+                    textColor: Color.primary.opacity(0.72)
+                )
+                .offset(y: 1)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(.leading, 0)
         .padding(.trailing, 12)
-        .padding(.vertical, 9)
+        .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .onAppear(perform: ensureWeightLossTipForToday)
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
@@ -1410,7 +1411,7 @@ extension ContentView {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    Text("14+10 最容易上手，16+8 适合大多数人，18+6、20+4 难度更高。")
+                    Text("14+10 最容易上手，16+8 适合大多数人，18+6、20+4 难度更高，22+2 属于极限计划。")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
@@ -1511,6 +1512,8 @@ extension ContentView {
             return ("进阶", .orange)
         case 20:
             return ("挑战", .red)
+        case 22:
+            return ("极限", .purple)
         default:
             return nil
         }
@@ -1806,31 +1809,6 @@ extension ContentView {
                 exerciseCalendarCard
                     .id("exerciseCalendarCard")
             }
-            .alert("记录进度", isPresented: Binding(
-                get: { exerciseInputGoal != nil },
-                set: { if !$0 { exerciseInputGoal = nil; exerciseInputDate = nil } }
-            )) {
-                TextField("输入完成数量", text: $exerciseInputValue)
-                    .keyboardType(.numberPad)
-                Button("取消", role: .cancel) {
-                    exerciseInputGoal = nil
-                    exerciseInputDate = nil
-                }
-                // Add default keyboard shortcut so it's highlighted as the primary action in the alert
-                Button("确定") {
-                    if let goal = exerciseInputGoal, let val = Int(exerciseInputValue) {
-                        let dateToSave = exerciseInputDate ?? Date()
-                        setExerciseCount(val, for: goal, on: dateToSave)
-                    }
-                    exerciseInputGoal = nil
-                    exerciseInputDate = nil
-                }
-                .keyboardShortcut(.defaultAction)
-            } message: {
-                if let goal = exerciseInputGoal {
-                    Text(exerciseInputMessageText(for: goal))
-                }
-            }
             .onChange(of: exerciseCalendarSelectedDate) { _, newValue in
                 if newValue != nil {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
@@ -1843,6 +1821,21 @@ extension ContentView {
         }
     }
 
+    @ViewBuilder
+    var exerciseInputOverlay: some View {
+        if let goal = exerciseInputGoal {
+            ExerciseProgressInputDialog(
+                title: "记录进度",
+                message: exerciseInputMessageText(for: goal),
+                inputValue: $exerciseInputValue,
+                onCancel: dismissExerciseInputDialog,
+                onConfirm: submitExerciseInput
+            )
+            .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            .zIndex(10)
+        }
+    }
+
     func exerciseInputMessageText(for goal: ExerciseGoal) -> String {
         let dateToSave = exerciseInputDate ?? Date()
         let formatter = DateFormatter()
@@ -1850,6 +1843,62 @@ extension ContentView {
         formatter.dateFormat = "M月d日"
         let dateString = Calendar.current.isDateInToday(dateToSave) ? "今日" : formatter.string(from: dateToSave)
         return "请输入「\(goal.title)」在 \(dateString) 的完成数量（\(exerciseUnit(for: goal, on: dateToSave))）"
+    }
+
+    func dismissExerciseInputDialog() {
+        exerciseInputGoal = nil
+        exerciseInputDate = nil
+        exerciseInputValue = ""
+    }
+
+    func submitExerciseInput() {
+        let trimmedValue = exerciseInputValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let goal = exerciseInputGoal, let value = Int(trimmedValue) else { return }
+        let dateToSave = exerciseInputDate ?? Date()
+        setExerciseCount(value, for: goal, on: dateToSave)
+        dismissExerciseInputDialog()
+    }
+
+    func exerciseDayNoteEditorSheet(for date: Date) -> some View {
+        ExerciseDayNoteEditorSheet(
+            date: date,
+            initialContent: exerciseDayNote(for: date)?.content ?? ""
+        ) { content in
+            saveExerciseDayNote(content, for: date)
+        }
+    }
+
+    func exerciseDayNote(for date: Date) -> ExerciseDayNote? {
+        let day = Calendar.current.startOfDay(for: date)
+        return exerciseDayNotes.first { Calendar.current.isDate($0.date, inSameDayAs: day) }
+    }
+
+    func openExerciseDayNoteEditor(for date: Date) {
+        exerciseDayNoteSheetTarget = ExerciseDayNoteSheetTarget(date: date)
+    }
+
+    func saveExerciseDayNote(_ content: String, for date: Date) {
+        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let day = Calendar.current.startOfDay(for: date)
+
+        if let index = exerciseDayNotes.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: day) }) {
+            if trimmedContent.isEmpty {
+                exerciseDayNotes.remove(at: index)
+            } else {
+                exerciseDayNotes[index].content = trimmedContent
+                exerciseDayNotes[index].updatedAt = Date()
+            }
+        } else if !trimmedContent.isEmpty {
+            exerciseDayNotes.append(
+                ExerciseDayNote(
+                    date: day,
+                    content: trimmedContent,
+                    updatedAt: Date()
+                )
+            )
+        }
+
+        persistExerciseDayNotes()
     }
 
     var activeExerciseGoals: [ExerciseGoal] {
@@ -1902,9 +1951,9 @@ extension ContentView {
                     isShowingExerciseGoalSheet = true
                 } label: {
                     Image(systemName: "slider.horizontal.3")
-                        .font(.headline)
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.green)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 32, height: 32)
                         .background(Color.green.opacity(0.12))
                         .clipShape(Circle())
                 }
@@ -2002,20 +2051,22 @@ extension ContentView {
                 .foregroundStyle(.green)
             }
 
-            HStack(spacing: 0) {
+            HStack(spacing: exerciseCalendarCellSpacing) {
                 ForEach(["一", "二", "三", "四", "五", "六", "日"], id: \.self) { weekday in
                     Text(weekday)
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
+                        .frame(width: exerciseCalendarCellSize)
                 }
             }
+            .frame(width: exerciseCalendarGridWidth, alignment: .leading)
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(exerciseCalendarCellSize), spacing: exerciseCalendarCellSpacing), count: 7), spacing: exerciseCalendarCellSpacing) {
                 ForEach(exerciseCalendarDays) { day in
                     exerciseCalendarDayCell(day)
                 }
             }
+            .frame(width: exerciseCalendarGridWidth, alignment: .leading)
 
             HStack(spacing: 8) {
                 ExerciseCalendarLegend(color: .green, title: "完成")
@@ -2026,12 +2077,16 @@ extension ContentView {
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(.secondary)
             }
+            .padding(.leading, (exerciseCalendarCellSize - 32) / 2)
+            .frame(width: exerciseCalendarGridWidth, alignment: .leading)
 
             let displayDate = exerciseCalendarSelectedDate ?? (Calendar.current.isDate(exerciseCalendarMonth, equalTo: Date(), toGranularity: .month) ? Date() : nil)
             if let dateToShow = displayDate {
                 Divider()
+                    .frame(width: exerciseCalendarGridWidth)
                     .padding(.vertical, 1)
                 exerciseCalendarSelectedDateDetails(for: dateToShow)
+                    .frame(width: exerciseCalendarGridWidth, alignment: .leading)
             }
         }
         .padding(16)
@@ -2113,10 +2168,13 @@ extension ContentView {
         let dateString = formatter.string(from: date)
         
         let goals = exerciseGoals(for: date)
+        let dayNote = exerciseDayNote(for: date)
 
-        return VStack(alignment: .leading, spacing: 14) {
+        return VStack(alignment: .leading, spacing: 10) {
             Text("\(dateString)锻炼详情")
-                .font(.subheadline.weight(.semibold))
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(Color.primary.opacity(0.76))
+                .padding(.leading, (exerciseCalendarCellSize - 32) / 2)
 
             if goals.isEmpty {
                 Text("当天没有设置任何锻炼目标")
@@ -2148,17 +2206,76 @@ extension ContentView {
                 .background(Color(.secondarySystemGroupedBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
+
+            Button {
+                openExerciseDayNoteEditor(for: date)
+            } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let dayNote, !dayNote.content.isEmpty {
+                        Text("锻炼日记")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        (
+                            Text(dayNote.content)
+                                .foregroundStyle(.primary)
+                            + Text(" ")
+                                .foregroundStyle(.primary)
+                            + Text(Image(systemName: "square.and.pencil"))
+                                .foregroundStyle(.green)
+                        )
+                            .font(.footnote)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        HStack(spacing: 12) {
+                            HStack(spacing: 8) {
+                                Text("锻炼日记")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+
+                                Text("记录今天的锻炼日记或感受")
+                                    .font(.footnote)
+                                    .foregroundStyle(.tertiary)
+                                    .lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Text("记录")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.green)
+                                .frame(width: 44, alignment: .leading)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
         }
     }
 
     func exerciseCalendarDayCell(_ day: ExerciseCalendarDay) -> some View {
         let calendar = Calendar.current
+        if !day.isInDisplayedMonth {
+            return AnyView(
+                Color.clear
+                    .frame(width: 42, height: 42)
+                    .allowsHitTesting(false)
+            )
+        }
+
         let isFuture = calendar.startOfDay(for: day.date) > calendar.startOfDay(for: Date())
         let fraction = exerciseCompletionFraction(on: day.date)
         let isSelected = exerciseCalendarSelectedDate.map { calendar.isDate($0, inSameDayAs: day.date) } ?? false
+        let hasDayNote = exerciseDayNote(for: day.date) != nil
 
         let fillColor: Color = {
-            if isFuture || !day.isInDisplayedMonth {
+            if isFuture {
                 return Color.clear
             }
             if fraction >= 1 {
@@ -2191,8 +2308,8 @@ extension ContentView {
 
                     if isSelected {
                         Circle()
-                            .stroke(Color.primary.opacity(0.58), lineWidth: 2)
-                            .padding(day.isToday ? -6 : -2)
+                            .stroke(Color.blue, lineWidth: 2)
+                            .padding(day.isToday ? -6 : -1)
                     }
                 }
                 .overlay(alignment: .topTrailing) {
@@ -2205,11 +2322,18 @@ extension ContentView {
                             .offset(x: 3, y: -3)
                     }
                 }
+                .overlay(alignment: .bottom) {
+                    if day.isInDisplayedMonth && hasDayNote {
+                        Circle()
+                            .fill(Color.blue)
+                            .frame(width: 4, height: 4)
+                            .offset(y: -4)
+                    }
+                }
         }
         .frame(width: 42, height: 42)
-        .opacity(day.isInDisplayedMonth ? 1 : 0.45)
 
-        if isFuture || !day.isInDisplayedMonth {
+        if isFuture {
             return AnyView(content)
         } else {
             return AnyView(Button {
@@ -2416,6 +2540,310 @@ struct AnimatedHourglassIcon: View {
     }
 }
 
+private struct WidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+struct SingleLineMarqueeText: View {
+    let text: String
+    let fontSize: CGFloat
+    let fontWeight: Font.Weight
+    let textColor: Color
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var textWidth: CGFloat = 0
+
+    private var gapWidth: CGFloat { fontSize * 12 }
+    private var lineHeight: CGFloat { fontSize * 1.2 }
+    private var pointsPerSecond: CGFloat { 24 }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let availableWidth = proxy.size.width
+
+            Group {
+                if shouldAnimate(for: availableWidth) {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: false)) { context in
+                        let cycleWidth = max(1, textWidth + gapWidth)
+                        let travel = CGFloat(context.date.timeIntervalSinceReferenceDate) * pointsPerSecond
+                        let offsetX = -travel.truncatingRemainder(dividingBy: cycleWidth)
+
+                        HStack(spacing: gapWidth) {
+                            marqueeLabel
+                            marqueeLabel
+                        }
+                        .offset(x: offsetX)
+                    }
+                } else {
+                    marqueeLabel
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(width: availableWidth, alignment: .leading)
+            .clipped()
+        }
+        .frame(height: lineHeight)
+        .background(
+            measurementLabel
+                .hidden()
+        )
+        .onPreferenceChange(WidthPreferenceKey.self) { width in
+            textWidth = width
+        }
+    }
+
+    private func shouldAnimate(for availableWidth: CGFloat) -> Bool {
+        !reduceMotion && textWidth > availableWidth + 1 && availableWidth > 0
+    }
+
+    private var marqueeLabel: some View {
+        Text(text)
+            .font(.system(size: fontSize, weight: fontWeight, design: .rounded))
+            .foregroundStyle(textColor)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var measurementLabel: some View {
+        marqueeLabel
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(key: WidthPreferenceKey.self, value: proxy.size.width)
+                }
+            )
+    }
+}
+
+struct ExerciseProgressInputDialog: View {
+    let title: String
+    let message: String
+    @Binding var inputValue: String
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    @FocusState private var isInputFocused: Bool
+
+    private var trimmedValue: String {
+        inputValue.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canSubmit: Bool {
+        Int(trimmedValue) != nil
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.16)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    isInputFocused = false
+                }
+
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(title)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(.primary)
+
+                    Text(message)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack(spacing: 10) {
+                    TextField("输入完成数量", text: $inputValue)
+                        .keyboardType(.numberPad)
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.primary)
+                        .focused($isInputFocused)
+                        .onChange(of: inputValue) { _, newValue in
+                            let filtered = newValue.filter(\.isNumber)
+                            if filtered != newValue {
+                                inputValue = filtered
+                            }
+                        }
+
+                    if isInputFocused && !trimmedValue.isEmpty {
+                        Button {
+                            inputValue = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
+                .background(Color(.tertiarySystemFill))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color(.separator).opacity(0.22), lineWidth: 1)
+                }
+
+                HStack(spacing: 14) {
+                    Button("取消") {
+                        onCancel()
+                    }
+                    .font(.headline)
+                    .foregroundStyle(.primary.opacity(0.78))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(Color(.tertiarySystemFill))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color(.separator).opacity(0.18), lineWidth: 1)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button("确定") {
+                        onConfirm()
+                    }
+                    .font(.headline)
+                    .foregroundStyle(canSubmit ? .white : Color(.tertiaryLabel))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(canSubmit ? Color.blue : Color(.tertiarySystemFill))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: canSubmit ? Color.blue.opacity(0.18) : .clear, radius: 8, y: 4)
+                    .buttonStyle(.plain)
+                    .disabled(!canSubmit)
+                }
+            }
+            .padding(22)
+            .frame(maxWidth: 620)
+            .background(.background)
+            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+            .shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: 10)
+            .padding(.horizontal, 28)
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("完成") {
+                    isInputFocused = false
+                }
+            }
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                isInputFocused = true
+            }
+        }
+    }
+}
+
+struct ExerciseDayNoteEditorSheet: View {
+    let date: Date
+    let initialContent: String
+    let onSave: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var contentInput: String
+    @FocusState private var isContentFocused: Bool
+
+    init(date: Date, initialContent: String, onSave: @escaping (String) -> Void) {
+        self.date = date
+        self.initialContent = initialContent
+        self.onSave = onSave
+        _contentInput = State(initialValue: initialContent)
+    }
+
+    private var trimmedContent: String {
+        contentInput.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var initialTrimmedContent: String {
+        initialContent.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canSave: Bool {
+        trimmedContent != initialTrimmedContent
+    }
+
+    private var hasExistingContent: Bool {
+        !initialTrimmedContent.isEmpty
+    }
+
+    private var titleText: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "M月d日"
+        return "\(formatter.string(from: date))锻炼日记"
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    ZStack(alignment: .topLeading) {
+                        if trimmedContent.isEmpty {
+                            Text("写点今天的锻炼日记、状态或下次想调整的地方")
+                                .font(.subheadline)
+                                .foregroundStyle(.tertiary)
+                                .padding(.top, 14)
+                                .padding(.horizontal, 14)
+                        }
+
+                        TextEditor(text: $contentInput)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 180)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .focused($isContentFocused)
+                    }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                    if hasExistingContent {
+                        Text("清空内容后点保存，会删除这条想法。")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .padding(20)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle(titleText)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        dismiss()
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        onSave(trimmedContent)
+                        dismiss()
+                    }
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.blue)
+                    .disabled(!canSave)
+                }
+            }
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    isContentFocused = true
+                }
+            }
+        }
+    }
+}
+
 struct ExerciseCalendarDay: Identifiable {
     var date: Date
     var isInDisplayedMonth: Bool
@@ -2423,6 +2851,10 @@ struct ExerciseCalendarDay: Identifiable {
 
     var id: Date { date }
 }
+
+private let exerciseCalendarCellSize: CGFloat = 42
+private let exerciseCalendarCellSpacing: CGFloat = 4
+private let exerciseCalendarGridWidth: CGFloat = exerciseCalendarCellSize * 7 + exerciseCalendarCellSpacing * 6
 
 struct ExerciseTodayGoalRow: View {
     let goal: ExerciseGoal

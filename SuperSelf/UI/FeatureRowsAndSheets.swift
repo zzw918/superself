@@ -2118,6 +2118,7 @@ struct TodoEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String
     @State private var detailInput: String
+    @State private var isShowingDetail: Bool
     @State private var priority: TodoPriority
     @State private var hasDueDate: Bool
     @State private var dueDate: Date
@@ -2128,6 +2129,7 @@ struct TodoEditorSheet: View {
         self.onSave = onSave
         _titleInput = State(initialValue: task.title)
         _detailInput = State(initialValue: task.detail)
+        _isShowingDetail = State(initialValue: !task.detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         _priority = State(initialValue: task.priority)
         _hasDueDate = State(initialValue: task.dueDate != nil)
         _dueDate = State(initialValue: task.dueDate ?? TodoDueDateField.defaultDueDate())
@@ -2137,26 +2139,47 @@ struct TodoEditorSheet: View {
         !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private var hasDetail: Bool {
+        !detailInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("TODO")
-                            .font(.caption.bold())
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            Text("TODO")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
 
-                        ModernInputField(
-                            placeholder: "记录些什么",
-                            text: $titleInput,
-                            icon: "checklist",
-                            tint: .blue,
-                            axis: .vertical
-                        )
+                            Spacer()
+
+                            Button {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.88)) {
+                                    isShowingDetail.toggle()
+                                }
+                            } label: {
+                                Text("备注")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(isShowingDetail || hasDetail ? .blue : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        TodoTitleField(text: $titleInput)
                         .focused($isFocused)
                     }
 
-                    TodoDetailField(text: $detailInput)
+                    if isShowingDetail {
+                        TodoDetailField(text: $detailInput) {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.88)) {
+                                detailInput = ""
+                                isShowingDetail = false
+                            }
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("优先级")
@@ -2227,6 +2250,7 @@ struct TodoAddSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var titleInput: String = ""
     @State private var detailInput: String = ""
+    @State private var isShowingDetail: Bool = false
     @State private var priority: TodoPriority?
     @State private var hasDueDate: Bool = false
     @State private var dueDate: Date = TodoDueDateField.defaultDueDate()
@@ -2242,26 +2266,47 @@ struct TodoAddSheet: View {
         !titleInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private var hasDetail: Bool {
+        !detailInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("TODO")
-                            .font(.caption.bold())
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            Text("TODO")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
 
-                        ModernInputField(
-                            placeholder: "记录些什么",
-                            text: $titleInput,
-                            icon: "checklist",
-                            tint: .blue,
-                            axis: .vertical
-                        )
+                            Spacer()
+
+                            Button {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.88)) {
+                                    isShowingDetail.toggle()
+                                }
+                            } label: {
+                                Text("备注")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(isShowingDetail || hasDetail ? .blue : .secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        TodoTitleField(text: $titleInput)
                         .focused($isFocused)
                     }
 
-                    TodoDetailField(text: $detailInput)
+                    if isShowingDetail {
+                        TodoDetailField(text: $detailInput) {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.88)) {
+                                detailInput = ""
+                                isShowingDetail = false
+                            }
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("优先级")
@@ -2302,6 +2347,7 @@ struct TodoAddSheet: View {
         .onAppear {
             priority = initialPriority
             detailInput = ""
+            isShowingDetail = false
             hasDueDate = false
             dueDate = TodoDueDateField.defaultDueDate()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -2323,18 +2369,30 @@ struct TodoAddSheet: View {
 
 struct TodoDetailField: View {
     @Binding var text: String
+    let onRemove: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("备注")
-                .font(.caption.bold())
+            HStack(spacing: 8) {
+                Text("备注")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button("移除") {
+                    onRemove()
+                }
+                .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
+                .buttonStyle(.plain)
+            }
 
             TextField(
                 "",
                 text: $text,
                 prompt: Text("可选，必要时可补充TODO详细信息")
-                    .foregroundStyle(.tertiary),
+                    .foregroundStyle(Color(.placeholderText)),
                 axis: .vertical
             )
             .font(.subheadline)
@@ -2345,6 +2403,28 @@ struct TodoDetailField: View {
             .background(Color(.secondarySystemGroupedBackground))
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
+    }
+}
+
+struct TodoTitleField: View {
+    @Binding var text: String
+
+    var body: some View {
+        TextField(
+            "",
+            text: $text,
+            prompt: Text("记录些什么")
+                .foregroundStyle(Color(.placeholderText)),
+            axis: .vertical
+        )
+        .font(.body)
+        .foregroundStyle(.primary)
+        .lineLimit(1...6)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(minHeight: 48)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 

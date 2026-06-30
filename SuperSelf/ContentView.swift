@@ -16,6 +16,7 @@ struct ContentView: View {
     let fastingSessionsCloudKey = "fastingSessions"
     let exerciseGoalsCloudKey = "exerciseGoals"
     let exerciseRecordsCloudKey = "exerciseRecords"
+    let exerciseDayNotesCloudKey = "exerciseDayNotes"
     let fastingGoalHoursCloudKey = "fastingGoalHours"
     let eatingGoalHoursCloudKey = "eatingGoalHours"
     let dailyGoalCloudKey = "dailyGoal"
@@ -37,7 +38,7 @@ struct ContentView: View {
     let heightCmCloudKey = "heightCm"
     let targetWeightCloudKey = "targetWeight"
     let roundStartWeightCloudKey = "roundStartWeight"
-    let planOptions = [(fasting: 14, eating: 10), (fasting: 16, eating: 8), (fasting: 18, eating: 6), (fasting: 20, eating: 4)]
+    let planOptions = [(fasting: 14, eating: 10), (fasting: 16, eating: 8), (fasting: 18, eating: 6), (fasting: 20, eating: 4), (fasting: 22, eating: 2)]
     let isoCalendar = Calendar(identifier: .iso8601)
 
     @AppStorage("fastingStartTime") var fastingStartTime: Double = Date().timeIntervalSince1970
@@ -49,6 +50,7 @@ struct ContentView: View {
     @AppStorage("fastingSessions") var fastingSessionsData = Data()
     @AppStorage("exerciseGoals") var exerciseGoalsData = Data()
     @AppStorage("exerciseRecords") var exerciseRecordsData = Data()
+    @AppStorage("exerciseDayNotes") var exerciseDayNotesData = Data()
     @AppStorage("moodEntries") var moodEntriesData = Data()
     @AppStorage("todoTasks") var todoTasksData = Data()
     @AppStorage("memoNotes") var memoNotesData = Data()
@@ -92,9 +94,11 @@ struct ContentView: View {
     @State var fastingSessions: [FastingSession] = []
     @State var exerciseGoals: [ExerciseGoal] = ExerciseGoal.defaultGoals
     @State var exerciseRecords: [ExerciseRecord] = []
+    @State var exerciseDayNotes: [ExerciseDayNote] = []
     @State var exerciseCalendarMonth = Date()
     @State var exerciseCalendarSelectedDate: Date? = nil
     @State var isShowingExerciseGoalSheet = false
+    @State var exerciseDayNoteSheetTarget: ExerciseDayNoteSheetTarget?
     @State var exerciseInputGoal: ExerciseGoal?
     @State var exerciseInputDate: Date?
     @State var exerciseInputValue: String = ""
@@ -318,6 +322,11 @@ struct ContentView: View {
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $exerciseDayNoteSheetTarget) { target in
+            exerciseDayNoteEditorSheet(for: target.date)
+                .presentationDetents([.height(430)])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $isShowingMoodEntryAddSheet) {
             MoodEntryEditorSheet(entry: nil) { content in
@@ -549,6 +558,9 @@ struct ContentView: View {
                     )
                 }
             )
+        }
+        .overlay {
+            exerciseInputOverlay
         }
     }
 

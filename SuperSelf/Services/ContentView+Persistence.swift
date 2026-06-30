@@ -368,6 +368,7 @@ extension ContentView {
         loadFastingSessions()
         loadExerciseGoals()
         loadExerciseRecords()
+        loadExerciseDayNotes()
         loadMoodEntries()
         loadCalculatorHistory()
         loadTodoTasks()
@@ -1287,6 +1288,14 @@ extension ContentView {
         }
     }
 
+    func loadExerciseDayNotes() {
+        guard !exerciseDayNotesData.isEmpty else { return }
+
+        if let decodedNotes = try? JSONDecoder().decode([ExerciseDayNote].self, from: exerciseDayNotesData) {
+            exerciseDayNotes = normalizedExerciseDayNotes(decodedNotes)
+        }
+    }
+
     func persistExerciseGoals() {
         if let encodedGoals = try? JSONEncoder().encode(exerciseGoals) {
             exerciseGoalsData = encodedGoals
@@ -1300,6 +1309,15 @@ extension ContentView {
         if let encodedRecords = try? JSONEncoder().encode(exerciseRecords) {
             exerciseRecordsData = encodedRecords
             cloudStore.set(encodedRecords, forKey: exerciseRecordsCloudKey)
+            flushToICloud()
+        }
+    }
+
+    func persistExerciseDayNotes() {
+        exerciseDayNotes = normalizedExerciseDayNotes(exerciseDayNotes)
+        if let encodedNotes = try? JSONEncoder().encode(exerciseDayNotes) {
+            exerciseDayNotesData = encodedNotes
+            cloudStore.set(encodedNotes, forKey: exerciseDayNotesCloudKey)
             flushToICloud()
         }
     }
@@ -1325,6 +1343,11 @@ extension ContentView {
         if let cloudExerciseRecordsData = cloudStore.data(forKey: exerciseRecordsCloudKey),
            let cloudExerciseRecords = try? JSONDecoder().decode([ExerciseRecord].self, from: cloudExerciseRecordsData) {
             mergeExerciseRecords(cloudExerciseRecords)
+        }
+
+        if let cloudExerciseDayNotesData = cloudStore.data(forKey: exerciseDayNotesCloudKey),
+           let cloudExerciseDayNotes = try? JSONDecoder().decode([ExerciseDayNote].self, from: cloudExerciseDayNotesData) {
+            mergeExerciseDayNotes(cloudExerciseDayNotes)
         }
 
         if let cloudMoodEntriesData = cloudStore.data(forKey: moodEntriesCloudKey),
@@ -1465,6 +1488,11 @@ extension ContentView {
         if let encodedExerciseRecords = try? JSONEncoder().encode(exerciseRecords) {
             exerciseRecordsData = encodedExerciseRecords
             cloudStore.set(encodedExerciseRecords, forKey: exerciseRecordsCloudKey)
+        }
+
+        if let encodedExerciseDayNotes = try? JSONEncoder().encode(exerciseDayNotes) {
+            exerciseDayNotesData = encodedExerciseDayNotes
+            cloudStore.set(encodedExerciseDayNotes, forKey: exerciseDayNotesCloudKey)
         }
 
         if let encodedMoodEntries = try? JSONEncoder().encode(moodEntries) {
@@ -1715,6 +1743,14 @@ extension ContentView {
         }
     }
 
+    func mergeExerciseDayNotes(_ cloudNotes: [ExerciseDayNote]) {
+        exerciseDayNotes = normalizedExerciseDayNotes(exerciseDayNotes + cloudNotes)
+
+        if let encodedNotes = try? JSONEncoder().encode(exerciseDayNotes) {
+            exerciseDayNotesData = encodedNotes
+        }
+    }
+
     func normalizedExerciseRecords(_ records: [ExerciseRecord]) -> [ExerciseRecord] {
         var recordsByDayAndGoal: [String: ExerciseRecord] = [:]
 
@@ -1734,6 +1770,35 @@ extension ContentView {
         }
 
         return recordsByDayAndGoal.values.sorted {
+            if $0.date != $1.date {
+                return $0.date > $1.date
+            }
+            return $0.updatedAt > $1.updatedAt
+        }
+    }
+
+    func normalizedExerciseDayNotes(_ notes: [ExerciseDayNote]) -> [ExerciseDayNote] {
+        var notesByDay: [String: ExerciseDayNote] = [:]
+
+        for note in notes {
+            let day = Calendar.current.startOfDay(for: note.date)
+            let key = String(Int(day.timeIntervalSince1970))
+            var normalizedNote = note
+            normalizedNote.date = day
+            normalizedNote.content = normalizedNote.content.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard !normalizedNote.content.isEmpty else { continue }
+
+            if let existing = notesByDay[key] {
+                if normalizedNote.updatedAt >= existing.updatedAt {
+                    notesByDay[key] = normalizedNote
+                }
+            } else {
+                notesByDay[key] = normalizedNote
+            }
+        }
+
+        return notesByDay.values.sorted {
             if $0.date != $1.date {
                 return $0.date > $1.date
             }
